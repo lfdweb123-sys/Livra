@@ -56,7 +56,7 @@ Un seul projet Flutter, 3 espaces par rôle (Client / Livreur / Vendeur), redire
 cd mobile
 flutter pub get
 flutterfire configure   # génère le vrai firebase_options.dart (celui fourni est un placeholder REPLACE_ME)
-flutter run --dart-define=LIVRA_API_BASE_URL=https://ton-backend.vercel.app
+flutter run              # pointe déjà par défaut sur https://livras.vercel.app (voir core/constants/api_constants.dart)
 ```
 
 Il faut aussi :

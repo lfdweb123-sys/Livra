@@ -1,8 +1,9 @@
 class ApiConstants {
-  // À remplacer par l'URL de prod Vercel une fois déployée (ex: https://api.livra.app)
+  // URL de prod Vercel — surchageable via --dart-define=LIVRA_API_BASE_URL=...
+  // (utile pour pointer vers un environnement de preview/staging si besoin).
   static const String baseUrl = String.fromEnvironment(
     'LIVRA_API_BASE_URL',
-    defaultValue: 'https://livra-backend.vercel.app',
+    defaultValue: 'https://livras.vercel.app',
   );
 
   static const String orders = '/api/orders';
