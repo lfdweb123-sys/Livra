@@ -1,6 +1,6 @@
 // Endpoint interne (appelé serveur à serveur, ex: cron, ou depuis une autre route)
-import { jsonError } from '../../../lib/auth';
-import { sendNotification } from '../../../lib/fcm';
+import { jsonError } from '../../../../lib/auth';
+import { sendNotification } from '../../../../lib/fcm';
 
 export async function POST(req) {
   const secret = req.headers.get('x-internal-secret');

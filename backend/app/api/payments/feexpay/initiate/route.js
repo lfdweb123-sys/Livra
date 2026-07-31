@@ -1,6 +1,6 @@
-import { db, FieldValue } from '../../../../lib/firebaseAdmin';
-import { requireAuth, jsonError } from '../../../../lib/auth';
-import { feexpayRequestToPay } from '../../../../lib/feexpay';
+import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
+import { requireAuth, jsonError } from '../../../../../lib/auth';
+import { feexpayRequestToPay } from '../../../../../lib/feexpay';
 
 // POST { orderId?, rideId?, network, phoneNumber, otp? }
 export async function POST(req) {

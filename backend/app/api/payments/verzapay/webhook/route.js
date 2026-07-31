@@ -1,4 +1,4 @@
-import { db, FieldValue } from '../../../../lib/firebaseAdmin';
+import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 
 // Webhook Verzapay confirmé: payload plat, pas de wrapper "data", pas de signature
 // cryptographique (pattern confirmé empiriquement sur les autres intégrations Verzapay).

@@ -1,4 +1,4 @@
-import { db, FieldValue } from '../../../../lib/firebaseAdmin';
+import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 
 // FeexPay callback_info == notre paymentId (pattern déjà utilisé sur les autres projets)
 export async function POST(req) {

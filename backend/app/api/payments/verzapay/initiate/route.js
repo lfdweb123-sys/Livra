@@ -1,6 +1,6 @@
-import { db, FieldValue } from '../../../../lib/firebaseAdmin';
-import { requireAuth, jsonError } from '../../../../lib/auth';
-import { verzapayCreatePayment } from '../../../../lib/verzapay';
+import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
+import { requireAuth, jsonError } from '../../../../../lib/auth';
+import { verzapayCreatePayment } from '../../../../../lib/verzapay';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
