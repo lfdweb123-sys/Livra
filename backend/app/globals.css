@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --livra-gold: #D4AF37;
+  --livra-black: #0B0B0D;
+}

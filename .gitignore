@@ -1,0 +1,23 @@
+# Backend Next.js
+backend/node_modules/
+backend/.next/
+backend/.env
+backend/.env.local
+backend/.vercel/
+
+# Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+mobile/.idea/
+mobile/*.iml
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/local.properties
+
+# Divers
+.DS_Store
+*.log
