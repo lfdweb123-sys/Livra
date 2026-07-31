@@ -1,4 +1,4 @@
-/// Format compatible geoflutterfire2: { geohash, geopoint: {latitude, longitude} }
+/// Format compatible geoflutterfire_plus: { geohash, geopoint: {latitude, longitude} }
 class LivraGeoPoint {
   final String geohash;
   final double latitude;

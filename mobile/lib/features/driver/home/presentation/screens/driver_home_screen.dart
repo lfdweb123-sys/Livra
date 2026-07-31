@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geoflutterfire2/geoflutterfire2.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -13,7 +13,7 @@ import '../../../../../core/widgets/empty_state.dart';
 const double _matchRadiusKm = 5;
 
 class DriverHomeScreen extends StatefulWidget {
-  DriverHomeScreen({super.key});
+  const DriverHomeScreen({super.key});
   @override
   State<DriverHomeScreen> createState() => _DriverHomeScreenState();
 }
@@ -26,7 +26,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   StreamSubscription? _posSub;
   StreamSubscription? _geoSub;
   List<Map<String, dynamic>> _incoming = [];
-  final _geo = Geoflutterfire();
 
   @override
   void initState() {
@@ -69,8 +68,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           'lat': p.latitude,
           'lng': p.longitude,
         });
-        // on ré-ancre le centre de la requête géo seulement si le livreur a
-        // bougé significativement, pour ne pas relancer la requête à chaque tick.
+        // on ré-ancre le centre de la requête géo à chaque update de
+        // position pour que le rayon suive le livreur en mouvement.
         _startGeoMatching(p.latitude, p.longitude);
       });
     } else {
@@ -82,22 +81,30 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     setState(() => _online = value);
   }
 
-  /// Requête géo réelle (geoflutterfire2) sur le champ `matchPosition` des
-  /// commandes, dans un rayon de _matchRadiusKm autour du livreur. Le filtre
-  /// géo (range sur geohash) ne peut pas se combiner avec un `where`
-  /// composé côté Firestore natif : on filtre donc status/driverId sur la
-  /// collectionRef passée à geoflutterfire2, et le rayon exact en aval.
+  /// Requête géo réelle (geoflutterfire_plus) sur le champ `matchPosition`
+  /// des commandes, dans un rayon de _matchRadiusKm autour du livreur.
+  /// Le filtre géo (range sur geohash) se combine ici avec les `where`
+  /// status/driverId via `queryBuilder` — nécessite l'index composite
+  /// (status, driverId, matchPosition.geohash) déclaré dans
+  /// firestore.indexes.json.
   void _startGeoMatching(double lat, double lng) {
     _geoSub?.cancel();
-    final center = _geo.point(latitude: lat, longitude: lng);
-    final collectionRef = FirebaseFirestore.instance
-        .collection('orders')
-        .where('status', isEqualTo: 'picked_up')
-        .where('driverId', isEqualTo: null);
+    final center = GeoFirePoint(GeoPoint(lat, lng));
+    final collectionReference = FirebaseFirestore.instance.collection('orders');
 
-    _geoSub = _geo
-        .collection(collectionRef: collectionRef)
-        .within(center: center, radius: _matchRadiusKm, field: 'matchPosition', strictMode: true)
+    _geoSub = GeoCollectionReference<Map<String, dynamic>>(collectionReference)
+        .subscribeWithin(
+          center: center,
+          radiusInKm: _matchRadiusKm,
+          field: 'matchPosition',
+          geopointFrom: (data) {
+            final mp = data['matchPosition'] as Map<String, dynamic>?;
+            final gp = mp?['geopoint'] as Map<String, dynamic>?;
+            if (gp == null) return const GeoPoint(0, 0);
+            return GeoPoint((gp['latitude'] as num).toDouble(), (gp['longitude'] as num).toDouble());
+          },
+          queryBuilder: (query) => query.where('status', isEqualTo: 'picked_up').where('driverId', isEqualTo: null),
+        )
         .listen((docs) {
       if (!mounted) return;
       setState(() {
@@ -121,10 +128,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_driverId == null) return Scaffold(body: SkeletonCardList());
+    if (_driverId == null) return const Scaffold(body: SkeletonCardList());
     if (_status != 'active') {
       return Scaffold(
-        appBar: AppBar(title: Text('Espace livreur')),
+        appBar: AppBar(title: const Text('Espace livreur')),
         body: EmptyState(
           icon: Icons.hourglass_top_rounded,
           message: _status == 'pending'
@@ -137,26 +144,26 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Espace livreur'),
+        title: const Text('Espace livreur'),
         actions: [
-          IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
-          IconButton(icon: Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
+          IconButton(icon: const Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
+          IconButton(icon: const Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
         ],
       ),
       body: Column(
         children: [
           Container(
-            margin: EdgeInsets.all(16),
-            padding: EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18)),
             child: Row(
               children: [
                 Icon(Icons.circle, size: 12, color: _online ? AppColors.success : AppColors.textSecondary),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _online ? 'En ligne — commandes dans un rayon de ${_matchRadiusKm.toInt()} km' : 'Hors ligne',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 Switch(value: _online, activeColor: AppColors.gold, onChanged: _toggleOnline),
@@ -165,20 +172,20 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           ),
           Expanded(
             child: !_online
-                ? EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des commandes.')
+                ? const EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des commandes.')
                 : _incoming.isEmpty
-                    ? EmptyState(icon: Icons.inbox_outlined, message: 'Aucune commande disponible à proximité pour le moment.')
+                    ? const EmptyState(icon: Icons.inbox_outlined, message: 'Aucune commande disponible à proximité pour le moment.')
                     : ListView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _incoming.length,
                         itemBuilder: (context, i) {
                           final o = _incoming[i];
                           return Card(
-                            margin: EdgeInsets.only(bottom: 12),
+                            margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
                               title: Text('Commande ${o['type']}'),
                               subtitle: Text('${o['priceBreakdown']?['deliveryFee'] ?? '-'} XOF de frais de livraison'),
-                              trailing: ElevatedButton(onPressed: () => _acceptOrder(o['id']), child: Text('Accepter')),
+                              trailing: ElevatedButton(onPressed: () => _acceptOrder(o['id']), child: const Text('Accepter')),
                             ),
                           );
                         },
