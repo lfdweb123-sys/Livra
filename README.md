@@ -92,7 +92,16 @@ Il faut aussi :
 
 ## 3. Firestore
 
-Voir `firestore-schema-livra.md` (collections, champs, index composites) et `firestore.rules` (à déployer avec `firebase deploy --only firestore:rules`). Index composites à créer manuellement dans la Console (ou via `firestore.indexes.json` à générer depuis les erreurs de la console au premier run — pattern habituel).
+Voir `firestore-schema-livra.md` (collections, champs) et `firestore.rules`. Les index composites requis par les requêtes réelles du backend sont dans `firestore.indexes.json` — nécessaires car plusieurs routes combinent un `where` sur un champ différent de celui du `orderBy` (ex: commandes filtrées par `clientId` + triées par `createdAt`), ce que Firestore ne sait pas servir avec ses index automatiques à champ unique.
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use livra-efb01   # ton project_id
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+Le déploiement des index prend quelques minutes en arrière-plan (visible dans Firebase Console → Firestore → Index). Si une requête tombe sur un index manquant que j'aurais oublié, Firestore renvoie directement dans l'erreur un lien qui le crée en un clic — plus rapide que de deviner toutes les combinaisons à l'avance.
 
 ---
 
