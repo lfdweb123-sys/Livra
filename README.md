@@ -33,6 +33,11 @@ npm run dev
 ### Déploiement Vercel
 Push sur GitHub → import sur Vercel → renseigner les mêmes variables d'env que `.env.example` dans les Project Settings. Le compte Vercel Hobby suffit (pas de Cloud Functions, tout est en Route Handlers standards).
 
+**URLs à configurer une fois le backend déployé** (remplace le domaine par le tien) :
+- Webhook FeexPay : `https://<ton-domaine>/api/payments/feexpay/webhook`
+- Webhook Verzapay : `https://<ton-domaine>/api/payments/verzapay/webhook`
+- Cron réconciliation (cron-job.org, toutes les 5 min) : GET `https://<ton-domaine>/api/cron/reconcile-payments` avec le header `x-cron-secret: <ton INTERNAL_API_SECRET>`
+
 ### Ce qui est complet
 - **lib/** : `firebaseAdmin`, `auth` (vérif ID token + rôle), `geo` (geohash + haversine), `pricing` (calcul serveur des prix, jamais depuis le payload client), `r2` (upload), `fcm` (notifications), `feexpay` (tous les réseaux BJ/TG/CI/CG/SN/BF/ML), `verzapay` (payment + payout), `paymentRouter` (routing par indicatif tél).
 - **API** : orders (create/list/patch avec machine à états par rôle), rides (idem), vendors + produits (CRUD), drivers (candidature + toggle online + update position), upload (proxy R2), paiements FeexPay/Verzapay (initiate + webhooks), wallet (solde/historique/retrait avec transaction Firestore atomique + rollback si le payout échoue), proxies Maps (Directions/Distance Matrix/Places, clé jamais exposée au mobile), admin (stats, disputes, commission).
