@@ -11,18 +11,18 @@ class ThemeController {
 
   static const _prefsKey = 'livra_theme_mode';
 
-  final ValueNotifier<ThemeMode> mode = ValueNotifier(ThemeMode.dark);
+  final ValueNotifier<ThemeMode> mode = ValueNotifier(ThemeMode.light);
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefsKey);
-    mode.value = saved == 'light' ? ThemeMode.light : ThemeMode.dark;
+    mode.value = saved == 'dark' ? ThemeMode.dark : ThemeMode.light;
   }
 
   Future<void> toggle() async {
     mode.value = mode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, mode.value == ThemeMode.light ? 'light' : 'dark');
+    await prefs.setString(_prefsKey, mode.value == ThemeMode.dark ? 'dark' : 'light');
   }
 
   bool get isLight => mode.value == ThemeMode.light;

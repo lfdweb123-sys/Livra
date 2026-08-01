@@ -13,6 +13,7 @@ class AuthService {
     required String password,
     required String name,
     required String phone,
+    required String country,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
     await _db.collection('users').doc(cred.user!.uid).set({
@@ -21,6 +22,7 @@ class AuthService {
       'name': name,
       'phone': phone,
       'email': email,
+      'country': country,
       'isActive': true,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

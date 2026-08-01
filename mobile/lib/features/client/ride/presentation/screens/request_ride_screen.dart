@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/services/payment/payment_service.dart';
@@ -8,19 +9,21 @@ import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
+import '../../../../../core/widgets/address_picker_sheet.dart';
 
 class RequestRideScreen extends StatefulWidget {
   final String? initialVehicleType;
-  RequestRideScreen({super.key, this.initialVehicleType});
+  const RequestRideScreen({super.key, this.initialVehicleType});
 
   @override
   State<RequestRideScreen> createState() => _RequestRideScreenState();
 }
 
 class _RequestRideScreenState extends State<RequestRideScreen> {
-  GoogleMapController? _mapController;
-  LatLng? _pickup;
-  LatLng? _dropoff;
+  final _mapController = MapController();
+  ll.LatLng? _pickup;
+  String _pickupLabel = 'Ma position actuelle';
+  ll.LatLng? _dropoff;
   late String _vehicleType;
   bool _requesting = false;
   String? _rideId;
@@ -35,8 +38,19 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   Future<void> _loadCurrentPosition() async {
     try {
       final pos = await LocationService().getCurrentPosition();
-      setState(() => _pickup = LatLng(pos.latitude, pos.longitude));
+      if (mounted) setState(() => _pickup = ll.LatLng(pos.latitude, pos.longitude));
     } catch (_) {}
+  }
+
+  Future<void> _pickPickupAddress() async {
+    final result = await showAddressPicker(context, title: 'Adresse de départ');
+    if (result != null) {
+      setState(() {
+        _pickup = ll.LatLng(result.lat, result.lng);
+        _pickupLabel = result.label;
+      });
+      _mapController.move(_pickup!, 15);
+    }
   }
 
   Future<void> _requestRide() async {
@@ -64,7 +78,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               Text('Prix: ${res['price']} XOF'),
               Text('Distance: ${res['distanceKm']} km'),
               Text('ETA: ${res['etaMinutes']} min'),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               PrimaryButton(
                 label: 'Choisir le paiement',
                 onPressed: () {
@@ -93,17 +107,17 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         children: [
           ListTile(
             leading: Icon(Icons.phone_android, color: AppColors.gold),
-            title: Text('Mobile Money (FeexPay Bénin)'),
+            title: const Text('Mobile Money (FeexPay Bénin)'),
             onTap: _payFeexpay,
           ),
           ListTile(
             leading: Icon(Icons.credit_card, color: AppColors.gold),
-            title: Text('Verzapay (carte / Mobile Money)'),
+            title: const Text('Verzapay (carte / Mobile Money)'),
             onTap: _payVerzapay,
           ),
           ListTile(
             leading: Icon(Icons.account_balance_wallet, color: AppColors.gold),
-            title: Text('Portefeuille Livra'),
+            title: const Text('Portefeuille Livra'),
             onTap: () {
               Navigator.pop(context);
               context.go('/client/tracking/ride/$_rideId');
@@ -139,9 +153,9 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                 );
               }).toList(),
             ),
-            SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
-            SizedBox(height: 16),
+            const SizedBox(height: 12),
+            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+            const SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer',
               onPressed: () async {
@@ -175,31 +189,61 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Réserver une course')),
+      appBar: AppBar(title: const Text('Réserver une course')),
       body: Column(
         children: [
           Expanded(
             child: _pickup == null
                 ? Center(child: CircularProgressIndicator(color: AppColors.gold))
-                : GoogleMap(
-                    initialCameraPosition: CameraPosition(target: _pickup!, zoom: 15),
-                    onMapCreated: (c) => _mapController = c,
-                    myLocationEnabled: true,
-                    onTap: (latLng) => setState(() => _dropoff = latLng),
-                    markers: {
-                      Marker(markerId: MarkerId('pickup'), position: _pickup!, infoWindow: InfoWindow(title: 'Départ')),
-                      if (_dropoff != null)
-                        Marker(markerId: MarkerId('dropoff'), position: _dropoff!, infoWindow: InfoWindow(title: 'Arrivée')),
-                    },
+                : FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _pickup!,
+                      initialZoom: 15,
+                      onTap: (tapPosition, point) => setState(() => _dropoff = point),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.lfd.livra',
+                      ),
+                      MarkerLayer(markers: [
+                        Marker(
+                          point: _pickup!,
+                          width: 40,
+                          height: 40,
+                          child: Icon(Icons.trip_origin_rounded, color: AppColors.success, size: 30),
+                        ),
+                        if (_dropoff != null)
+                          Marker(
+                            point: _dropoff!,
+                            width: 40,
+                            height: 40,
+                            child: Icon(Icons.location_on_rounded, color: AppColors.danger, size: 36),
+                          ),
+                      ]),
+                    ],
                   ),
           ),
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                InkWell(
+                  onTap: _pickPickupAddress,
+                  child: Row(
+                    children: [
+                      Icon(Icons.trip_origin_rounded, color: AppColors.success, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_pickupLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
+                      Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Text('Touchez la carte pour choisir la destination', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   children: ['moto', 'voiture'].map((v) {
@@ -213,7 +257,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                     );
                   }).toList(),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 PrimaryButton(label: 'Estimer et réserver', onPressed: _dropoff == null ? null : _requestRide, loading: _requesting),
               ],
             ),

@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/maps/maps_service.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../../core/utils/polyline_decoder.dart';
 import '../../../../../core/widgets/primary_button.dart';
 
 /// Navigation vers point de collecte puis destination, avec le vrai tracé
-/// Directions dessiné sur la carte et une caméra qui suit le livreur
-/// ("follow me"), désactivable temporairement si l'utilisateur pan la carte.
+/// OSRM dessiné sur la carte (gratuit, sans clé API) et une caméra qui suit
+/// le livreur ("follow me"), désactivable si l'utilisateur pan la carte.
 class DriverNavigationScreen extends StatefulWidget {
   final String type; // order | ride
   final String id;
-  DriverNavigationScreen({super.key, required this.type, required this.id});
+  const DriverNavigationScreen({super.key, required this.type, required this.id});
 
   @override
   State<DriverNavigationScreen> createState() => _DriverNavigationScreenState();
@@ -23,15 +23,16 @@ class DriverNavigationScreen extends StatefulWidget {
 
 class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   Map<String, dynamic>? _target;
-  final Set<Polyline> _polylines = {};
-  final Set<Marker> _markers = {};
-  GoogleMapController? _mapController;
+  List<ll.LatLng> _routePoints = [];
+  ll.LatLng? _origin;
+  ll.LatLng? _destination;
+  final _mapController = MapController();
   final _mapsService = MapsService();
   StreamSubscription? _targetSub;
   StreamSubscription? _positionSub;
 
   bool _followMe = true;
-  bool _boundsFitted = false;
+  bool _fitted = false;
 
   @override
   void initState() {
@@ -50,13 +51,10 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     });
   }
 
-  /// Caméra "follow me" : suit la position GPS du livreur en continu.
-  /// Se met en pause dès que le livreur pan/zoom manuellement la carte
-  /// (voir onCameraMoveStarted), et se réactive via le bouton flottant.
   void _startFollowing() {
     _positionSub = LocationService().watchPosition().listen((pos) {
-      if (!_followMe || _mapController == null) return;
-      _mapController!.animateCamera(CameraUpdate.newLatLng(LatLng(pos.latitude, pos.longitude)));
+      if (!_followMe) return;
+      _mapController.move(ll.LatLng(pos.latitude, pos.longitude), _mapController.camera.zoom);
     });
   }
 
@@ -70,14 +68,12 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
     final o = origin['geopoint'];
     final d = destination['geopoint'];
-    final originLatLng = LatLng((o['latitude'] as num).toDouble(), (o['longitude'] as num).toDouble());
-    final destLatLng = LatLng((d['latitude'] as num).toDouble(), (d['longitude'] as num).toDouble());
+    final originLatLng = ll.LatLng((o['latitude'] as num).toDouble(), (o['longitude'] as num).toDouble());
+    final destLatLng = ll.LatLng((d['latitude'] as num).toDouble(), (d['longitude'] as num).toDouble());
 
     setState(() {
-      _markers
-        ..clear()
-        ..add(Marker(markerId: MarkerId('origin'), position: originLatLng, infoWindow: InfoWindow(title: 'Collecte')))
-        ..add(Marker(markerId: MarkerId('destination'), position: destLatLng, infoWindow: InfoWindow(title: 'Destination')));
+      _origin = originLatLng;
+      _destination = destLatLng;
     });
 
     try {
@@ -85,44 +81,19 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
         origin: '${originLatLng.latitude},${originLatLng.longitude}',
         destination: '${destLatLng.latitude},${destLatLng.longitude}',
       );
-      final routes = res['routes'] as List?;
-      if (routes == null || routes.isEmpty) return;
-      final encoded = routes[0]['overview_polyline']?['points'] as String?;
-      if (encoded == null) return;
-      final points = decodePolyline(encoded);
-      setState(() {
-        _polylines
-          ..clear()
-          ..add(Polyline(polylineId: PolylineId('route'), points: points, color: AppColors.gold, width: 4));
-      });
-      // Cadrage initial uniquement — une fois le trajet démarré, le "follow me"
-      // reprend la main pour suivre le livreur plutôt que le tracé complet.
-      if (!_boundsFitted) {
-        _fitBounds(points);
-        _boundsFitted = true;
+      final coords = (res['coordinates'] as List?)
+          ?.map((c) => ll.LatLng((c[0] as num).toDouble(), (c[1] as num).toDouble()))
+          .toList();
+      if (coords == null || coords.isEmpty) return;
+      setState(() => _routePoints = coords);
+      if (!_fitted) {
+        _mapController.fitCamera(CameraFit.coordinates(coordinates: coords, padding: const EdgeInsets.all(60)));
+        _fitted = true;
       }
     } catch (_) {
-      // en cas d'échec Directions (quota, réseau), la carte reste utilisable
-      // avec juste les deux markers, sans tracé.
+      // itinéraire indisponible (OSRM en panne, réseau...) — la carte reste
+      // utilisable avec juste les markers, sans tracé.
     }
-  }
-
-  void _fitBounds(List<LatLng> points) {
-    if (_mapController == null || points.isEmpty) return;
-    double minLat = points.first.latitude, maxLat = points.first.latitude;
-    double minLng = points.first.longitude, maxLng = points.first.longitude;
-    for (final p in points) {
-      minLat = p.latitude < minLat ? p.latitude : minLat;
-      maxLat = p.latitude > maxLat ? p.latitude : maxLat;
-      minLng = p.longitude < minLng ? p.longitude : minLng;
-      maxLng = p.longitude > maxLng ? p.longitude : maxLng;
-    }
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
-        60,
-      ),
-    );
   }
 
   Future<void> _advanceStatus(String nextStatus) async {
@@ -133,7 +104,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   Future<void> _recenter() async {
     setState(() => _followMe = true);
     final pos = await LocationService().getCurrentPosition();
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 16));
+    _mapController.move(ll.LatLng(pos.latitude, pos.longitude), 16);
   }
 
   @override
@@ -152,7 +123,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
         : {'accepted': 'arriving', 'arriving': 'in_progress', 'in_progress': 'completed'}[status];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Navigation')),
+      appBar: AppBar(title: const Text('Navigation')),
       body: Column(
         children: [
           Expanded(
@@ -163,17 +134,31 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) return Center(child: CircularProgressIndicator(color: AppColors.gold));
                     final pos = snapshot.data!;
-                    return GoogleMap(
-                      initialCameraPosition: CameraPosition(target: LatLng(pos.latitude, pos.longitude), zoom: 16),
-                      onMapCreated: (c) => _mapController = c,
-                      myLocationEnabled: true,
-                      polylines: _polylines,
-                      markers: _markers,
-                      // Le livreur qui pan/zoom manuellement suspend le "follow me" ;
-                      // il le réactive via le bouton flottant "recentrer".
-                      onCameraMoveStarted: () {
-                        if (_followMe) setState(() => _followMe = false);
-                      },
+                    return FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: ll.LatLng(pos.latitude, pos.longitude),
+                        initialZoom: 15,
+                        onPositionChanged: (camera, hasGesture) {
+                          if (hasGesture && _followMe) setState(() => _followMe = false);
+                        },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.lfd.livra',
+                        ),
+                        if (_routePoints.isNotEmpty)
+                          PolylineLayer(polylines: [
+                            Polyline(points: _routePoints, strokeWidth: 4, color: AppColors.gold),
+                          ]),
+                        MarkerLayer(markers: [
+                          if (_origin != null)
+                            Marker(point: _origin!, width: 36, height: 36, child: Icon(Icons.trip_origin_rounded, color: AppColors.success)),
+                          if (_destination != null)
+                            Marker(point: _destination!, width: 36, height: 36, child: Icon(Icons.location_on_rounded, color: AppColors.danger)),
+                        ]),
+                      ],
                     );
                   },
                 ),
@@ -191,12 +176,12 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Statut actuel: $status', style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 12),
+                Text('Statut actuel: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
                 if (nextStatus != null)
                   PrimaryButton(label: 'Marquer: $nextStatus', onPressed: () => _advanceStatus(nextStatus)),
               ],

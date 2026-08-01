@@ -16,6 +16,7 @@ final _slides = [
   _Slide('Livraison en un tap', 'Colis, courses et repas livrés partout à Cotonou et au-delà.', Icons.local_shipping_rounded),
   _Slide('Suivez en temps réel', 'Un marker animé qui bouge vraiment avec votre livreur, sur la carte.', Icons.map_rounded),
   _Slide('Payez comme vous voulez', 'Mobile Money, carte, ou votre portefeuille Livra.', Icons.account_balance_wallet_rounded),
+  _Slide('Devenez partenaire', "Livreur, chauffeur ou vendeur ? Postulez à tout moment depuis l'onglet Profil.", Icons.handshake_rounded),
 ];
 
 class OnboardingScreen extends StatefulWidget {

@@ -1,6 +1,7 @@
-// Proxy Directions API — clé Maps jamais exposée côté client
 import { requireAuth, jsonError } from '../../../../lib/auth';
+import { getRoute } from '../../../../lib/routing';
 
+// origin/destination au format "lat,lng"
 export async function GET(req) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
@@ -10,8 +11,13 @@ export async function GET(req) {
   const destination = searchParams.get('destination');
   if (!origin || !destination) return jsonError('origin_destination_required', 400);
 
-  const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&key=${process.env.GOOGLE_MAPS_SERVER_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return Response.json(data);
+  const [originLat, originLng] = origin.split(',').map(Number);
+  const [destLat, destLng] = destination.split(',').map(Number);
+
+  try {
+    const route = await getRoute({ originLat, originLng, destLat, destLng });
+    return Response.json(route);
+  } catch (e) {
+    return jsonError(e.message, 502);
+  }
 }

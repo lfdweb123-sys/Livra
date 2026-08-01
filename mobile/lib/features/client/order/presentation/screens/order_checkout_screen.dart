@@ -7,37 +7,80 @@ import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
+import '../../../../../core/widgets/address_picker_sheet.dart';
 
-/// Récapitulatif + choix paiement. Le prix affiché ici est indicatif —
-/// le total réel vient toujours de la réponse POST /api/orders (serveur).
+/// Étape 1 : confirmation/choix des adresses (livraison, + collecte si colis)
+/// — automatique par GPS par défaut, mais toujours modifiable manuellement.
+/// Étape 2 : récapitulatif + choix paiement, une fois la commande créée
+/// côté serveur (le prix affiché vient toujours de la réponse API, jamais
+/// calculé côté client).
 class OrderCheckoutScreen extends StatefulWidget {
   final Map<String, dynamic>? initialData;
-  OrderCheckoutScreen({super.key, this.initialData});
+  const OrderCheckoutScreen({super.key, this.initialData});
 
   @override
   State<OrderCheckoutScreen> createState() => _OrderCheckoutScreenState();
 }
 
 class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
-  bool _loading = false;
+  bool _loadingAddress = true;
+  bool _creatingOrder = false;
   Map<String, dynamic>? _priceBreakdown;
   String? _orderId;
 
-  Future<void> _createOrder() async {
-    setState(() => _loading = true);
+  PickedAddress? _deliveryAddress;
+  PickedAddress? _pickupAddress;
+
+  bool get _isColis => (widget.initialData ?? {})['type'] == 'colis';
+
+  @override
+  void initState() {
+    super.initState();
+    _detectDefaultAddresses();
+  }
+
+  Future<void> _detectDefaultAddresses() async {
     try {
-      final position = await LocationService().getCurrentPosition();
+      final pos = await LocationService().getCurrentPosition();
+      final auto = PickedAddress(lat: pos.latitude, lng: pos.longitude, label: 'Ma position actuelle');
+      setState(() {
+        _deliveryAddress = auto;
+        if (_isColis) _pickupAddress = auto;
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Localisation indisponible : $e')));
+    } finally {
+      if (mounted) setState(() => _loadingAddress = false);
+    }
+  }
+
+  Future<void> _editDeliveryAddress() async {
+    final result = await showAddressPicker(context, title: 'Adresse de livraison');
+    if (result != null) setState(() => _deliveryAddress = result);
+  }
+
+  Future<void> _editPickupAddress() async {
+    final result = await showAddressPicker(context, title: 'Adresse de collecte du colis');
+    if (result != null) setState(() => _pickupAddress = result);
+  }
+
+  Future<void> _createOrder() async {
+    if (_deliveryAddress == null || (_isColis && _pickupAddress == null)) return;
+    setState(() => _creatingOrder = true);
+    try {
       final data = widget.initialData ?? {};
       final res = await ApiClient.instance.post(ApiConstants.orders, data: {
         'type': data['type'] ?? 'colis',
         'vendorId': data['vendorId'],
         'items': data['items'] ?? [],
         'deliveryAddress': {
-          'geopoint': {'latitude': position.latitude, 'longitude': position.longitude},
+          'geopoint': {'latitude': _deliveryAddress!.lat, 'longitude': _deliveryAddress!.lng},
+          'label': _deliveryAddress!.label,
         },
-        'pickupAddress': data['type'] == 'colis'
+        'pickupAddress': _isColis
             ? {
-                'geopoint': {'latitude': position.latitude, 'longitude': position.longitude},
+                'geopoint': {'latitude': _pickupAddress!.lat, 'longitude': _pickupAddress!.lng},
+                'label': _pickupAddress!.label,
               }
             : null,
       });
@@ -48,14 +91,8 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _creatingOrder = false);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _createOrder();
   }
 
   Future<void> _choosePayment() async {
@@ -86,8 +123,6 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     );
   }
 
-  // Couverture complète des réseaux FeexPay V2 gérés côté backend
-  // (lib/feexpay.js) — groupés par pays pour l'UI.
   static const Map<String, List<String>> _feexpayCountries = {
     'Bénin': ['mtn', 'moov', 'celtiis_bj', 'coris'],
     'Togo': ['togocom_tg', 'moov_tg'],
@@ -193,8 +228,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     Navigator.pop(context);
     try {
       final phone = ''; // à récupérer depuis le profil utilisateur (users/{uid}.phone)
-      final res = await PaymentService().payWithVerzapay(orderId: _orderId, phoneNumber: phone);
-      // Ouvrir res['checkoutUrl'] via url_launcher, puis rediriger vers le tracking
+      await PaymentService().payWithVerzapay(orderId: _orderId, phoneNumber: phone);
       if (mounted) context.go('/client/tracking/order/$_orderId');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
@@ -203,26 +237,74 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Étape 2 : commande créée, on affiche le récap + paiement.
+    if (_priceBreakdown != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Récapitulatif')),
+        body: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _row('Sous-total', _priceBreakdown!['subtotal']),
+              _row('Frais de livraison', _priceBreakdown!['deliveryFee']),
+              Divider(color: AppColors.divider, height: 32),
+              _row('Total', _priceBreakdown!['total'], bold: true),
+              Spacer(),
+              PrimaryButton(label: 'Choisir le paiement', onPressed: _choosePayment),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Étape 1 : choix/confirmation des adresses.
     return Scaffold(
-      appBar: AppBar(title: Text('Récapitulatif')),
-      body: _loading
+      appBar: AppBar(title: Text('Adresse de livraison')),
+      body: _loadingAddress
           ? Center(child: CircularProgressIndicator(color: AppColors.gold))
-          : _priceBreakdown == null
-              ? Center(child: Text('Erreur de création de commande.'))
-              : Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _row('Sous-total', _priceBreakdown!['subtotal']),
-                      _row('Frais de livraison', _priceBreakdown!['deliveryFee']),
-                      Divider(color: AppColors.divider, height: 32),
-                      _row('Total', _priceBreakdown!['total'], bold: true),
-                      Spacer(),
-                      PrimaryButton(label: 'Choisir le paiement', onPressed: _choosePayment),
-                    ],
+          : Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isColis) ...[
+                    Text('Adresse de collecte', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    SizedBox(height: 8),
+                    _addressCard(_pickupAddress?.label ?? '—', _editPickupAddress),
+                    SizedBox(height: 20),
+                  ],
+                  Text('Adresse de livraison', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  SizedBox(height: 8),
+                  _addressCard(_deliveryAddress?.label ?? '—', _editDeliveryAddress),
+                  Spacer(),
+                  PrimaryButton(
+                    label: 'Continuer',
+                    onPressed: _deliveryAddress == null || (_isColis && _pickupAddress == null) ? null : _createOrder,
+                    loading: _creatingOrder,
                   ),
-                ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _addressCard(String label, VoidCallback onEdit) {
+    return InkWell(
+      onTap: onEdit,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+        child: Row(
+          children: [
+            Icon(Icons.location_on_outlined, color: AppColors.gold),
+            SizedBox(width: 10),
+            Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis)),
+            Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
     );
   }
 

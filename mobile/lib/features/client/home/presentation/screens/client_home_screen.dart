@@ -99,6 +99,35 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   .toList(),
             ),
             SizedBox(height: 24),
+            InkWell(
+              onTap: () => context.push('/client/profile'),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [AppColors.gold, AppColors.goldSoft]),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.handshake_outlined, color: Colors.black, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Livreur, chauffeur ou vendeur ?', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 14)),
+                          SizedBox(height: 2),
+                          Text('Postulez depuis votre Profil', style: TextStyle(color: Colors.black87, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.black, size: 16),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
             Row(
               key: _listKey,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

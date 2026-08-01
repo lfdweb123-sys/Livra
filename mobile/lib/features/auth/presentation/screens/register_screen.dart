@@ -7,7 +7,7 @@ import '../../../../core/widgets/app_logo.dart';
 
 /// Inscription = toujours "client" au départ. Devenir livreur/vendeur se
 /// fait ensuite via une candidature séparée (apply-driver / apply-vendor),
-/// validée par l'admin.
+/// accessible à tout moment depuis Profil.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
   @override
@@ -15,11 +15,14 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  static const _countries = ['Bénin', 'Togo', "Côte d'Ivoire", 'Congo Brazzaville', 'Sénégal', 'Burkina Faso', 'Mali'];
+
   final _authService = AuthService();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  String _country = _countries.first;
   bool _loading = false;
   bool _obscure = true;
   String? _error;
@@ -39,6 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordCtrl.text,
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
+        country: _country,
       );
     } catch (e, stack) {
       RemoteLogger.log(context: 'register', error: e, stack: stack);
@@ -83,6 +87,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: const InputDecoration(hintText: 'Nom complet', prefixIcon: Icon(Icons.person_outline_rounded)),
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _country,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.public_rounded)),
+                dropdownColor: AppColors.surfaceElevated,
+                items: _countries.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setState(() => _country = v ?? _country),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
@@ -125,8 +137,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               PrimaryButton(label: "S'inscrire", onPressed: _submit, loading: _loading),
+              const SizedBox(height: 12),
+              const Text(
+                "En vous inscrivant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité.",
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
             ],
           ),
