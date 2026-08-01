@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../../core/widgets/app_logo.dart';
 
 class _Slide {
   final String title;
@@ -33,11 +34,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: () => context.go('/login'),
-                child: Text('Passer', style: TextStyle(color: AppColors.textSecondary)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const AppLogo(size: 36),
+                  TextButton(
+                    onPressed: () => context.go('/login'),
+                    child: Text('Passer', style: TextStyle(color: AppColors.textSecondary)),
+                  ),
+                ],
               ),
             ),
             Expanded(

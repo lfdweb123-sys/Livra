@@ -32,7 +32,10 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
       appBar: AppBar(title: Text('Mes gains')),
       body: _wallet == null
           ? SkeletonCardList()
-          : ListView(
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.gold,
+              child: ListView(
               padding: EdgeInsets.all(20),
               children: [
                 Container(
@@ -59,6 +62,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
                       ),
                     ))),
               ],
+            ),
             ),
     );
   }

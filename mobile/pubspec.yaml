@@ -53,6 +53,17 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
+  flutter_launcher_icons: ^0.14.1
+
+# Icônes déjà générées et commitées dans android/app/src/main/res/mipmap-*
+# (à partir de assets/images/livra_icon_mark.png). Cette config sert juste à
+# les régénérer proprement si le logo change un jour :
+# `dart run flutter_launcher_icons`
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/livra_icon_mark.png"
+  min_sdk_android: 21
 flutter:
   uses-material-design: true
   assets:
