@@ -81,7 +81,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         children: [
           Expanded(
             child: _driverPosition == null
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -121,7 +121,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),

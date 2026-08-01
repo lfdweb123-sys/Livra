@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               const Text('Content de vous revoir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Connectez-vous pour continuer',
                 style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextButton(
                   onPressed: () => context.push('/register'),
                   child: RichText(
-                    text: const TextSpan(
+                    text: TextSpan(
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                       children: [
                         TextSpan(text: "Pas encore de compte ? "),

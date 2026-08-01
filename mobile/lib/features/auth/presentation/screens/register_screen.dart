@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               const Text('Créer un compte', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Ça prend moins d\'une minute',
                 style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
@@ -140,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
               PrimaryButton(label: "S'inscrire", onPressed: _submit, loading: _loading),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 "En vous inscrivant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité.",
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
