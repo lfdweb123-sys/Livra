@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "40887549835",
+    "project_id": "livra-efb01",
+    "storage_bucket": "livra-efb01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:40887549835:android:dc2a9c07bdc9ea3f2a798e",
+        "android_client_info": {
+          "package_name": "com.example.livra"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "40887549835-v0l3vvb61jv4qkt8ucnl9nfp4qnq0rns.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjQZ_M4GIqGEztKdZlGoHOvIjET6GWKLU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "40887549835-v0l3vvb61jv4qkt8ucnl9nfp4qnq0rns.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

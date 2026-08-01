@@ -15,7 +15,7 @@ dependencies:
   # --- Maps & Géolocalisation ---
   google_maps_flutter: ^2.9.0
   geolocator: ^13.0.1
-  geocoding: ^3.0.0
+  geocoding: ^4.0.0
   geoflutterfire_plus: any
   # --- Auth locale / biométrie ---
   local_auth: ^2.3.0
