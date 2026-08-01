@@ -7,6 +7,7 @@ import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/notification_bell_action.dart';
+import '../../../../core/widgets/phone_number_field.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -43,11 +44,15 @@ class _WalletScreenState extends State<WalletScreen> {
         children: [
           TextField(controller: amountCtrl, decoration: InputDecoration(hintText: 'Montant (XOF)'), keyboardType: TextInputType.number),
           SizedBox(height: 12),
-          TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+          PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
           SizedBox(height: 16),
           PrimaryButton(
             label: 'Confirmer le retrait',
             onPressed: () async {
+              if (phoneCtrl.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                return;
+              }
               try {
                 await ApiClient.instance.post('/api/wallet/$uid/withdraw', data: {
                   'amount': num.tryParse(amountCtrl.text) ?? 0,
@@ -58,7 +63,10 @@ class _WalletScreenState extends State<WalletScreen> {
                   _load();
                 }
               } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                final msg = e.toString().contains('insufficient_balance')
+                    ? 'Solde insuffisant sur votre portefeuille.'
+                    : 'Erreur lors du retrait. Réessayez dans un instant.';
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
               }
             },
           ),

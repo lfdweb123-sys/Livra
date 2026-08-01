@@ -3,14 +3,12 @@ import 'core/services/lock_service.dart';
 import 'core/services/inactivity_service.dart';
 import 'core/services/remote_logger.dart';
 import 'core/theme/app_colors.dart';
-import 'core/widgets/pin_pad.dart';
 import 'core/widgets/app_logo.dart';
 
-/// Enveloppe l'app entière : si l'utilisateur a activé le verrouillage
-/// (Profil > Verrouillage), l'app se verrouille au cold start, au retour
-/// d'arrière-plan, et après inactivité. Le code PIN est le mécanisme fiable
-/// de base ; la biométrie est tentée en premier UNIQUEMENT si activée en
-/// plus, et retombe toujours sur le PIN en cas d'échec — jamais bloquant.
+/// Enveloppe l'app entière : si l'utilisateur a activé l'empreinte digitale
+/// (Profil), l'app se verrouille au cold start, au retour d'arrière-plan,
+/// et après inactivité. La session Firebase Auth n'est jamais touchée par
+/// ce verrou, purement local.
 class AppLockGate extends StatefulWidget {
   final Widget child;
   const AppLockGate({super.key, required this.child});
@@ -21,11 +19,10 @@ class AppLockGate extends StatefulWidget {
 
 class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   final _lockService = LockService();
-  final _pinPadKey = GlobalKey<PinPadState>();
   bool _locked = false;
   bool _checked = false;
-  bool _biometricTrying = false;
-  bool _pinError = false;
+  bool _unlocking = false;
+  String? _lastError;
 
   @override
   void initState() {
@@ -47,7 +44,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     if (InactivityService.instance.shouldLock.value && mounted && !_locked) {
       setState(() => _locked = true);
       InactivityService.instance.stop();
-      _tryBiometricFirst();
+      _tryUnlock();
     }
   }
 
@@ -60,7 +57,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     if (enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await Future.delayed(const Duration(milliseconds: 400));
-        if (mounted) _tryBiometricFirst();
+        if (mounted) _tryUnlock();
       });
     }
   }
@@ -71,42 +68,28 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       setState(() => _locked = true);
       InactivityService.instance.stop();
       await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) _tryBiometricFirst();
+      if (mounted) _tryUnlock();
     } else if (state == AppLifecycleState.paused) {
       InactivityService.instance.stop();
     }
   }
 
-  /// Tente la biométrie SEULEMENT si l'utilisateur l'a activée en plus du
-  /// PIN. Toute erreur/annulation retombe silencieusement sur le clavier
-  /// PIN déjà affiché — jamais d'écran bloqué sans solution.
-  Future<void> _tryBiometricFirst() async {
-    final biometricOn = await _lockService.isBiometricEnabled();
-    if (!biometricOn) return;
-    setState(() => _biometricTrying = true);
+  Future<void> _tryUnlock() async {
+    if (_unlocking) return;
+    setState(() { _unlocking = true; _lastError = null; });
     try {
       final ok = await _lockService.authenticateBiometric();
       if (ok && mounted) {
         setState(() => _locked = false);
         InactivityService.instance.start();
+      } else if (mounted) {
+        setState(() => _lastError = 'Authentification annulée.');
       }
     } catch (e, stack) {
       RemoteLogger.log(context: 'biometric_unlock', error: e, stack: stack);
-      // silencieux — le clavier PIN reste affiché en dessous, pas de blocage
+      if (mounted) setState(() => _lastError = RemoteLogger.readableAuthError(e));
     } finally {
-      if (mounted) setState(() => _biometricTrying = false);
-    }
-  }
-
-  Future<void> _onPinComplete(String pin) async {
-    final ok = await _lockService.verifyPin(pin);
-    if (ok && mounted) {
-      setState(() { _locked = false; _pinError = false; });
-      InactivityService.instance.start();
-    } else if (mounted) {
-      setState(() => _pinError = true);
-      await Future.delayed(const Duration(milliseconds: 400));
-      _pinPadKey.currentState?.reset();
+      if (mounted) setState(() => _unlocking = false);
     }
   }
 
@@ -126,30 +109,32 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppLogo(size: 64, full: true),
-                  const SizedBox(height: 28),
-                  if (_biometricTrying) ...[
-                    CircularProgressIndicator(color: AppColors.gold),
-                    const SizedBox(height: 16),
-                    const Text('Vérification biométrique…', style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 20),
-                  ],
-                  PinPad(
-                    key: _pinPadKey,
-                    title: 'Entrez votre code',
-                    subtitle: _pinError ? 'Code incorrect, réessayez.' : null,
-                    showError: _pinError,
-                    onComplete: _onPinComplete,
-                  ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AppLogo(size: 64, full: true),
+                const SizedBox(height: 28),
+                Icon(Icons.fingerprint_rounded, size: 56, color: AppColors.gold),
+                const SizedBox(height: 16),
+                const Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                if (_lastError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(_lastError!, style: const TextStyle(fontSize: 13, color: Colors.white70), textAlign: TextAlign.center),
                 ],
-              ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: 220,
+                  child: ElevatedButton(
+                    onPressed: _unlocking ? null : _tryUnlock,
+                    child: _unlocking
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : const Text('Déverrouiller'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

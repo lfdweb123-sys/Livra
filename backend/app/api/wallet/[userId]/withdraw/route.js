@@ -11,22 +11,27 @@ export async function POST(req, { params }) {
   const { amount, phoneNumber } = await req.json();
   const walletRef = db.collection('wallets').doc(params.userId);
 
-  const result = await db.runTransaction(async (tx) => {
-    const walletSnap = await tx.get(walletRef);
-    const balance = walletSnap.exists ? walletSnap.data().balance : 0;
-    if (balance < amount) throw new Error('insufficient_balance');
-    tx.set(walletRef, { balance: FieldValue.increment(-amount), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    const txRef = walletRef.collection('transactions').doc();
-    tx.set(txRef, {
-      type: 'debit',
-      amount,
-      reason: 'withdrawal',
-      createdAt: FieldValue.serverTimestamp(),
+  let result;
+  try {
+    result = await db.runTransaction(async (tx) => {
+      const walletSnap = await tx.get(walletRef);
+      const balance = walletSnap.exists ? walletSnap.data().balance : 0;
+      if (balance < amount) throw new Error('insufficient_balance');
+      tx.set(walletRef, { balance: FieldValue.increment(-amount), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      const txRef = walletRef.collection('transactions').doc();
+      tx.set(txRef, {
+        type: 'debit',
+        amount,
+        reason: 'withdrawal',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return txRef.id;
     });
-    return txRef.id;
-  }).catch((e) => {
-    throw e;
-  });
+  } catch (e) {
+    if (e.message === 'insufficient_balance') return jsonError('insufficient_balance', 400);
+    console.error('[WITHDRAW_ERROR]', e.message);
+    return jsonError('withdraw_failed', 500);
+  }
 
   try {
     const payout = await verzapayCreatePayout({

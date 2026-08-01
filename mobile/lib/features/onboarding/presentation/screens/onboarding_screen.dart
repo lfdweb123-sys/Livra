@@ -7,6 +7,7 @@ import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/services/onboarding_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/services/maps/maps_service.dart';
+import '../../../../core/services/app_content_service.dart';
 
 class _Slide {
   final String title;
@@ -50,12 +51,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _index = 0;
   String _city = 'votre ville';
   bool _checking = true;
+  List<String?> _overrideImages = [];
 
   @override
   void initState() {
     super.initState();
     _checkAlreadySeen();
     _detectCity();
+    _loadAppContent();
+  }
+
+  Future<void> _loadAppContent() async {
+    final config = await AppContentService().fetch();
+    if (!mounted) return;
+    if (!config.onboardingEnabled) {
+      await _finish();
+      return;
+    }
+    if (config.onboardingSlides.isNotEmpty) setState(() => _overrideImages = config.onboardingSlides);
+  }
+
+  String _imageFor(int i) {
+    if (i < _overrideImages.length && _overrideImages[i] != null) return _overrideImages[i]!;
+    return _slides[i].image;
   }
 
   Future<void> _checkAlreadySeen() async {
@@ -118,7 +136,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
-                            child: Image.asset(s.image, fit: BoxFit.cover, width: double.infinity),
+                            child: (i < _overrideImages.length && _overrideImages[i] != null)
+                                ? Image.network(_imageFor(i), fit: BoxFit.contain, width: double.infinity)
+                                : Image.asset(_imageFor(i), fit: BoxFit.contain, width: double.infinity),
                           ),
                         ),
                       ),

@@ -48,3 +48,17 @@ export async function PATCH(req, { params }) {
 
   return Response.json({ ok: true });
 }
+
+// DELETE — admin uniquement, suppression définitive (non-respect des règles)
+export async function DELETE(req, { params }) {
+  const auth = await requireAuth(req);
+  if (auth.error) return jsonError(auth.error, auth.status);
+  if (auth.role !== 'admin') return jsonError('forbidden', 403);
+
+  const snap = await db.collection('drivers').doc(params.id).get();
+  if (!snap.exists) return jsonError('not_found', 404);
+
+  await logActivity('driver_deleted', `Livreur/chauffeur (${snap.data().vehicleType}) supprimé par l'admin`, { driverId: params.id, adminUid: auth.uid });
+  await db.collection('drivers').doc(params.id).delete();
+  return Response.json({ ok: true });
+}

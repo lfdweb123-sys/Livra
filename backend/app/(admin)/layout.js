@@ -8,6 +8,9 @@ import { auth, db } from '../../lib/firebaseClient';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/activity', label: "Journal d'activité" },
+  { href: '/content', label: 'Visuels' },
+  { href: '/users', label: 'Utilisateurs' },
+  { href: '/products', label: 'Produits' },
   { href: '/vendors', label: 'Vendeurs' },
   { href: '/drivers', label: 'Chauffeurs' },
   { href: '/orders', label: 'Commandes' },

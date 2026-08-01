@@ -188,7 +188,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
                 }).toList(),
               ),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro de téléphone'), keyboardType: TextInputType.phone),
+            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro (sans le 0 initial, +229 ajouté auto.)'), keyboardType: TextInputType.phone),
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer',
@@ -197,7 +197,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
                   await ApiClient.instance.post('/api/ads/campaigns/$campaignId/pay', data: {
                     'provider': provider,
                     if (provider == 'feexpay') 'network': network,
-                    'phoneNumber': phoneCtrl.text.trim(),
+                    'phoneNumber': '+229${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
                   });
                   if (mounted) {
                     Navigator.pop(context);

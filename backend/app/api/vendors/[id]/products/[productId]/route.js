@@ -23,7 +23,7 @@ export async function PATCH(req, { params }) {
 export async function DELETE(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
-  if (!(await assertOwner(params.id, auth.uid))) return jsonError('forbidden', 403);
+  if (auth.role !== 'admin' && !(await assertOwner(params.id, auth.uid))) return jsonError('forbidden', 403);
   await db.doc(`vendors/${params.id}/products/${params.productId}`).delete();
   return Response.json({ ok: true });
 }

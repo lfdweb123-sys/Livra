@@ -162,6 +162,15 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     'Mali': ['orange_ml', 'mobicash_ml'],
   };
   static const Set<String> _otpRequiredNetworks = {'coris', 'orange_bf'};
+  static const Map<String, String> _countryCallingCode = {
+    'Bénin': '+229',
+    'Togo': '+228',
+    "Côte d'Ivoire": '+225',
+    'Congo Brazzaville': '+242',
+    'Sénégal': '+221',
+    'Burkina Faso': '+226',
+    'Mali': '+223',
+  };
 
   Future<void> _payFeexpay() async {
     Navigator.pop(context);
@@ -209,7 +218,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               }).toList(),
             ),
             SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro (sans le 0 initial, indicatif $country ajouté auto.)'), keyboardType: TextInputType.phone),
             if (requiresOtp) ...[
               SizedBox(height: 12),
               Text(
@@ -229,7 +238,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                   await PaymentService().payWithFeexPay(
                     orderId: _orderId,
                     network: network,
-                    phoneNumber: phoneCtrl.text.trim(),
+                    phoneNumber: '${_countryCallingCode[country]}${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
                     otp: requiresOtp ? otpCtrl.text.trim() : null,
                   );
                   if (mounted) {

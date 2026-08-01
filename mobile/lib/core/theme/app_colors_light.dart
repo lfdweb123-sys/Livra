@@ -9,8 +9,8 @@ class AppColorsLight {
   static const Color background = Color(0xFFFAF9F6);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceElevated = Color(0xFFF1EFE9);
-  static const Color gold = Color(0xFFB8912E);
-  static const Color goldSoft = Color(0xFFD9BB6E);
+  static const Color gold = Color(0xFFD9560A);
+  static const Color goldSoft = Color(0xFFF2854A);
   static const Color textPrimary = Color(0xFF17171A);
   static const Color textSecondary = Color(0xFF6B6B6F);
   static const Color success = Color(0xFF1E9A63);

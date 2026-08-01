@@ -21,6 +21,12 @@ export default function DriversPage() {
     load();
   }
 
+  async function remove(d) {
+    if (!confirm('Supprimer définitivement ce compte livreur ? Action irréversible (non-respect des règles).')) return;
+    await apiFetch(`/api/drivers/${d.id}`, { method: 'DELETE' });
+    load();
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Chauffeurs / Livreurs</h1>

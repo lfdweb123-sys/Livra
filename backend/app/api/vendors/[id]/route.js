@@ -52,3 +52,23 @@ export async function PATCH(req, { params }) {
 
   return Response.json({ ok: true });
 }
+
+// DELETE — admin uniquement, suppression définitive (non-respect des règles)
+export async function DELETE(req, { params }) {
+  const auth = await requireAuth(req);
+  if (auth.error) return jsonError(auth.error, auth.status);
+  if (auth.role !== 'admin') return jsonError('forbidden', 403);
+
+  const snap = await db.collection('vendors').doc(params.id).get();
+  if (!snap.exists) return jsonError('not_found', 404);
+
+  await logActivity('vendor_deleted', `Vendeur "${snap.data().businessName}" supprimé par l'admin`, { vendorId: params.id, adminUid: auth.uid });
+
+  const productsSnap = await db.collection(`vendors/${params.id}/products`).get();
+  const batch = db.batch();
+  productsSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  batch.delete(db.collection('vendors').doc(params.id));
+  await batch.commit();
+
+  return Response.json({ ok: true });
+}

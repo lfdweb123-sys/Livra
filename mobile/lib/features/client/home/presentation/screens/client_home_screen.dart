@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/discovery_service.dart';
+import '../../../../../core/services/app_content_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/models/vendor_model.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -33,13 +36,72 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   List<Map<String, dynamic>> _featured = [];
   Timer? _featuredTimer;
   final _discoveryService = DiscoveryService();
+  List<String> _bannerImages = ['assets/images/banners/banner1.png', 'assets/images/banners/banner2.png'];
+  bool _bannerIsNetwork = false;
 
   @override
   void initState() {
     super.initState();
     _loadVendors();
     _loadFeatured();
+    _loadAppContent();
     _featuredTimer = Timer.periodic(const Duration(minutes: 1), (_) => _loadFeatured());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowPartnerPopup());
+  }
+
+  Future<void> _loadAppContent() async {
+    final config = await AppContentService().fetch();
+    if (!mounted) return;
+    if (config.bannersEnabled && config.banners.isNotEmpty) {
+      setState(() {
+        _bannerImages = config.banners;
+        _bannerIsNetwork = true;
+      });
+    } else if (!config.bannersEnabled) {
+      setState(() => _bannerImages = []);
+    }
+  }
+
+  Future<void> _maybeShowPartnerPopup() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final vendorSnap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
+    if (vendorSnap.docs.isNotEmpty) return;
+    final driverSnap = await FirebaseFirestore.instance.collection('drivers').where('ownerId', isEqualTo: uid).limit(1).get();
+    if (driverSnap.docs.isNotEmpty) return;
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        icon: Icon(Icons.handshake_rounded, color: AppColors.gold, size: 36),
+        title: const Text('Devenez partenaire Livra', textAlign: TextAlign.center),
+        content: Text(
+          'Livreur, chauffeur ou vendeur ? Gagnez un revenu complémentaire en rejoignant Livra.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Plus tard')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/apply-driver');
+            },
+            child: const Text('Devenir livreur'),
+          ),
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/apply-vendor');
+            },
+            child: const Text('Devenir vendeur'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -146,10 +208,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     .toList(),
               ),
               const SizedBox(height: 20),
-              AutoBannerCarousel(imagePaths: [
-                'assets/images/banners/banner1.png',
-                'assets/images/banners/banner2.png',
-              ]),
+              AutoBannerCarousel(imagePaths: _bannerImages, isNetwork: _bannerIsNetwork),
               const SizedBox(height: 18),
               if (_featured.isNotEmpty) ...[
                 Text('Découverte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -215,18 +274,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 ),
                 const SizedBox(height: 18),
               ],
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Wrap(
-                  spacing: 20,
-                  runSpacing: 6,
-                  children: [
-                    _smallLink(context, 'Devenir livreur / chauffeur', '/apply-driver'),
-                    _smallLink(context, 'Devenir vendeur', '/apply-vendor'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
               Row(
                 key: _listKey,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -264,24 +312,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
-    );
-  }
-
-  Widget _smallLink(BuildContext context, String label, String route) {
-    return InkWell(
-      onTap: () => context.push(route),
-      borderRadius: BorderRadius.circular(6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.gold, decoration: TextDecoration.underline),
-          ),
-          const SizedBox(width: 4),
-          Icon(Icons.arrow_forward_rounded, size: 13, color: AppColors.gold),
-        ],
-      ),
     );
   }
 }

@@ -24,6 +24,12 @@ export default function VendorsPage() {
     load();
   }
 
+  async function remove(v) {
+    if (!confirm(`Supprimer définitivement "${v.businessName}" et tout son catalogue ? Action irréversible (non-respect des règles).`)) return;
+    await apiFetch(`/api/vendors/${v.id}`, { method: 'DELETE' });
+    load();
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Vendeurs</h1>
@@ -60,6 +66,7 @@ export default function VendorsPage() {
                 {v.status === 'suspended' && (
                   <button onClick={() => updateStatus(v.id, 'active')} className="px-3 py-1 rounded-lg bg-green-600 text-sm">Réactiver</button>
                 )}
+                <button onClick={() => remove(v)} className="px-3 py-1 rounded-lg bg-red-800 text-sm">Supprimer</button>
               </div>
             </div>
             {v.documents && Object.keys(v.documents).length > 0 && (

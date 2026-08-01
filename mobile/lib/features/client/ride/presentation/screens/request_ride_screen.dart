@@ -165,13 +165,17 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro (sans le 0 initial, +229 ajouté auto.)'), keyboardType: TextInputType.phone),
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer',
               onPressed: () async {
                 try {
-                  await PaymentService().payWithFeexPay(rideId: _rideId, network: network, phoneNumber: phoneCtrl.text.trim());
+                  await PaymentService().payWithFeexPay(
+                    rideId: _rideId,
+                    network: network,
+                    phoneNumber: '+229${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
+                  );
                   if (mounted) {
                     Navigator.pop(context);
                     context.go('/client/tracking/ride/$_rideId');
