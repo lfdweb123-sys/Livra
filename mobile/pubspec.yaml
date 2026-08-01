@@ -59,9 +59,6 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
-  fonts:
-    - family: LivraFont
-      fonts:
-        - asset: assets/fonts/LivraFont-Regular.ttf
-        - asset: assets/fonts/LivraFont-Bold.ttf
-          weight: 700
+  # Pas de police custom déclarée ici : l'app utilise google_fonts (Inter)
+  # via core/theme/app_theme.dart. Si tu veux une police de marque, ajoute
+  # les vrais fichiers .ttf dans assets/fonts/ puis un bloc `fonts:` ici.
