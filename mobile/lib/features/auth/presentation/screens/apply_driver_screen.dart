@@ -21,12 +21,25 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   final Map<String, File> _docs = {};
   bool _loading = false;
 
+  static const _requiredDocs = {
+    'cni': "Pièce d'identité (CNI/passeport)",
+    'permis': 'Permis de conduire',
+    'assurance': "Assurance du véhicule",
+    'photoVehicule': 'Photo du véhicule',
+  };
+
   Future<void> _pickDoc(String key) async {
     final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
     if (picked != null) setState(() => _docs[key] = File(picked.path));
   }
 
   Future<void> _submit() async {
+    if (_docs.length < _requiredDocs.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Tous les documents sont requis pour la vérification d'identité.")),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final uploadService = UploadService();
@@ -78,13 +91,15 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
               }).toList(),
             ),
             SizedBox(height: 24),
-            Text('Documents', style: TextStyle(color: AppColors.textSecondary)),
+            Text('Documents (vérification d\'identité)', style: TextStyle(color: AppColors.textSecondary)),
+            SizedBox(height: 4),
+            Text('Tous requis avant activation par notre équipe.', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
             SizedBox(height: 8),
-            ...['cni', 'permis', 'assurance', 'photoVehicule'].map((key) => Card(
+            ..._requiredDocs.entries.map((e) => Card(
                   child: ListTile(
-                    title: Text(key),
-                    trailing: Icon(_docs.containsKey(key) ? Icons.check_circle : Icons.camera_alt, color: _docs.containsKey(key) ? AppColors.success : AppColors.textSecondary),
-                    onTap: () => _pickDoc(key),
+                    title: Text(e.value),
+                    trailing: Icon(_docs.containsKey(e.key) ? Icons.check_circle : Icons.camera_alt, color: _docs.containsKey(e.key) ? AppColors.success : AppColors.textSecondary),
+                    onTap: () => _pickDoc(e.key),
                   ),
                 )),
             SizedBox(height: 24),

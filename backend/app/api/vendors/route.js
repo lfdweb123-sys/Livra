@@ -3,9 +3,8 @@ import { requireAuth, jsonError } from '../../../lib/auth';
 import { toGeoPoint } from '../../../lib/geo';
 import { logActivity } from '../../../lib/activityLog';
 
-// POST — un client candidate comme vendeur : activation immédiate et
-// automatique, aucune validation manuelle (voir activityLog.js). L'admin
-// garde la capacité de suspendre après coup en cas d'abus signalé.
+// POST — un client candidate comme vendeur : statut "pending" jusqu'à
+// vérification d'identité par l'admin (voir dashboard admin > Vendeurs).
 export async function POST(req) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
@@ -18,7 +17,7 @@ export async function POST(req) {
     ownerId: auth.uid,
     businessName: body.businessName,
     category: body.category,
-    status: 'active',
+    status: 'pending',
     commission: 15,
     position: toGeoPoint(body.lat, body.lng),
     address: body.address || '',
@@ -32,12 +31,12 @@ export async function POST(req) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  await logActivity('vendor_activated', `Nouveau vendeur activé automatiquement : ${body.businessName}`, {
+  await logActivity('vendor_applied', `Nouvelle candidature vendeur en attente de vérification : ${body.businessName}`, {
     vendorId: ref.id,
     ownerId: auth.uid,
   });
 
-  return Response.json({ id: ref.id, status: 'active' });
+  return Response.json({ id: ref.id, status: 'pending' });
 }
 
 // GET — liste publique des vendeurs actifs (browse client), ou tous pour admin

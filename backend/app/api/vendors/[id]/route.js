@@ -1,6 +1,7 @@
 import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendTransactionalEmail, vendorStatusEmail } from '../../../../lib/brevo';
+import { logActivity } from '../../../../lib/activityLog';
 
 export async function GET(req, { params }) {
   const snap = await db.collection('vendors').doc(params.id).get();
@@ -42,6 +43,11 @@ export async function PATCH(req, { params }) {
       const email = ownerSnap.data().email;
       if (email) await sendTransactionalEmail({ to: email, toName: ownerSnap.data().name, subject, htmlContent });
     }
+    await logActivity(
+      body.status === 'active' ? 'vendor_approved' : 'vendor_rejected',
+      `Vendeur "${vendor.businessName}" ${body.status === 'active' ? 'approuvé' : 'rejeté'} par l'admin${body.rejectionReason ? ` — ${body.rejectionReason}` : ''}`,
+      { vendorId: params.id, adminUid: auth.uid }
+    );
   }
 
   return Response.json({ ok: true });

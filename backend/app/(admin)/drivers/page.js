@@ -2,11 +2,9 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../../lib/apiClient';
 
-// Même logique que vendors : activation automatique, l'admin ne fait que
-// consulter et suspendre en cas d'abus.
 export default function DriversPage() {
   const [items, setItems] = useState([]);
-  const [filter, setFilter] = useState('active');
+  const [filter, setFilter] = useState('pending');
 
   async function load() {
     const data = await apiFetch(`/api/drivers?status=${filter}`);
@@ -15,16 +13,20 @@ export default function DriversPage() {
   useEffect(() => { load(); }, [filter]);
 
   async function updateStatus(id, status) {
-    await apiFetch(`/api/drivers/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    let rejectionReason;
+    if (status === 'rejected') {
+      rejectionReason = prompt('Motif du rejet (visible par le livreur) ?') || '';
+    }
+    await apiFetch(`/api/drivers/${id}`, { method: 'PATCH', body: JSON.stringify({ status, rejectionReason }) });
     load();
   }
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Chauffeurs / Livreurs</h1>
-      <p className="text-neutral-500 text-sm mb-4">Activation automatique à la candidature. Suspends uniquement en cas d'abus signalé.</p>
+      <p className="text-neutral-500 text-sm mb-4">Vérifie CNI, permis, assurance et photo du véhicule avant d'approuver.</p>
       <div className="flex gap-2 mb-4">
-        {['active', 'suspended'].map((s) => (
+        {['pending', 'active', 'suspended', 'rejected'].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -36,16 +38,40 @@ export default function DriversPage() {
       </div>
       <div className="grid gap-3">
         {items.map((d) => (
-          <div key={d.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex justify-between items-center">
-            <div>
-              <div className="font-semibold">{d.vehicleType}</div>
-              <div className="text-neutral-400 text-sm">Documents: {Object.keys(d.documentsR2 || {}).length} fichier(s)</div>
+          <div key={d.id} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <div className="font-semibold">{d.vehicleType}</div>
+                <div className="text-neutral-400 text-sm">{Object.keys(d.documentsR2 || {}).length} document(s) fourni(s)</div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {d.status === 'pending' && (
+                  <>
+                    <button onClick={() => updateStatus(d.id, 'active')} className="px-3 py-1 rounded-lg bg-green-600 text-sm">Approuver</button>
+                    <button onClick={() => updateStatus(d.id, 'rejected')} className="px-3 py-1 rounded-lg bg-red-600 text-sm">Rejeter</button>
+                  </>
+                )}
+                {d.status === 'active' && (
+                  <button onClick={() => updateStatus(d.id, 'suspended')} className="px-3 py-1 rounded-lg bg-yellow-600 text-sm">Suspendre</button>
+                )}
+                {d.status === 'suspended' && (
+                  <button onClick={() => updateStatus(d.id, 'active')} className="px-3 py-1 rounded-lg bg-green-600 text-sm">Réactiver</button>
+                )}
+              </div>
             </div>
-            {d.status === 'active' && (
-              <button onClick={() => updateStatus(d.id, 'suspended')} className="px-3 py-1 rounded-lg bg-yellow-600 text-sm">Suspendre (abus)</button>
+            {d.documentsR2 && Object.keys(d.documentsR2).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-neutral-800 flex flex-wrap gap-3">
+                {Object.entries(d.documentsR2).map(([key, url]) => (
+                  <a key={key} href={url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 underline">
+                    Voir : {key}
+                  </a>
+                ))}
+              </div>
             )}
-            {d.status === 'suspended' && (
-              <button onClick={() => updateStatus(d.id, 'active')} className="px-3 py-1 rounded-lg bg-green-600 text-sm">Réactiver</button>
+            {(!d.documentsR2 || Object.keys(d.documentsR2).length === 0) && d.status === 'pending' && (
+              <div className="mt-3 pt-3 border-t border-neutral-800 text-xs text-yellow-500">
+                ⚠ Aucun document fourni — vérifie avant d'approuver.
+              </div>
             )}
           </div>
         ))}

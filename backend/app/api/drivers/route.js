@@ -14,7 +14,7 @@ export async function POST(req) {
   const ref = await db.collection('drivers').add({
     ownerId: auth.uid,
     vehicleType: body.vehicleType, // moto | voiture | coursier
-    status: 'active',
+    status: 'pending',
     isOnline: false,
     position: toGeoPoint(body.lat || 0, body.lng || 0),
     rating: 0,
@@ -24,12 +24,12 @@ export async function POST(req) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  await logActivity('driver_activated', `Nouveau livreur/chauffeur activé automatiquement (${body.vehicleType})`, {
+  await logActivity('driver_applied', `Nouvelle candidature livreur/chauffeur en attente de vérification (${body.vehicleType})`, {
     driverId: ref.id,
     ownerId: auth.uid,
   });
 
-  return Response.json({ id: ref.id, status: 'active' });
+  return Response.json({ id: ref.id, status: 'pending' });
 }
 
 // GET admin uniquement (liste + validation) — les clients ne listent pas les chauffeurs directement

@@ -1,6 +1,7 @@
 import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendTransactionalEmail, driverStatusEmail } from '../../../../lib/brevo';
+import { logActivity } from '../../../../lib/activityLog';
 
 export async function GET(req, { params }) {
   const snap = await db.collection('drivers').doc(params.id).get();
@@ -36,6 +37,11 @@ export async function PATCH(req, { params }) {
       const email = ownerSnap.data().email;
       if (email) await sendTransactionalEmail({ to: email, toName: ownerSnap.data().name, subject, htmlContent });
     }
+    await logActivity(
+      body.status === 'active' ? 'driver_approved' : 'driver_rejected',
+      `Livreur/chauffeur (${driver.vehicleType}) ${body.status === 'active' ? 'approuvé' : 'rejeté'} par l'admin${body.rejectionReason ? ` — ${body.rejectionReason}` : ''}`,
+      { driverId: params.id, adminUid: auth.uid }
+    );
   }
 
   return Response.json({ ok: true });
