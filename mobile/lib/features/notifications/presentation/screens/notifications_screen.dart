@@ -22,6 +22,12 @@ class NotificationsScreen extends StatelessWidget {
             .limit(50)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              message: "Impossible de charger les notifications.\n${snapshot.error}",
+            );
+          }
           if (!snapshot.hasData) return SkeletonCardList();
           final items = snapshot.data!.docs.map((d) => NotificationModel.fromMap(d.id, d.data())).toList();
           if (items.isEmpty) return EmptyState(icon: Icons.notifications_none_rounded, message: 'Aucune notification pour le moment.');
