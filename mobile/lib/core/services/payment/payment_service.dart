@@ -4,6 +4,34 @@ import '../../constants/api_constants.dart';
 class PaymentService {
   final _api = ApiClient.instance;
 
+  Future<Map<String, dynamic>> depositWalletFeexpay({
+    required String userId,
+    required num amount,
+    required String network,
+    required String phoneNumber,
+    String? otp,
+  }) {
+    return _api.post('/api/wallet/$userId/deposit', data: {
+      'amount': amount,
+      'provider': 'feexpay',
+      'network': network,
+      'phoneNumber': phoneNumber,
+      if (otp != null) 'otp': otp,
+    });
+  }
+
+  Future<Map<String, dynamic>> depositWalletVerzapay({
+    required String userId,
+    required num amount,
+    required String phoneNumber,
+  }) {
+    return _api.post('/api/wallet/$userId/deposit', data: {
+      'amount': amount,
+      'provider': 'verzapay',
+      'phoneNumber': phoneNumber,
+    });
+  }
+
   Future<Map<String, dynamic>> payWithFeexPay({
     String? orderId,
     String? rideId,

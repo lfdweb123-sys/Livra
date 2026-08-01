@@ -1,6 +1,7 @@
 import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { toGeoPoint } from '../../../lib/geo';
+import { logActivity } from '../../../lib/activityLog';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
@@ -13,7 +14,7 @@ export async function POST(req) {
   const ref = await db.collection('drivers').add({
     ownerId: auth.uid,
     vehicleType: body.vehicleType, // moto | voiture | coursier
-    status: 'pending',
+    status: 'active',
     isOnline: false,
     position: toGeoPoint(body.lat || 0, body.lng || 0),
     rating: 0,
@@ -22,7 +23,13 @@ export async function POST(req) {
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
-  return Response.json({ id: ref.id, status: 'pending' });
+
+  await logActivity('driver_activated', `Nouveau livreur/chauffeur activé automatiquement (${body.vehicleType})`, {
+    driverId: ref.id,
+    ownerId: auth.uid,
+  });
+
+  return Response.json({ id: ref.id, status: 'active' });
 }
 
 // GET admin uniquement (liste + validation) — les clients ne listent pas les chauffeurs directement

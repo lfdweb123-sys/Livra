@@ -73,7 +73,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                   selected: selected,
                   onSelected: (_) => setState(() => _vehicleType = v),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
                 );
               }).toList(),
             ),

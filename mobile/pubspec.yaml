@@ -22,6 +22,7 @@ dependencies:
   local_auth: ^2.3.0
   local_auth_android: ^1.0.45
   flutter_secure_storage: ^9.2.2
+  crypto: ^3.0.3
   # --- State management ---
   flutter_riverpod: ^2.6.1
   # --- Cache & stockage local ---
@@ -70,6 +71,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/onboarding/
+    - assets/images/banners/
     - assets/icons/
     - assets/animations/
   # Pas de police custom déclarée ici : l'app utilise google_fonts (Inter)

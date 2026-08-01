@@ -1,4 +1,5 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
+import { sendNotification } from '../../../../../lib/fcm';
 
 // Webhook Verzapay confirmé: payload plat, pas de wrapper "data", pas de signature
 // cryptographique (pattern confirmé empiriquement sur les autres intégrations Verzapay).
@@ -12,12 +13,43 @@ export async function POST(req) {
 
   if (event.type === 'payment.completed') {
     await paymentDoc.ref.update({ status: 'successful', updatedAt: FieldValue.serverTimestamp() });
-    const targetCollection = payment.orderId ? 'orders' : 'rides';
-    const targetId = payment.orderId || payment.rideId;
-    await db.collection(targetCollection).doc(targetId).update({
-      paymentStatus: 'paid',
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+
+    if (payment.walletUserId) {
+      const walletRef = db.collection('wallets').doc(payment.walletUserId);
+      await walletRef.set(
+        { balance: FieldValue.increment(payment.amount), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+      await walletRef.collection('transactions').add({
+        type: 'credit',
+        amount: payment.amount,
+        reason: 'wallet_deposit',
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      await sendNotification({
+        userId: payment.walletUserId,
+        title: 'Dépôt confirmé',
+        body: `${payment.amount} XOF ont été ajoutés à votre portefeuille Livra.`,
+        type: 'wallet_deposit',
+      });
+    } else {
+      const targetCollection = payment.orderId ? 'orders' : 'rides';
+      const targetId = payment.orderId || payment.rideId;
+      const targetSnap = await db.collection(targetCollection).doc(targetId).get();
+      await db.collection(targetCollection).doc(targetId).update({
+        paymentStatus: 'paid',
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      if (targetSnap.exists) {
+        await sendNotification({
+          userId: targetSnap.data().clientId,
+          title: 'Paiement confirmé',
+          body: `Votre paiement de ${payment.amount} XOF a bien été reçu.`,
+          type: 'payment_confirmed',
+          relatedId: targetId,
+        });
+      }
+    }
   } else if (event.type === 'payment.failed') {
     await paymentDoc.ref.update({ status: 'failed', updatedAt: FieldValue.serverTimestamp() });
   } else if (event.type === 'payout.completed' || event.type === 'payout.failed') {

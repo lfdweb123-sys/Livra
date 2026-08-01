@@ -38,7 +38,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Commandes reçues'), actions: [notificationBellAction(context)]),
-      body: RefreshIndicator(
+      body: swipeableTab(context: context, currentIndex: 1, child: RefreshIndicator(
         onRefresh: _load,
         child: _orders == null
             ? SkeletonCardList()
@@ -69,6 +69,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                       );
                     },
                   ),
+      ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );

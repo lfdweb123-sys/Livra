@@ -19,4 +19,16 @@ class MapsService {
   Future<Map<String, dynamic>> directions({required String origin, required String destination}) {
     return _api.get(ApiConstants.directions, query: {'origin': origin, 'destination': destination});
   }
+
+  /// Nom de ville à partir d'une position GPS — utilisé pour personnaliser
+  /// les textes ("livré partout à <ville>") sans ville fixe codée en dur.
+  /// Appel public, ne nécessite pas d'être connecté (utilisé dès l'onboarding).
+  Future<String?> reverseGeocodeCity(double lat, double lng) async {
+    try {
+      final res = await _api.get('/api/maps/reverse-geocode', query: {'lat': lat.toString(), 'lng': lng.toString()});
+      return res['label'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

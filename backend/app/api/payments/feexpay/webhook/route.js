@@ -1,4 +1,5 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
+import { sendNotification } from '../../../../../lib/fcm';
 
 // FeexPay callback_info == notre paymentId (pattern déjà utilisé sur les autres projets)
 export async function POST(req) {
@@ -24,10 +25,42 @@ export async function POST(req) {
 }
 
 async function finalizePayment(payment) {
+  if (payment.walletUserId) {
+    // Dépôt sur le portefeuille Livra
+    const walletRef = db.collection('wallets').doc(payment.walletUserId);
+    await walletRef.set(
+      { balance: FieldValue.increment(payment.amount), updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    await walletRef.collection('transactions').add({
+      type: 'credit',
+      amount: payment.amount,
+      reason: 'wallet_deposit',
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    await sendNotification({
+      userId: payment.walletUserId,
+      title: 'Dépôt confirmé',
+      body: `${payment.amount} XOF ont été ajoutés à votre portefeuille Livra.`,
+      type: 'wallet_deposit',
+    });
+    return;
+  }
+
   const targetCollection = payment.orderId ? 'orders' : 'rides';
   const targetId = payment.orderId || payment.rideId;
+  const targetSnap = await db.collection(targetCollection).doc(targetId).get();
   await db.collection(targetCollection).doc(targetId).update({
     paymentStatus: 'paid',
     updatedAt: FieldValue.serverTimestamp(),
   });
+  if (targetSnap.exists) {
+    await sendNotification({
+      userId: targetSnap.data().clientId,
+      title: 'Paiement confirmé',
+      body: `Votre paiement de ${payment.amount} XOF a bien été reçu.`,
+      type: 'payment_confirmed',
+      relatedId: targetId,
+    });
+  }
 }

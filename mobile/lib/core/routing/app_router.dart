@@ -13,10 +13,12 @@ import '../../features/auth/presentation/screens/apply_driver_screen.dart';
 import '../../features/auth/presentation/screens/apply_vendor_screen.dart';
 
 import '../../features/client/home/presentation/screens/client_home_screen.dart';
+import '../../features/client/home/presentation/screens/search_screen.dart';
 import '../../features/client/order/presentation/screens/vendor_detail_screen.dart';
 import '../../features/client/order/presentation/screens/order_checkout_screen.dart';
 import '../../features/client/ride/presentation/screens/request_ride_screen.dart';
 import '../../features/client/tracking/presentation/screens/tracking_screen.dart';
+import '../widgets/contact_screen.dart';
 import '../../features/client/history/presentation/screens/history_screen.dart';
 import '../../features/client/profile/presentation/screens/profile_screen.dart';
 
@@ -78,6 +80,18 @@ class AppRouter {
 
       // Espace Client
       GoRoute(path: '/client/home', builder: (c, s) => ClientHomeScreen()),
+      GoRoute(path: '/client/search', builder: (c, s) => const SearchScreen()),
+      GoRoute(
+        path: '/contact',
+        builder: (c, s) {
+          final extra = s.extra as Map<String, dynamic>? ?? {};
+          return ContactScreen(
+            name: extra['name'] ?? 'Contact',
+            phoneNumber: extra['phoneNumber'] ?? '',
+            role: extra['role'] ?? '',
+          );
+        },
+      ),
       GoRoute(path: '/client/vendor/:id', builder: (c, s) => VendorDetailScreen(vendorId: s.pathParameters['id']!)),
       GoRoute(
         path: '/client/checkout',

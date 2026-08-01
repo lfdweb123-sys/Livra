@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -23,6 +24,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
   ll.LatLng? _driverPosition;
   ll.LatLng? _previousPosition;
   String _status = 'pending';
+  String? _driverName;
+  String? _driverPhone;
   StreamSubscription? _sub;
   StreamSubscription? _driverSub;
 
@@ -41,15 +44,26 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   void _listenDriver(String driverId) {
     _driverSub?.cancel();
-    _driverSub = _db.collection('drivers').doc(driverId).snapshots().listen((snap) {
+    _driverSub = _db.collection('drivers').doc(driverId).snapshots().listen((snap) async {
       if (!snap.exists) return;
-      final position = snap.data()?['position']?['geopoint'];
-      if (position == null) return;
-      final newPos = ll.LatLng((position['latitude'] as num).toDouble(), (position['longitude'] as num).toDouble());
-      setState(() {
-        _previousPosition = _driverPosition ?? newPos;
-        _driverPosition = newPos;
-      });
+      final driverData = snap.data()!;
+      final position = driverData['position']?['geopoint'];
+      if (position != null) {
+        final newPos = ll.LatLng((position['latitude'] as num).toDouble(), (position['longitude'] as num).toDouble());
+        setState(() {
+          _previousPosition = _driverPosition ?? newPos;
+          _driverPosition = newPos;
+        });
+      }
+      if (_driverName == null && driverData['ownerId'] != null) {
+        final userSnap = await _db.collection('users').doc(driverData['ownerId']).get();
+        if (userSnap.exists && mounted) {
+          setState(() {
+            _driverName = userSnap.data()?['name'] ?? 'Votre livreur';
+            _driverPhone = userSnap.data()?['phone'];
+          });
+        }
+      }
     });
   }
 
@@ -73,10 +87,18 @@ class _TrackingScreenState extends State<TrackingScreen> {
     'cancelled': 'Annulée',
   };
 
+  String _homeRoute() => '/client/home';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Suivi en temps réel')),
+      appBar: AppBar(
+        title: const Text('Suivi en temps réel'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.go(_homeRoute()),
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -131,6 +153,21 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 Text(_statusLabels[_status] ?? _status, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text('Nous vous notifions à chaque étape.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                if (_driverPhone != null) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/contact', extra: {
+                        'name': _driverName ?? 'Votre livreur',
+                        'phoneNumber': _driverPhone,
+                        'role': 'Livreur/chauffeur Livra',
+                      }),
+                      icon: const Icon(Icons.call_outlined, size: 18),
+                      label: Text('Contacter ${_driverName ?? "le livreur"}'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

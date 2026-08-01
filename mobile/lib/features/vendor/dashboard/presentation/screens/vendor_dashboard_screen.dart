@@ -61,7 +61,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         title: Text(_vendor!['businessName'] ?? 'Espace vendeur'),
         actions: [IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')), notificationBellAction(context)],
       ),
-      body: ListView(
+      body: swipeableTab(context: context, currentIndex: 0, child: ListView(
         padding: EdgeInsets.all(16),
         children: [
           Container(
@@ -85,6 +85,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           SizedBox(height: 12),
           _tile(context, 'Statistiques', Icons.bar_chart_rounded, '/vendor/stats'),
         ],
+      ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );

@@ -33,7 +33,37 @@ const _vendorItems = [
   _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profil', '/client/profile'),
 ];
 
-/// Barre de navigation basse — 5 onglets, adaptés au rôle courant
+/// Enveloppe un contenu pour permettre la navigation entre onglets en
+/// glissant l'écran horizontalement (gauche <-> droite), en plus des taps
+/// sur la barre du bas.
+Widget swipeableTab({required BuildContext context, required int currentIndex, required Widget child}) {
+  final items = _itemsForRole();
+  return GestureDetector(
+    onHorizontalDragEnd: (details) {
+      final velocity = details.primaryVelocity ?? 0;
+      if (velocity.abs() < 200) return;
+      if (velocity < 0 && currentIndex < items.length - 1) {
+        context.go(items[currentIndex + 1].route);
+      } else if (velocity > 0 && currentIndex > 0) {
+        context.go(items[currentIndex - 1].route);
+      }
+    },
+    child: child,
+  );
+}
+
+List<_NavItem> _itemsForRole() {
+  switch (AppRouter.currentRole) {
+    case UserRole.driver:
+      return _driverItems;
+    case UserRole.vendor:
+      return _vendorItems;
+    default:
+      return _clientItems;
+  }
+}
+
+/// Barre de navigation basse — 4 onglets, adaptés au rôle courant
 /// (client/livreur/vendeur). Les 3 derniers onglets (Portefeuille,
 /// Notifications, Profil) pointent vers les mêmes écrans partagés quel
 /// que soit le rôle.
@@ -41,16 +71,7 @@ class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   const AppBottomNav({super.key, required this.currentIndex});
 
-  List<_NavItem> get _items {
-    switch (AppRouter.currentRole) {
-      case UserRole.driver:
-        return _driverItems;
-      case UserRole.vendor:
-        return _vendorItems;
-      default:
-        return _clientItems;
-    }
-  }
+  List<_NavItem> get _items => _itemsForRole();
 
   @override
   Widget build(BuildContext context) {

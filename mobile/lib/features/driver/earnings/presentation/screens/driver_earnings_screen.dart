@@ -32,7 +32,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Mes gains'), actions: [notificationBellAction(context)]),
-      body: _wallet == null
+      body: swipeableTab(context: context, currentIndex: 1, child: _wallet == null
           ? SkeletonCardList()
           : RefreshIndicator(
               onRefresh: _load,
@@ -66,6 +66,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
               ],
             ),
             ),
+      ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );
   }

@@ -32,9 +32,19 @@
       { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]},
     { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "driverId", "order": "ASCENDING" },
+      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
       { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
+      { "fieldPath": "vehicleType", "order": "ASCENDING" },
+      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "drivers", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "isOnline", "order": "ASCENDING" }
     ]},
 
     { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [

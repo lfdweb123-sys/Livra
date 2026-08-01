@@ -64,7 +64,7 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                   selected: selected,
                   onSelected: (_) => setState(() => _category = c),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
                 );
               }).toList(),
             ),

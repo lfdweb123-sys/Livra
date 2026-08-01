@@ -18,9 +18,10 @@ export async function searchAddress(query, countryCodes = 'bj,tg,ci,cg,sn,bf,ml'
 }
 
 export async function reverseGeocode(lat, lng) {
-  const url = `${NOMINATIM_BASE}/reverse?lat=${lat}&lon=${lng}&format=json`;
+  const url = `${NOMINATIM_BASE}/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
   const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!res.ok) throw new Error('nominatim_reverse_failed');
   const data = await res.json();
-  return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const addr = data.address || {};
+  return addr.city || addr.town || addr.village || addr.municipality || addr.county || data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }

@@ -53,6 +53,14 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     }
   }
 
+  Future<void> _pickDropoffAddress() async {
+    final result = await showAddressPicker(context, title: 'Destination');
+    if (result != null) {
+      setState(() => _dropoff = ll.LatLng(result.lat, result.lng));
+      _mapController.move(_dropoff!, 15);
+    }
+  }
+
   Future<void> _requestRide() async {
     if (_pickup == null || _dropoff == null) return;
     setState(() => _requesting = true);
@@ -107,21 +115,24 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         children: [
           ListTile(
             leading: Icon(Icons.phone_android, color: AppColors.gold),
-            title: const Text('Mobile Money (FeexPay Bénin)'),
+            title: const Text('Mobile Money'),
             onTap: _payFeexpay,
           ),
           ListTile(
             leading: Icon(Icons.credit_card, color: AppColors.gold),
-            title: const Text('Verzapay (carte / Mobile Money)'),
+            title: const Text('Carte bancaire / International'),
             onTap: _payVerzapay,
           ),
           ListTile(
             leading: Icon(Icons.account_balance_wallet, color: AppColors.gold),
             title: const Text('Portefeuille Livra'),
-            onTap: () {
-              Navigator.pop(context);
-              context.go('/client/tracking/ride/$_rideId');
-            },
+            onTap: _payWallet,
+          ),
+          ListTile(
+            leading: Icon(Icons.payments_outlined, color: AppColors.gold),
+            title: const Text('Espèces à bord'),
+            subtitle: const Text('Payez directement le chauffeur', style: TextStyle(fontSize: 12)),
+            onTap: _payCash,
           ),
         ],
       ),
@@ -149,7 +160,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                   selected: selected,
                   onSelected: (_) => setSheetState(() => network = n),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
                 );
               }).toList(),
             ),
@@ -180,6 +191,29 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     Navigator.pop(context);
     try {
       await PaymentService().payWithVerzapay(rideId: _rideId, phoneNumber: '');
+      if (mounted) context.go('/client/tracking/ride/$_rideId');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
+  }
+
+  Future<void> _payWallet() async {
+    Navigator.pop(context);
+    try {
+      await ApiClient.instance.patch('/api/rides/$_rideId', data: {'paymentMethod': 'wallet'});
+      if (mounted) context.go('/client/tracking/ride/$_rideId');
+    } catch (e) {
+      final msg = e.toString().contains('insufficient_balance')
+          ? 'Solde insuffisant sur votre portefeuille Livra. Déposez des fonds ou choisissez un autre moyen de paiement.'
+          : 'Erreur: $e';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Future<void> _payCash() async {
+    Navigator.pop(context);
+    try {
+      await ApiClient.instance.patch('/api/rides/$_rideId', data: {'paymentMethod': 'cash'});
       if (mounted) context.go('/client/tracking/ride/$_rideId');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
@@ -242,7 +276,26 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text('Touchez la carte pour choisir la destination', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                InkWell(
+                  onTap: _pickDropoffAddress,
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on_rounded, color: AppColors.danger, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _dropoff == null ? 'Choisir la destination (obligatoire)' : 'Destination sélectionnée — touchez pour modifier',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: _dropoff == null ? AppColors.danger : AppColors.textSecondary),
+                        ),
+                      ),
+                      Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text('Ou touchez la carte pour choisir la destination', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -253,7 +306,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                       selected: selected,
                       onSelected: (_) => setState(() => _vehicleType = v),
                       selectedColor: AppColors.gold,
-                      labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+                      labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
                     );
                   }).toList(),
                 ),

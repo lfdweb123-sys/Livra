@@ -2,6 +2,8 @@ import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeOrderBreakdown, computeDeliveryFee } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
+import { notifyNearbyDrivers, notifyVendor } from '../../../lib/matching';
+import { logActivity } from '../../../lib/activityLog';
 
 // POST /api/orders — crée une commande, prix toujours recalculé serveur
 export async function POST(req) {
@@ -50,6 +52,12 @@ export async function POST(req) {
   // pour proposer les commandes à proximité, sans avoir à lire chaque doc vendor/order.
   const matchPosition = toGeoPoint(vendorGeopoint.latitude, vendorGeopoint.longitude);
 
+  // readyForPickup = le champ que les livreurs interrogent (avec la géo-requête)
+  // pour voir les commandes disponibles. Un colis est prêt immédiatement (pas
+  // d'étape de préparation) ; une commande nourriture ne l'est qu'une fois le
+  // vendeur passé en "picked_up" (plat prêt) — voir PATCH orders/[id].
+  const readyForPickup = type === 'colis';
+
   const orderRef = await db.collection('orders').add({
     clientId: auth.uid,
     vendorId: vendorId || null,
@@ -58,6 +66,7 @@ export async function POST(req) {
     items: items || [],
     priceBreakdown,
     status: 'pending',
+    readyForPickup,
     paymentMethod: body.paymentMethod || null,
     paymentStatus: 'pending',
     deliveryAddress,
@@ -67,6 +76,33 @@ export async function POST(req) {
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
+
+  // Notification immédiate — même app fermée — du côté concerné :
+  // le vendeur pour une commande nourriture (à préparer), les livreurs à
+  // proximité pour un colis (disponible tout de suite, pas de préparation).
+  if (type === 'nourriture' && vendorId) {
+    const vendorSnap = await db.collection('vendors').doc(vendorId).get();
+    if (vendorSnap.exists) {
+      await notifyVendor({
+        vendorOwnerId: vendorSnap.data().ownerId,
+        title: 'Nouvelle commande reçue',
+        body: `Une nouvelle commande de ${priceBreakdown.subtotal} XOF vient d'arriver.`,
+        type: 'new_order',
+        relatedId: orderRef.id,
+      });
+    }
+  } else if (type === 'colis') {
+    await notifyNearbyDrivers({
+      pickupLat: vendorGeopoint.latitude,
+      pickupLng: vendorGeopoint.longitude,
+      title: 'Nouvelle livraison disponible',
+      body: `Un colis à récupérer, ${priceBreakdown.deliveryFee} XOF de frais.`,
+      type: 'new_delivery',
+      relatedId: orderRef.id,
+    });
+  }
+
+  await logActivity('order_created', `Commande ${type} créée — ${priceBreakdown.total} XOF`, { orderId: orderRef.id, clientId: auth.uid });
 
   return Response.json({ id: orderRef.id, priceBreakdown, status: 'pending' });
 }

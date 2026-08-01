@@ -16,11 +16,51 @@ export async function PATCH(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
 
-  const { status, driverId } = await req.json();
+  const { status, driverId, paymentMethod } = await req.json();
   const ref = db.collection('rides').doc(params.id);
   const snap = await ref.get();
   if (!snap.exists) return jsonError('not_found', 404);
   const ride = snap.data();
+
+  if (paymentMethod && !status) {
+    if (ride.clientId !== auth.uid) return jsonError('forbidden', 403);
+    if (ride.paymentStatus !== 'pending') return jsonError('payment_already_processed', 400);
+
+    if (paymentMethod === 'wallet') {
+      const amount = ride.price ?? 0;
+      const walletRef = db.collection('wallets').doc(auth.uid);
+      try {
+        await db.runTransaction(async (tx) => {
+          const walletSnap = await tx.get(walletRef);
+          const balance = walletSnap.exists ? walletSnap.data().balance || 0 : 0;
+          if (balance < amount) throw new Error('insufficient_balance');
+          tx.set(walletRef, { balance: FieldValue.increment(-amount), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+          tx.set(walletRef.collection('transactions').doc(), {
+            type: 'debit',
+            amount,
+            reason: 'ride_payment',
+            relatedRideId: params.id,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+          tx.update(ref, { paymentMethod: 'wallet', paymentStatus: 'paid', updatedAt: FieldValue.serverTimestamp() });
+        });
+      } catch (e) {
+        if (e.message === 'insufficient_balance') return jsonError('insufficient_balance', 400);
+        throw e;
+      }
+      await sendNotification({
+        userId: auth.uid,
+        title: 'Paiement confirmé',
+        body: `${amount} XOF ont été débités de votre portefeuille Livra.`,
+        type: 'payment_confirmed',
+        relatedId: params.id,
+      });
+      return Response.json({ ok: true });
+    }
+
+    await ref.update({ paymentMethod, updatedAt: FieldValue.serverTimestamp() });
+    return Response.json({ ok: true });
+  }
 
   const isClientCancel = auth.role === 'client' && ride.clientId === auth.uid && ride.status === 'pending' && status === 'cancelled';
   const isDriverMove = auth.role === 'driver' && DRIVER_ALLOWED.includes(status);
@@ -28,7 +68,13 @@ export async function PATCH(req, { params }) {
   if (!(isClientCancel || isDriverMove || isAdmin)) return jsonError('forbidden', 403);
 
   const update = { status, updatedAt: FieldValue.serverTimestamp() };
-  if (status === 'accepted' && !ride.driverId && driverId) update.driverId = driverId;
+  if (status === 'accepted' && !ride.driverId && driverId) {
+    update.driverId = driverId;
+    update.readyForPickup = false;
+  }
+  if (status === 'completed' && ride.paymentMethod === 'cash' && ride.paymentStatus !== 'paid') {
+    update.paymentStatus = 'paid';
+  }
 
   await ref.update(update);
   await sendNotification({
@@ -38,5 +84,14 @@ export async function PATCH(req, { params }) {
     type: 'ride_update',
     relatedId: params.id,
   });
+  if (update.paymentStatus === 'paid') {
+    await sendNotification({
+      userId: ride.clientId,
+      title: 'Paiement confirmé',
+      body: `Votre paiement en espèces de ${ride.price} XOF a été confirmé.`,
+      type: 'payment_confirmed',
+      relatedId: params.id,
+    });
+  }
   return Response.json({ ok: true });
 }

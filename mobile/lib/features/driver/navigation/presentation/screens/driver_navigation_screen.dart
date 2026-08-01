@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -33,6 +34,8 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
   bool _followMe = true;
   bool _fitted = false;
+  String? _clientName;
+  String? _clientPhone;
 
   @override
   void initState() {
@@ -43,11 +46,23 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
   void _listenTarget() {
     final collection = widget.type == 'order' ? 'orders' : 'rides';
-    _targetSub = FirebaseFirestore.instance.collection(collection).doc(widget.id).snapshots().listen((snap) {
+    _targetSub = FirebaseFirestore.instance.collection(collection).doc(widget.id).snapshots().listen((snap) async {
       if (!snap.exists) return;
       final wasNull = _target == null;
       setState(() => _target = snap.data());
-      if (wasNull) _loadDirections();
+      if (wasNull) {
+        _loadDirections();
+        final clientId = snap.data()?['clientId'];
+        if (clientId != null) {
+          final userSnap = await FirebaseFirestore.instance.collection('users').doc(clientId).get();
+          if (userSnap.exists && mounted) {
+            setState(() {
+              _clientName = userSnap.data()?['name'] ?? 'Client';
+              _clientPhone = userSnap.data()?['phone'];
+            });
+          }
+        }
+      }
     });
   }
 
@@ -182,6 +197,21 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
               children: [
                 Text('Statut actuel: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
+                if (_clientPhone != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/contact', extra: {
+                        'name': _clientName ?? 'Client',
+                        'phoneNumber': _clientPhone,
+                        'role': 'Client Livra',
+                      }),
+                      icon: const Icon(Icons.call_outlined, size: 18),
+                      label: Text('Contacter ${_clientName ?? "le client"}'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (nextStatus != null)
                   PrimaryButton(label: 'Marquer: $nextStatus', onPressed: () => _advanceStatus(nextStatus)),
               ],

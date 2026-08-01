@@ -105,22 +105,51 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
         children: [
           ListTile(
             leading: Icon(Icons.phone_android, color: AppColors.gold),
-            title: Text('Mobile Money (FeexPay)'),
+            title: Text('Mobile Money'),
             onTap: () => _payFeexpay(),
           ),
           ListTile(
             leading: Icon(Icons.credit_card, color: AppColors.gold),
-            title: Text('Verzapay (carte / Mobile Money)'),
+            title: Text('Carte bancaire / International'),
             onTap: () => _payVerzapay(),
           ),
           ListTile(
             leading: Icon(Icons.account_balance_wallet, color: AppColors.gold),
             title: Text('Portefeuille Livra'),
-            onTap: () => Navigator.pop(context),
+            onTap: _payWallet,
+          ),
+          ListTile(
+            leading: Icon(Icons.payments_outlined, color: AppColors.gold),
+            title: Text('Espèces à la livraison'),
+            subtitle: Text('Payez directement au livreur', style: TextStyle(fontSize: 12)),
+            onTap: _payCash,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _payWallet() async {
+    Navigator.pop(context);
+    try {
+      await ApiClient.instance.patch('/api/orders/$_orderId', data: {'paymentMethod': 'wallet'});
+      if (mounted) context.go('/client/tracking/order/$_orderId');
+    } catch (e) {
+      final msg = e.toString().contains('insufficient_balance')
+          ? 'Solde insuffisant sur votre portefeuille Livra. Déposez des fonds ou choisissez un autre moyen de paiement.'
+          : 'Erreur: $e';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Future<void> _payCash() async {
+    Navigator.pop(context);
+    try {
+      await ApiClient.instance.patch('/api/orders/$_orderId', data: {'paymentMethod': 'cash'});
+      if (mounted) context.go('/client/tracking/order/$_orderId');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
   }
 
   static const Map<String, List<String>> _feexpayCountries = {
@@ -175,7 +204,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                   selected: selected,
                   onSelected: (_) => setSheetState(() => network = n),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
                 );
               }).toList(),
             ),

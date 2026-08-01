@@ -67,11 +67,133 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  Future<void> _deposit() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final amountCtrl = TextEditingController();
+    await showAppBottomSheet(
+      context,
+      title: 'Déposer sur mon portefeuille',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(controller: amountCtrl, decoration: InputDecoration(hintText: 'Montant (XOF)'), keyboardType: TextInputType.number),
+          SizedBox(height: 16),
+          PrimaryButton(
+            label: 'Continuer',
+            onPressed: () {
+              final amount = num.tryParse(amountCtrl.text) ?? 0;
+              if (amount < 100) return;
+              Navigator.pop(context);
+              _chooseDepositMethod(uid, amount);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _chooseDepositMethod(String uid, num amount) async {
+    await showAppBottomSheet(
+      context,
+      title: 'Moyen de paiement',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.phone_android, color: AppColors.gold),
+            title: Text('Mobile Money'),
+            onTap: () => _depositFeexpay(uid, amount),
+          ),
+          ListTile(
+            leading: Icon(Icons.credit_card, color: AppColors.gold),
+            title: Text('Carte bancaire / International'),
+            onTap: () => _depositVerzapay(uid, amount),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _depositFeexpay(String uid, num amount) async {
+    Navigator.pop(context);
+    final phoneCtrl = TextEditingController();
+    String network = 'mtn';
+    await showAppBottomSheet(
+      context,
+      title: 'Paiement Mobile Money',
+      child: StatefulBuilder(builder: (context, setSheetState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              children: ['mtn', 'moov', 'celtiis_bj', 'coris'].map((n) {
+                final selected = network == n;
+                return ChoiceChip(
+                  label: Text(n),
+                  selected: selected,
+                  onSelected: (_) => setSheetState(() => network = n),
+                  selectedColor: AppColors.gold,
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 12),
+            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+            SizedBox(height: 16),
+            PrimaryButton(
+              label: 'Payer $amount XOF',
+              onPressed: () async {
+                try {
+                  await ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
+                    'amount': amount,
+                    'provider': 'feexpay',
+                    'network': network,
+                    'phoneNumber': phoneCtrl.text.trim(),
+                  });
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Dépôt en cours — validez sur votre téléphone.')),
+                    );
+                    _load();
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Future<void> _depositVerzapay(String uid, num amount) async {
+    Navigator.pop(context);
+    try {
+      await ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
+        'amount': amount,
+        'provider': 'verzapay',
+        'phoneNumber': '',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dépôt en cours de traitement.')));
+        _load();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Portefeuille Livra'), actions: [notificationBellAction(context)]),
-      body: _wallet == null
+      body: swipeableTab(context: context, currentIndex: 2, child: _wallet == null
           ? SkeletonCardList()
           : RefreshIndicator(
               onRefresh: _load,
@@ -92,7 +214,13 @@ class _WalletScreenState extends State<WalletScreen> {
                       SizedBox(height: 6),
                       Text('${_wallet!['balance']} XOF', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.gold)),
                       SizedBox(height: 16),
-                      PrimaryButton(label: 'Retirer', onPressed: _withdraw),
+                      Row(
+                        children: [
+                          Expanded(child: PrimaryButton(label: 'Déposer', onPressed: _deposit)),
+                          SizedBox(width: 12),
+                          Expanded(child: PrimaryButton(label: 'Retirer', onPressed: _withdraw, outlined: true)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -110,6 +238,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ],
             ),
             ),
+      ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 2),
     );
   }

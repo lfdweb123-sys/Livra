@@ -1,6 +1,8 @@
 import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeRidePrice } from '../../../lib/pricing';
+import { toGeoPoint } from '../../../lib/geo';
+import { notifyNearbyDrivers } from '../../../lib/matching';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
@@ -12,6 +14,7 @@ export async function POST(req) {
   if (!['moto', 'voiture'].includes(vehicleType)) return jsonError('invalid_vehicleType', 400);
 
   const { price, distanceKm, etaMinutes } = computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint);
+  const matchPosition = toGeoPoint(pickupLocation.geopoint.latitude, pickupLocation.geopoint.longitude);
 
   const rideRef = await db.collection('rides').add({
     clientId: auth.uid,
@@ -20,6 +23,8 @@ export async function POST(req) {
     dropoffLocation,
     vehicleType,
     status: 'pending',
+    readyForPickup: true, // une course est disponible immédiatement, pas d'étape de préparation
+    matchPosition,
     price,
     distanceKm,
     etaMinutes,
@@ -27,6 +32,16 @@ export async function POST(req) {
     paymentStatus: 'pending',
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  await notifyNearbyDrivers({
+    pickupLat: pickupLocation.geopoint.latitude,
+    pickupLng: pickupLocation.geopoint.longitude,
+    vehicleTypeFilter: [vehicleType],
+    title: 'Nouvelle course disponible',
+    body: `Course ${vehicleType} — ${price} XOF, ${distanceKm} km.`,
+    type: 'new_ride',
+    relatedId: rideRef.id,
   });
 
   return Response.json({ id: rideRef.id, price, distanceKm, etaMinutes });
