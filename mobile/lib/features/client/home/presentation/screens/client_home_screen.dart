@@ -6,6 +6,7 @@ import '../../../../../core/models/vendor_model.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/app_logo.dart';
 
 class _Service {
   final String label;
@@ -63,7 +64,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Livra', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        title: const AppLogo(size: 32),
         actions: [
           IconButton(icon: Icon(Icons.notifications_none_rounded), onPressed: () => context.push('/notifications')),
           IconButton(icon: Icon(Icons.account_circle_outlined), onPressed: () => context.push('/client/profile')),

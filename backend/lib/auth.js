@@ -28,3 +28,8 @@ export function requireRole(authResult, roles) {
 export function jsonError(message, status = 400) {
   return Response.json({ error: message }, { status });
 }
+
+// Log serveur systématique — visible dans Vercel (Deployments > Functions > Logs)
+export function logServerError(context, error, extra = {}) {
+  console.error(`[API_ERROR] ${context}:`, error?.message || error, JSON.stringify(extra));
+}

@@ -43,10 +43,13 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
       body: TabBarView(
         controller: _tab,
         children: [
-          _orders == null
+          RefreshIndicator(
+            onRefresh: _load,
+            color: AppColors.gold,
+            child: _orders == null
               ? SkeletonCardList()
               : _orders!.isEmpty
-                  ? EmptyState(icon: Icons.receipt_long_outlined, message: 'Aucune commande pour le moment.')
+                  ? ListView(children: [SizedBox(height: 100), EmptyState(icon: Icons.receipt_long_outlined, message: 'Aucune commande pour le moment.')])
                   : ListView.builder(
                       padding: EdgeInsets.all(16),
                       itemCount: _orders!.length,
@@ -62,10 +65,14 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                         );
                       },
                     ),
-          _rides == null
+          ),
+          RefreshIndicator(
+            onRefresh: _load,
+            color: AppColors.gold,
+            child: _rides == null
               ? SkeletonCardList()
               : _rides!.isEmpty
-                  ? EmptyState(icon: Icons.local_taxi_outlined, message: 'Aucune course pour le moment.')
+                  ? ListView(children: [SizedBox(height: 100), EmptyState(icon: Icons.local_taxi_outlined, message: 'Aucune course pour le moment.')])
                   : ListView.builder(
                       padding: EdgeInsets.all(16),
                       itemCount: _rides!.length,
@@ -81,6 +88,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                         );
                       },
                     ),
+          ),
         ],
       ),
     );

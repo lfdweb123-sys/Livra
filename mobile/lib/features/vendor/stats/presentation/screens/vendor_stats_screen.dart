@@ -16,9 +16,12 @@ class _VendorStatsScreenState extends State<VendorStatsScreen> {
   @override
   void initState() {
     super.initState();
-    ApiClient.instance.get(ApiConstants.orders, query: {'limit': 50}).then((res) {
-      setState(() => _orders = res['items']);
-    });
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await ApiClient.instance.get(ApiConstants.orders, query: {'limit': 50});
+    setState(() => _orders = res['items']);
   }
 
   @override
@@ -29,10 +32,11 @@ class _VendorStatsScreenState extends State<VendorStatsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text('Statistiques')),
-      body: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: AppColors.gold,
+        child: ListView(
+          padding: EdgeInsets.all(20),
           children: [
             Row(
               children: [

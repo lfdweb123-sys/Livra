@@ -40,7 +40,10 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
       appBar: AppBar(title: Text('Catalogue')),
       body: _products == null
           ? SkeletonCardList()
-          : ListView.builder(
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.gold,
+              child: ListView.builder(
               padding: EdgeInsets.all(16),
               itemCount: _products!.length,
               itemBuilder: (context, i) {
@@ -79,6 +82,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   ),
                 );
               },
+            ),
             ),
       bottomNavigationBar: _total > 0
           ? SafeArea(

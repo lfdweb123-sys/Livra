@@ -71,7 +71,10 @@ class _WalletScreenState extends State<WalletScreen> {
       appBar: AppBar(title: Text('Portefeuille Livra')),
       body: _wallet == null
           ? SkeletonCardList()
-          : ListView(
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.gold,
+              child: ListView(
               padding: EdgeInsets.all(20),
               children: [
                 Container(
@@ -103,6 +106,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                     ))),
               ],
+            ),
             ),
     );
   }
