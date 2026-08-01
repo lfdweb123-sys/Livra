@@ -20,14 +20,14 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     // AGP 9.0+ a supprimé proguard-android.txt, encore utilisé en dur par le
-    // plugin twilio_voice (pas encore corrigé côté package). On reste sur
-    // 8.7.x, stable et éprouvé, qui supporte encore l'ancien format tout en
-    // gérant compileSdk 36 sans problème.
-    id("com.android.application") version "8.7.3" apply false
+    // plugin twilio_voice (pas encore corrigé côté package). 8.11.1 est le
+    // point d'équilibre : au-dessus du minimum exigé par les dépendances
+    // AndroidX récentes de Twilio (8.9.1+), en dessous d'AGP 9.
+    id("com.android.application") version "8.11.1" apply false
     // START: FlutterFire Configuration
     id("com.google.gms.google-services") version("4.4.4") apply false
     // END: FlutterFire Configuration
-    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
 include(":app")

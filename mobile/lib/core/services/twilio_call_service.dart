@@ -49,8 +49,8 @@ class TwilioCallService {
   }
 
   void hangUp() => TwilioVoice.instance.call.hangUp();
-  void toggleMute(bool muted) => TwilioVoice.instance.call.toggleMute(isMuted: muted);
-  void toggleSpeaker(bool speakerOn) => TwilioVoice.instance.call.toggleSpeaker(speakerIsOn: speakerOn);
+  void toggleMute(bool muted) => TwilioVoice.instance.call.toggleMute(muted);
+  void toggleSpeaker(bool speakerOn) => TwilioVoice.instance.call.toggleSpeaker(speakerOn);
 
   Stream<CallEvent> get events => TwilioVoice.instance.callEventsListener;
 }
