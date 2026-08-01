@@ -1,5 +1,11 @@
 import { db } from '../../../../lib/firebaseAdmin';
 
+// Sans paramètre de requête, Next.js essaierait de pré-générer cette route
+// STATIQUEMENT au moment du build (donc d'exécuter la requête Firestore
+// avant même que l'app tourne) — on force le mode dynamique pour l'exécuter
+// à chaque appel, comme toutes les autres routes.
+export const dynamic = 'force-dynamic';
+
 // Découverte accueil : mélange aléatoire de produits, recalculé côté client
 // toutes les minutes. Les produits sous campagne publicitaire active
 // passent en premier (l'ordre entre eux dépend du montant payé), le reste
