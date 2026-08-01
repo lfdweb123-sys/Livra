@@ -32,7 +32,7 @@ class LockService {
       options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true, useErrorDialogs: true),
       authMessages: const [
         AndroidAuthMessages(
-          signInTitle: 'Déverrouiller Livra',
+          signInTitle: 'Déverrouillage',
           biometricHint: 'Vérification en cours',
           biometricNotRecognized: 'Non reconnu, réessayez',
           biometricRequiredTitle: 'Authentification requise',

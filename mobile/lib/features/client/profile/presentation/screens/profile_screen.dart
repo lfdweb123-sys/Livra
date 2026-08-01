@@ -10,8 +10,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/theme_controller.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
-
-const String _supportEmail = 'support@livra.app';
+import '../../../../../core/services/app_content_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,6 +23,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
   bool _busy = false;
+  String _supportEmail = 'support@livra.app';
+  String _supportPhone = '';
+  String _supportWhatsapp = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLockState();
+    _loadSupportContacts();
+  }
+
+  Future<void> _loadSupportContacts() async {
+    final config = await AppContentService().fetch();
+    if (mounted) {
+      setState(() {
+        _supportEmail = config.supportEmail;
+        _supportPhone = config.supportPhone;
+        _supportWhatsapp = config.supportWhatsapp;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -69,29 +89,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// Ouvre Gmail directement (compose pré-rempli), avec repli sur le
-  /// client mail par défaut si Gmail n'est pas disponible.
+  /// mailto: est prioritaire — Android le route vers l'app mail installée
+  /// (Gmail si c'est l'app par défaut, ce qui est le cas sur la quasi-
+  /// totalité des téléphones Android). Le lien web gmail.com n'est qu'un
+  /// tout dernier recours : il ouvre Chrome, pas l'app Gmail, donc on
+  /// l'évite sauf si aucune app mail n'est installée du tout.
   Future<void> _contactUs() async {
+    final mailto = Uri(scheme: 'mailto', path: _supportEmail, query: 'subject=Support Livra');
+    try {
+      final launched = await launchUrl(mailto);
+      if (launched) return;
+    } catch (_) {}
+
     final gmailWeb = Uri.parse(
       'https://mail.google.com/mail/?view=cm&fs=1&to=$_supportEmail&su=${Uri.encodeComponent("Support Livra")}',
     );
-    final mailto = Uri(scheme: 'mailto', path: _supportEmail, query: 'subject=Support Livra');
     try {
-      final launched = await launchUrl(gmailWeb, mode: LaunchMode.externalApplication);
-      if (!launched && mounted) await launchUrl(mailto);
+      await launchUrl(gmailWeb, mode: LaunchMode.externalApplication);
     } catch (_) {
-      if (await canLaunchUrl(mailto)) {
-        await launchUrl(mailto);
-      } else if (mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Écrivez-nous à $_supportEmail')),
+          SnackBar(content: Text('Écrivez-nous à $_supportEmail')),
         );
       }
     }
   }
 
   Future<void> _copyEmail() async {
-    await Clipboard.setData(const ClipboardData(text: _supportEmail));
+    await Clipboard.setData(ClipboardData(text: _supportEmail));
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email copié.')));
   }
 
@@ -198,6 +223,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: _contactUs,
             trailing: IconButton(icon: const Icon(Icons.copy_rounded, size: 18), onPressed: _copyEmail),
           ),
+          if (_supportPhone.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.call_outlined),
+              title: const Text('Nous appeler'),
+              subtitle: Text(_supportPhone, style: const TextStyle(fontSize: 12)),
+              onTap: () async {
+                final uri = Uri(scheme: 'tel', path: _supportPhone);
+                if (await canLaunchUrl(uri)) await launchUrl(uri);
+              },
+            ),
+          if (_supportWhatsapp.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.chat_rounded),
+              title: const Text('WhatsApp'),
+              subtitle: Text('+$_supportWhatsapp', style: const TextStyle(fontSize: 12)),
+              onTap: () async {
+                final uri = Uri.parse('https://wa.me/$_supportWhatsapp');
+                if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
           const SizedBox(height: 8),
           ListTile(
             leading: Icon(Icons.logout, color: AppColors.danger),

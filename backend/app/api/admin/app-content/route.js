@@ -8,7 +8,7 @@ export async function PATCH(req) {
 
   const body = await req.json();
   const update = { updatedAt: FieldValue.serverTimestamp() };
-  ['bannersEnabled', 'banners', 'onboardingEnabled', 'onboardingSlides'].forEach((k) => {
+  ['bannersEnabled', 'banners', 'onboardingEnabled', 'onboardingSlides', 'supportEmail', 'supportPhone', 'supportWhatsapp'].forEach((k) => {
     if (body[k] !== undefined) update[k] = body[k];
   });
 

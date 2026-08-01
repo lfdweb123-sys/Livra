@@ -8,6 +8,7 @@ import '../../../../../core/services/payment/payment_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
+import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
 
@@ -165,16 +166,20 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro (sans le 0 initial, +229 ajouté auto.)'), keyboardType: TextInputType.phone),
+            PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer',
               onPressed: () async {
+                if (phoneCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                  return;
+                }
                 try {
                   await PaymentService().payWithFeexPay(
                     rideId: _rideId,
                     network: network,
-                    phoneNumber: '+229${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
+                    phoneNumber: phoneCtrl.text,
                   );
                   if (mounted) {
                     Navigator.pop(context);

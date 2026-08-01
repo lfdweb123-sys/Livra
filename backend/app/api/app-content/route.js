@@ -11,5 +11,8 @@ export async function GET() {
     banners: data.banners || [],
     onboardingEnabled: data.onboardingEnabled ?? true,
     onboardingSlides: data.onboardingSlides || [],
+    supportEmail: data.supportEmail || 'support@livra.app',
+    supportPhone: data.supportPhone || '',
+    supportWhatsapp: data.supportWhatsapp || '',
   });
 }

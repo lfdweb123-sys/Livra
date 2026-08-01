@@ -105,37 +105,40 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       );
     }
 
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const AppLogo(size: 64, full: true),
-                const SizedBox(height: 28),
-                Icon(Icons.fingerprint_rounded, size: 56, color: AppColors.gold),
-                const SizedBox(height: 16),
-                const Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                if (_lastError != null) ...[
-                  const SizedBox(height: 10),
-                  Text(_lastError!, style: const TextStyle(fontSize: 13, color: Colors.white70), textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: 220,
-                  child: ElevatedButton(
-                    onPressed: _unlocking ? null : _tryUnlock,
-                    child: _unlocking
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                        : const Text('Déverrouiller'),
-                  ),
-                ),
+    // Important : PAS de MaterialApp imbriqué ici. En créer un second crée
+    // une double hiérarchie de Navigator, et le résultat du plugin natif
+    // local_auth (biométrie / code de verrouillage système) ne remonte plus
+    // correctement au bon contexte — l'app se reverrouillait juste après un
+    // déverrouillage pourtant réussi. Un Scaffold simple, dans l'arbre
+    // existant, suffit et corrige le problème.
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppLogo(size: 64, full: true),
+              const SizedBox(height: 28),
+              Icon(Icons.fingerprint_rounded, size: 56, color: AppColors.gold),
+              const SizedBox(height: 16),
+              const Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              if (_lastError != null) ...[
+                const SizedBox(height: 10),
+                Text(_lastError!, style: const TextStyle(fontSize: 13, color: Colors.white70), textAlign: TextAlign.center),
               ],
-            ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 220,
+                child: ElevatedButton(
+                  onPressed: _unlocking ? null : _tryUnlock,
+                  child: _unlocking
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      : const Text('Déverrouiller'),
+                ),
+              ),
+            ],
           ),
         ),
       ),

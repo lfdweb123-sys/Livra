@@ -218,7 +218,21 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               }).toList(),
             ),
             SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro (sans le 0 initial, indicatif $country ajouté auto.)'), keyboardType: TextInputType.phone),
+            Text('Numéro de téléphone', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            SizedBox(height: 6),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: BorderRadius.circular(14)),
+                  child: Text(_countryCallingCode[country]!, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.gold)),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro (sans le 0 initial)'), keyboardType: TextInputType.phone),
+                ),
+              ],
+            ),
             if (requiresOtp) ...[
               SizedBox(height: 12),
               Text(

@@ -150,11 +150,15 @@ class _WalletScreenState extends State<WalletScreen> {
               }).toList(),
             ),
             SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro Mobile Money'), keyboardType: TextInputType.phone),
+            PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer $amount XOF',
               onPressed: () async {
+                if (phoneCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                  return;
+                }
                 try {
                   await ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
                     'amount': amount,

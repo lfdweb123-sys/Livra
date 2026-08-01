@@ -9,6 +9,7 @@ import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
+import '../../../../../core/widgets/phone_number_field.dart';
 
 const int _pricePerDayXof = 500;
 
@@ -188,16 +189,20 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
                 }).toList(),
               ),
             const SizedBox(height: 12),
-            TextField(controller: phoneCtrl, decoration: const InputDecoration(hintText: 'Numéro (sans le 0 initial, +229 ajouté auto.)'), keyboardType: TextInputType.phone),
+            PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer',
               onPressed: () async {
+                if (phoneCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                  return;
+                }
                 try {
                   await ApiClient.instance.post('/api/ads/campaigns/$campaignId/pay', data: {
                     'provider': provider,
                     if (provider == 'feexpay') 'network': network,
-                    'phoneNumber': '+229${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
+                    'phoneNumber': phoneCtrl.text,
                   });
                   if (mounted) {
                     Navigator.pop(context);
