@@ -6,21 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
-/// Convertit un Stream en Listenable pour piloter `refreshListenable` du router :
-/// à chaque changement d'auth (login/logout), go_router réévalue `redirect`.
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _sub = stream.asBroadcastStream().listen((_) => notifyListeners());
-  }
-  late final StreamSubscription<dynamic> _sub;
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
-}
-
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -47,14 +32,34 @@ import '../../features/vendor/stats/presentation/screens/vendor_stats_screen.dar
 import '../../features/wallet/presentation/screens/wallet_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
+/// Convertit un Stream en Listenable pour piloter `refreshListenable` du router :
+/// à chaque changement d'auth (login/logout) OU appel manuel de `ping()`
+/// (voir AppRouter.refresh, utilisé par RoleGate quand le rôle change),
+/// go_router réévalue `redirect`.
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _sub = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+  late final StreamSubscription<dynamic> _sub;
+  void ping() => notifyListeners();
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
+
 /// Un seul projet Flutter, 3 "espaces" par rôle : la redirection se fait ici
 /// selon le rôle stocké sur users/{uid}. Voir RoleGate pour le chargement du rôle.
 class AppRouter {
   static UserRole? currentRole; // mis à jour par RoleGate à chaque changement d'auth
 
+  static final _refreshListenable = GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges());
+
   static final router = GoRouter(
     initialLocation: '/onboarding',
-    refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
+    refreshListenable: _refreshListenable,
     redirect: (context, state) {
       final loggedIn = FirebaseAuth.instance.currentUser != null;
       final loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
@@ -124,5 +129,5 @@ class AppRouter {
 
   /// Appelé par RoleGate après (re)chargement du rôle depuis Firestore,
   /// pour forcer une réévaluation immédiate de `redirect`.
-  static void refresh() => router.routerDelegate.refresh();
+  static void refresh() => _refreshListenable.ping();
 }

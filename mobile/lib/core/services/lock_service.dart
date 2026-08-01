@@ -6,7 +6,7 @@ import 'package:local_auth/local_auth.dart';
 /// secure storage (pas SharedPreferences) car c'est un réglage de sécurité.
 class LockService {
   static const _key = 'livra_biometric_enabled';
-  final _storage = const FlutterSecureStorage();
+  final _storage = FlutterSecureStorage();
   final _localAuth = LocalAuthentication();
 
   Future<bool> isEnabled() async {
@@ -23,7 +23,7 @@ class LockService {
   Future<bool> authenticate({String reason = 'Confirmez votre identité pour accéder à Livra'}) {
     return _localAuth.authenticate(
       localizedReason: reason,
-      options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+      options: AuthenticationOptions(biometricOnly: false, stickyAuth: true),
     );
   }
 }

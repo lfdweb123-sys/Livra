@@ -15,7 +15,7 @@ import '../../../../../core/widgets/primary_button.dart';
 class DriverNavigationScreen extends StatefulWidget {
   final String type; // order | ride
   final String id;
-  const DriverNavigationScreen({super.key, required this.type, required this.id});
+  DriverNavigationScreen({super.key, required this.type, required this.id});
 
   @override
   State<DriverNavigationScreen> createState() => _DriverNavigationScreenState();
@@ -76,8 +76,8 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     setState(() {
       _markers
         ..clear()
-        ..add(Marker(markerId: const MarkerId('origin'), position: originLatLng, infoWindow: const InfoWindow(title: 'Collecte')))
-        ..add(Marker(markerId: const MarkerId('destination'), position: destLatLng, infoWindow: const InfoWindow(title: 'Destination')));
+        ..add(Marker(markerId: MarkerId('origin'), position: originLatLng, infoWindow: InfoWindow(title: 'Collecte')))
+        ..add(Marker(markerId: MarkerId('destination'), position: destLatLng, infoWindow: InfoWindow(title: 'Destination')));
     });
 
     try {
@@ -93,7 +93,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
       setState(() {
         _polylines
           ..clear()
-          ..add(Polyline(polylineId: const PolylineId('route'), points: points, color: AppColors.gold, width: 4));
+          ..add(Polyline(polylineId: PolylineId('route'), points: points, color: AppColors.gold, width: 4));
       });
       // Cadrage initial uniquement — une fois le trajet démarré, le "follow me"
       // reprend la main pour suivre le livreur plutôt que le tracé complet.
@@ -152,7 +152,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
         : {'accepted': 'arriving', 'arriving': 'in_progress', 'in_progress': 'completed'}[status];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Navigation')),
+      appBar: AppBar(title: Text('Navigation')),
       body: Column(
         children: [
           Expanded(
@@ -191,12 +191,12 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Statut actuel: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                Text('Statut actuel: $status', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 12),
                 if (nextStatus != null)
                   PrimaryButton(label: 'Marquer: $nextStatus', onPressed: () => _advanceStatus(nextStatus)),
               ],

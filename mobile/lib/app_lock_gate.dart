@@ -13,7 +13,7 @@ import 'core/theme/app_colors.dart';
 /// verrou d'accès purement local.
 class AppLockGate extends StatefulWidget {
   final Widget child;
-  const AppLockGate({super.key, required this.child});
+  AppLockGate({super.key, required this.child});
 
   @override
   State<AppLockGate> createState() => _AppLockGateState();
@@ -86,7 +86,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (!_checked) return const SizedBox.shrink();
+    if (!_checked) return SizedBox.shrink();
 
     if (!_locked) {
       // Listener global : n'importe quel tap dans l'app remet le minuteur
@@ -107,10 +107,10 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.lock_outline_rounded, size: 56, color: AppColors.gold),
-              const SizedBox(height: 16),
-              const Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: _tryUnlock, child: const Text('Déverrouiller')),
+              SizedBox(height: 16),
+              Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              SizedBox(height: 24),
+              ElevatedButton(onPressed: _tryUnlock, child: Text('Déverrouiller')),
             ],
           ),
         ),

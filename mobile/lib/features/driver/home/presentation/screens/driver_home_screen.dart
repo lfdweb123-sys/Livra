@@ -13,7 +13,7 @@ import '../../../../../core/widgets/empty_state.dart';
 const double _matchRadiusKm = 5;
 
 class DriverHomeScreen extends StatefulWidget {
-  const DriverHomeScreen({super.key});
+  DriverHomeScreen({super.key});
   @override
   State<DriverHomeScreen> createState() => _DriverHomeScreenState();
 }
@@ -100,7 +100,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           geopointFrom: (data) {
             final mp = data['matchPosition'] as Map<String, dynamic>?;
             final gp = mp?['geopoint'] as Map<String, dynamic>?;
-            if (gp == null) return const GeoPoint(0, 0);
+            if (gp == null) return GeoPoint(0, 0);
             return GeoPoint((gp['latitude'] as num).toDouble(), (gp['longitude'] as num).toDouble());
           },
           queryBuilder: (query) => query.where('status', isEqualTo: 'picked_up').where('driverId', isEqualTo: null),
@@ -128,10 +128,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_driverId == null) return const Scaffold(body: SkeletonCardList());
+    if (_driverId == null) return Scaffold(body: SkeletonCardList());
     if (_status != 'active') {
       return Scaffold(
-        appBar: AppBar(title: const Text('Espace livreur')),
+        appBar: AppBar(title: Text('Espace livreur')),
         body: EmptyState(
           icon: Icons.hourglass_top_rounded,
           message: _status == 'pending'
@@ -144,26 +144,26 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Espace livreur'),
+        title: Text('Espace livreur'),
         actions: [
-          IconButton(icon: const Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
-          IconButton(icon: const Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
+          IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
+          IconButton(icon: Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
         ],
       ),
       body: Column(
         children: [
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
+            margin: EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(18)),
             child: Row(
               children: [
                 Icon(Icons.circle, size: 12, color: _online ? AppColors.success : AppColors.textSecondary),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _online ? 'En ligne — commandes dans un rayon de ${_matchRadiusKm.toInt()} km' : 'Hors ligne',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 Switch(value: _online, activeColor: AppColors.gold, onChanged: _toggleOnline),
@@ -172,20 +172,20 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           ),
           Expanded(
             child: !_online
-                ? const EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des commandes.')
+                ? EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des commandes.')
                 : _incoming.isEmpty
-                    ? const EmptyState(icon: Icons.inbox_outlined, message: 'Aucune commande disponible à proximité pour le moment.')
+                    ? EmptyState(icon: Icons.inbox_outlined, message: 'Aucune commande disponible à proximité pour le moment.')
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _incoming.length,
                         itemBuilder: (context, i) {
                           final o = _incoming[i];
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 12),
                             child: ListTile(
                               title: Text('Commande ${o['type']}'),
                               subtitle: Text('${o['priceBreakdown']?['deliveryFee'] ?? '-'} XOF de frais de livraison'),
-                              trailing: ElevatedButton(onPressed: () => _acceptOrder(o['id']), child: const Text('Accepter')),
+                              trailing: ElevatedButton(onPressed: () => _acceptOrder(o['id']), child: Text('Accepter')),
                             ),
                           );
                         },
