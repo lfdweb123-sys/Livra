@@ -20,6 +20,7 @@ dependencies:
   geoflutterfire_plus: any
   # --- Auth locale / biométrie ---
   local_auth: ^2.3.0
+  local_auth_android: ^1.0.45
   flutter_secure_storage: ^9.2.2
   # --- State management ---
   flutter_riverpod: ^2.6.1

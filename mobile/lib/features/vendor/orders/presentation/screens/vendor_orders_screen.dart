@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class VendorOrdersScreen extends StatefulWidget {
   VendorOrdersScreen({super.key});
@@ -36,7 +37,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Commandes reçues')),
+      appBar: AppBar(title: Text('Commandes reçues'), actions: [notificationBellAction(context)]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _orders == null

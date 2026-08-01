@@ -5,7 +5,6 @@ import '../../../../core/models/notification_model.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/app_bottom_nav.dart';
 
 class NotificationsScreen extends StatelessWidget {
   NotificationsScreen({super.key});
@@ -51,7 +50,6 @@ class NotificationsScreen extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }

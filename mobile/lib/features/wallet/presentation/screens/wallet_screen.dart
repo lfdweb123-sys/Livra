@@ -6,6 +6,7 @@ import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../core/widgets/notification_bell_action.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -69,7 +70,7 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Portefeuille Livra')),
+      appBar: AppBar(title: Text('Portefeuille Livra'), actions: [notificationBellAction(context)]),
       body: _wallet == null
           ? SkeletonCardList()
           : RefreshIndicator(

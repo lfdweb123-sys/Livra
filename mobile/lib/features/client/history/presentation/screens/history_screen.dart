@@ -6,6 +6,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class HistoryScreen extends StatefulWidget {
   HistoryScreen({super.key});
@@ -39,6 +40,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
     return Scaffold(
       appBar: AppBar(
         title: Text('Historique'),
+        actions: [notificationBellAction(context)],
         bottom: TabBar(controller: _tab, indicatorColor: AppColors.gold, tabs: const [Tab(text: 'Commandes'), Tab(text: 'Courses')]),
       ),
       body: TabBarView(

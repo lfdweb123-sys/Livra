@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class VendorDashboardScreen extends StatefulWidget {
   VendorDashboardScreen({super.key});
@@ -46,7 +47,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     if (_vendor == null) return Scaffold(body: SkeletonCardList());
     if (_vendor!['status'] != 'active') {
       return Scaffold(
-        appBar: AppBar(title: Text('Espace vendeur')),
+        appBar: AppBar(title: Text('Espace vendeur'), actions: [notificationBellAction(context)]),
         body: EmptyState(
           icon: Icons.hourglass_top_rounded,
           message: _vendor!['status'] == 'pending'
@@ -58,7 +59,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_vendor!['businessName'] ?? 'Espace vendeur'),
-        actions: [IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet'))],
+        actions: [IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')), notificationBellAction(context)],
       ),
       body: ListView(
         padding: EdgeInsets.all(16),

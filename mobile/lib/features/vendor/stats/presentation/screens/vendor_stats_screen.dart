@@ -3,6 +3,7 @@ import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class VendorStatsScreen extends StatefulWidget {
   VendorStatsScreen({super.key});
@@ -31,7 +32,7 @@ class _VendorStatsScreenState extends State<VendorStatsScreen> {
     final revenue = delivered.fold<num>(0, (sum, o) => sum + (o['priceBreakdown']?['subtotal'] ?? 0));
 
     return Scaffold(
-      appBar: AppBar(title: Text('Statistiques')),
+      appBar: AppBar(title: Text('Statistiques'), actions: [notificationBellAction(context)]),
       body: RefreshIndicator(
         onRefresh: _load,
         color: AppColors.gold,

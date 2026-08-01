@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/services/lock_service.dart';
 import 'core/services/inactivity_service.dart';
+import 'core/services/remote_logger.dart';
 import 'core/theme/app_colors.dart';
 
 /// Enveloppe l'app entière : si l'utilisateur a activé la biométrie
@@ -13,7 +14,7 @@ import 'core/theme/app_colors.dart';
 /// verrou d'accès purement local.
 class AppLockGate extends StatefulWidget {
   final Widget child;
-  AppLockGate({super.key, required this.child});
+  const AppLockGate({super.key, required this.child});
 
   @override
   State<AppLockGate> createState() => _AppLockGateState();
@@ -23,6 +24,8 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   final _lockService = LockService();
   bool _locked = false;
   bool _checked = false;
+  bool _unlocking = false;
+  String? _lastError;
 
   @override
   void initState() {
@@ -55,7 +58,13 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       _checked = true;
     });
     if (enabled) {
-      _tryUnlock();
+      // On attend la 1ère frame + un court délai : appeler le prompt
+      // biométrique natif avant que l'Activity Android soit pleinement
+      // "resumed" le fait échouer silencieusement sur certains appareils.
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (mounted) _tryUnlock();
+      });
     }
   }
 
@@ -64,7 +73,8 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed && await _lockService.isEnabled() && !_locked) {
       setState(() => _locked = true);
       InactivityService.instance.stop();
-      _tryUnlock();
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) _tryUnlock();
     } else if (state == AppLifecycleState.paused) {
       // en arrière-plan, le minuteur d'inactivité n'a plus de sens :
       // le retour de background reverrouille déjà systématiquement.
@@ -73,20 +83,29 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   }
 
   Future<void> _tryUnlock() async {
+    if (_unlocking) return;
+    setState(() { _unlocking = true; _lastError = null; });
     try {
       final ok = await _lockService.authenticate();
       if (ok && mounted) {
         setState(() => _locked = false);
         InactivityService.instance.start();
+      } else if (mounted) {
+        setState(() => _lastError = 'Authentification annulée ou échouée.');
       }
-    } catch (_) {
-      // échec ou annulation — reste verrouillé, l'utilisateur peut réessayer
+    } catch (e, stack) {
+      RemoteLogger.log(context: 'biometric_unlock', error: e, stack: stack);
+      if (mounted) {
+        setState(() => _lastError = RemoteLogger.readableAuthError(e));
+      }
+    } finally {
+      if (mounted) setState(() => _unlocking = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_checked) return SizedBox.shrink();
+    if (!_checked) return const SizedBox.shrink();
 
     if (!_locked) {
       // Listener global : n'importe quel tap dans l'app remet le minuteur
@@ -103,18 +122,30 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       home: Scaffold(
         backgroundColor: AppColors.background,
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.lock_outline_rounded, size: 56, color: AppColors.gold),
-              SizedBox(height: 16),
-              Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-              SizedBox(height: 24),
-              SizedBox(
-                width: 220,
-                child: ElevatedButton(onPressed: _tryUnlock, child: Text('Déverrouiller')),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 56, color: AppColors.gold),
+                const SizedBox(height: 16),
+                const Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                if (_lastError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(_lastError!, style: const TextStyle(fontSize: 13, color: Colors.white70), textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: 220,
+                  child: ElevatedButton(
+                    onPressed: _unlocking ? null : _tryUnlock,
+                    child: _unlocking
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : const Text('Déverrouiller'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

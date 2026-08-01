@@ -8,6 +8,7 @@ import '../../../../../core/services/inactivity_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/theme_controller.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -78,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(title: const Text('Profil'), actions: [notificationBellAction(context)]),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -159,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 4),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 const double _matchRadiusKm = 5;
 
@@ -132,7 +133,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     if (_driverId == null) return Scaffold(body: SkeletonCardList());
     if (_status != 'active') {
       return Scaffold(
-        appBar: AppBar(title: Text('Espace livreur')),
+        appBar: AppBar(title: Text('Espace livreur'), actions: [notificationBellAction(context)]),
         body: EmptyState(
           icon: Icons.hourglass_top_rounded,
           message: _status == 'pending'
@@ -149,6 +150,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         actions: [
           IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
           IconButton(icon: Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
+          notificationBellAction(context),
         ],
       ),
       body: Column(

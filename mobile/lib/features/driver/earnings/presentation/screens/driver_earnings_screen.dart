@@ -4,6 +4,7 @@ import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 
 class DriverEarningsScreen extends StatefulWidget {
   DriverEarningsScreen({super.key});
@@ -30,7 +31,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Mes gains')),
+      appBar: AppBar(title: Text('Mes gains'), actions: [notificationBellAction(context)]),
       body: _wallet == null
           ? SkeletonCardList()
           : RefreshIndicator(

@@ -16,7 +16,6 @@ const _clientItems = [
   _NavItem(Icons.home_outlined, Icons.home_rounded, 'Accueil', '/client/home'),
   _NavItem(Icons.history_outlined, Icons.history_rounded, 'Historique', '/client/history'),
   _NavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Portefeuille', '/wallet'),
-  _NavItem(Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifs', '/notifications'),
   _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profil', '/client/profile'),
 ];
 
@@ -24,7 +23,6 @@ const _driverItems = [
   _NavItem(Icons.home_outlined, Icons.home_rounded, 'Accueil', '/driver/home'),
   _NavItem(Icons.payments_outlined, Icons.payments_rounded, 'Gains', '/driver/earnings'),
   _NavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Portefeuille', '/wallet'),
-  _NavItem(Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifs', '/notifications'),
   _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profil', '/client/profile'),
 ];
 
@@ -32,7 +30,6 @@ const _vendorItems = [
   _NavItem(Icons.dashboard_outlined, Icons.dashboard_rounded, 'Accueil', '/vendor/dashboard'),
   _NavItem(Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Commandes', '/vendor/orders'),
   _NavItem(Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Portefeuille', '/wallet'),
-  _NavItem(Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifs', '/notifications'),
   _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profil', '/client/profile'),
 ];
 

@@ -8,6 +8,7 @@ import '../../../../../core/services/storage/upload_service.dart';
 import '../../../../../core/models/product_model.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/empty_state.dart';
 
@@ -92,7 +93,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Mon catalogue')),
+      appBar: AppBar(title: Text('Mon catalogue'), actions: [notificationBellAction(context)]),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.gold,
         onPressed: _addProduct,
