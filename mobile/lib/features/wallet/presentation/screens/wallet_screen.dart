@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -108,6 +109,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ],
             ),
             ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 2),
     );
   }
 }

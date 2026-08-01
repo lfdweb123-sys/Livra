@@ -7,6 +7,7 @@ import '../../../../../core/services/lock_service.dart';
 import '../../../../../core/services/inactivity_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/theme_controller.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -158,6 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 4),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 class VendorDashboardScreen extends StatefulWidget {
   VendorDashboardScreen({super.key});
@@ -84,6 +85,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           _tile(context, 'Statistiques', Icons.bar_chart_rounded, '/vendor/stats'),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
 

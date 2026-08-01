@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_logo.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 class _Service {
   final String label;
@@ -163,6 +164,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
 }

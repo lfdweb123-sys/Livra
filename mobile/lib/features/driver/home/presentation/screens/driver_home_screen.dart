@@ -9,6 +9,7 @@ import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 const double _matchRadiusKm = 5;
 
@@ -185,7 +186,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             child: ListTile(
                               title: Text('Commande ${o['type']}'),
                               subtitle: Text('${o['priceBreakdown']?['deliveryFee'] ?? '-'} XOF de frais de livraison'),
-                              trailing: ElevatedButton(onPressed: () => _acceptOrder(o['id']), child: Text('Accepter')),
+                              trailing: ElevatedButton(
+                                style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
+                                onPressed: () => _acceptOrder(o['id']),
+                                child: Text('Accepter'),
+                              ),
                             ),
                           );
                         },
@@ -193,6 +198,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
 }

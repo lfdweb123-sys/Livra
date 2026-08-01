@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 class DriverEarningsScreen extends StatefulWidget {
   DriverEarningsScreen({super.key});
@@ -64,6 +65,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
               ],
             ),
             ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );
   }
 }

@@ -110,7 +110,10 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
               SizedBox(height: 16),
               Text('Livra est verrouillé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               SizedBox(height: 24),
-              ElevatedButton(onPressed: _tryUnlock, child: Text('Déverrouiller')),
+              SizedBox(
+                width: 220,
+                child: ElevatedButton(onPressed: _tryUnlock, child: Text('Déverrouiller')),
+              ),
             ],
           ),
         ),

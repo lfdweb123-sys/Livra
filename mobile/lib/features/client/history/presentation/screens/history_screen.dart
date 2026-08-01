@@ -5,6 +5,7 @@ import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/app_bottom_nav.dart';
 
 class HistoryScreen extends StatefulWidget {
   HistoryScreen({super.key});
@@ -91,6 +92,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
           ),
         ],
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
     );
   }
 }
