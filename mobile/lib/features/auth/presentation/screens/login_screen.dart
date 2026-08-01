@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 24),
-              const Center(child: AppLogo(size: 88)),
+              const Center(child: AppLogo(size: 130, full: true)),
               const SizedBox(height: 20),
               const Text('Content de vous revoir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 4),

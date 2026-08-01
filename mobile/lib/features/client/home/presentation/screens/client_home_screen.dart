@@ -65,7 +65,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const AppLogo(size: 32),
+        title: const AppLogo(size: 40, full: true),
         actions: [
           IconButton(icon: Icon(Icons.notifications_none_rounded), onPressed: () => context.push('/notifications')),
           IconButton(icon: Icon(Icons.account_circle_outlined), onPressed: () => context.push('/client/profile')),

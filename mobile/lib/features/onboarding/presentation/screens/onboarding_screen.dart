@@ -40,7 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const AppLogo(size: 36),
+                  const AppLogo(size: 44, full: true),
                   TextButton(
                     onPressed: () => context.go('/login'),
                     child: Text('Passer', style: TextStyle(color: AppColors.textSecondary)),
