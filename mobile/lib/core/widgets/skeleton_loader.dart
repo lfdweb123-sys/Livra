@@ -9,7 +9,7 @@ class SkeletonBox extends StatelessWidget {
   final double? width;
   final double borderRadius;
 
-  SkeletonBox({super.key, required this.height, this.width, this.borderRadius = 12});
+  const SkeletonBox({super.key, required this.height, this.width, this.borderRadius = 12});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,7 @@ class SkeletonBox extends StatelessWidget {
 
 class SkeletonCardList extends StatelessWidget {
   final int count;
-  SkeletonCardList({super.key, this.count = 4});
+  const SkeletonCardList({super.key, this.count = 4});
 
   @override
   Widget build(BuildContext context) {
