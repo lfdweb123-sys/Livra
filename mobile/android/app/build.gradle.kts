@@ -22,7 +22,9 @@ android {
         applicationId = "com.example.livra"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // twilio_voice exige Android 8.0+ (API 26) — au-dessous, l'app ne
+        // sera simplement pas installable, pas de crash silencieux.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
