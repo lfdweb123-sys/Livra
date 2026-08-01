@@ -45,12 +45,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadLockState();
-  }
-
   Future<void> _loadLockState() async {
     final enabled = await _lockService.isLockEnabled();
     final available = await _lockService.canUseBiometrics();
