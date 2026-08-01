@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/discovery_service.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/models/vendor_model.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -28,11 +30,34 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   List<VendorModel>? _vendors;
   String? _categoryFilter; // null = tout, 'resto' = Nourriture, 'shop' = boutiques
   final _listKey = GlobalKey();
+  List<Map<String, dynamic>> _featured = [];
+  Timer? _featuredTimer;
+  final _discoveryService = DiscoveryService();
 
   @override
   void initState() {
     super.initState();
     _loadVendors();
+    _loadFeatured();
+    _featuredTimer = Timer.periodic(const Duration(minutes: 1), (_) => _loadFeatured());
+  }
+
+  @override
+  void dispose() {
+    _featuredTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadFeatured() async {
+    try {
+      final items = await _discoveryService.featuredProducts();
+      if (mounted) setState(() => _featured = items);
+      for (final item in items) {
+        if (item['sponsored'] == true && item['campaignId'] != null) {
+          _discoveryService.trackImpression(item['campaignId']);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadVendors() async {
@@ -126,6 +151,70 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 'assets/images/banners/banner2.png',
               ]),
               const SizedBox(height: 18),
+              if (_featured.isNotEmpty) ...[
+                Text('Découverte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 168,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _featured.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, i) {
+                      final item = _featured[i];
+                      return GestureDetector(
+                        onTap: () {
+                          if (item['sponsored'] == true && item['campaignId'] != null) {
+                            _discoveryService.trackClick(item['campaignId']);
+                          }
+                          if (item['vendorId'] != null) context.push('/client/vendor/${item['vendorId']}');
+                        },
+                        child: Container(
+                          width: 130,
+                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                    child: item['imageUrl'] != null
+                                        ? Image.network(item['imageUrl'], height: 90, width: 130, fit: BoxFit.cover)
+                                        : Container(height: 90, width: 130, color: AppColors.surfaceElevated),
+                                  ),
+                                  if (item['sponsored'] == true)
+                                    Positioned(
+                                      top: 6,
+                                      left: 6,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(6)),
+                                        child: const Text('Sponsorisé', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black)),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 2),
+                                    Text('${item['price']} XOF', style: TextStyle(fontSize: 11, color: AppColors.gold)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Wrap(

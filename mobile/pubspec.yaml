@@ -34,6 +34,8 @@ dependencies:
   # --- Images ---
   cached_network_image: ^3.4.1
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  path_provider: ^2.1.4
   # --- UI / UX ---
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
@@ -47,6 +49,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.5.1
   url_launcher: ^6.3.1
+  twilio_voice: ^0.3.2+2
   permission_handler: ^11.3.1
   connectivity_plus: ^6.1.0
   cupertino_icons: ^1.0.8

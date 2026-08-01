@@ -84,6 +84,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           ),
           SizedBox(height: 12),
           _tile(context, 'Statistiques', Icons.bar_chart_rounded, '/vendor/stats'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _tile(context, 'Publicité', Icons.campaign_outlined, '/vendor/ads')),
+              const SizedBox(width: 12),
+              Expanded(child: _tile(context, 'Mon profil', Icons.storefront_outlined, '/vendor/profile')),
+            ],
+          ),
         ],
       ),
       ),

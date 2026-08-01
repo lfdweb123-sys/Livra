@@ -26,6 +26,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   String _status = 'pending';
   String? _driverName;
   String? _driverPhone;
+  String? _driverUid;
   StreamSubscription? _sub;
   StreamSubscription? _driverSub;
 
@@ -61,6 +62,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           setState(() {
             _driverName = userSnap.data()?['name'] ?? 'Votre livreur';
             _driverPhone = userSnap.data()?['phone'];
+            _driverUid = driverData['ownerId'];
           });
         }
       }
@@ -162,6 +164,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         'name': _driverName ?? 'Votre livreur',
                         'phoneNumber': _driverPhone,
                         'role': 'Livreur/chauffeur Livra',
+                        'calleeUid': _driverUid,
                       }),
                       icon: const Icon(Icons.call_outlined, size: 18),
                       label: Text('Contacter ${_driverName ?? "le livreur"}'),

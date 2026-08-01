@@ -93,6 +93,24 @@
     { "collectionGroup": "notifications", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "userId", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+
+    { "collectionGroup": "products", "queryScope": "COLLECTION_GROUP", "fields": [
+      { "fieldPath": "isAvailable", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "endAt", "order": "ASCENDING" },
+      { "fieldPath": "pricePaid", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "vendorId", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "vendorId", "order": "ASCENDING" },
+      { "fieldPath": "status", "order": "ASCENDING" }
     ]}
   ],
   "fieldOverrides": []

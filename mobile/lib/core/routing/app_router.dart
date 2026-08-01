@@ -25,11 +25,14 @@ import '../../features/client/profile/presentation/screens/profile_screen.dart';
 import '../../features/driver/home/presentation/screens/driver_home_screen.dart';
 import '../../features/driver/navigation/presentation/screens/driver_navigation_screen.dart';
 import '../../features/driver/earnings/presentation/screens/driver_earnings_screen.dart';
+import '../../features/driver/profile/presentation/screens/driver_profile_screen.dart';
 
 import '../../features/vendor/dashboard/presentation/screens/vendor_dashboard_screen.dart';
 import '../../features/vendor/catalog/presentation/screens/vendor_catalog_screen.dart';
 import '../../features/vendor/orders/presentation/screens/vendor_orders_screen.dart';
 import '../../features/vendor/stats/presentation/screens/vendor_stats_screen.dart';
+import '../../features/vendor/ads/presentation/screens/vendor_ads_screen.dart';
+import '../../features/vendor/profile/presentation/screens/vendor_profile_screen.dart';
 
 import '../../features/wallet/presentation/screens/wallet_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
@@ -89,6 +92,7 @@ class AppRouter {
             name: extra['name'] ?? 'Contact',
             phoneNumber: extra['phoneNumber'] ?? '',
             role: extra['role'] ?? '',
+            calleeUid: extra['calleeUid'],
           );
         },
       ),
@@ -115,12 +119,15 @@ class AppRouter {
             id: s.pathParameters['id']!,
           )),
       GoRoute(path: '/driver/earnings', builder: (c, s) => DriverEarningsScreen()),
+      GoRoute(path: '/driver/profile', builder: (c, s) => const DriverProfileScreen()),
 
       // Espace Vendeur
       GoRoute(path: '/vendor/dashboard', builder: (c, s) => VendorDashboardScreen()),
       GoRoute(path: '/vendor/catalog', builder: (c, s) => VendorCatalogScreen()),
       GoRoute(path: '/vendor/orders', builder: (c, s) => VendorOrdersScreen()),
       GoRoute(path: '/vendor/stats', builder: (c, s) => VendorStatsScreen()),
+      GoRoute(path: '/vendor/ads', builder: (c, s) => const VendorAdsScreen()),
+      GoRoute(path: '/vendor/profile', builder: (c, s) => const VendorProfileScreen()),
 
       // Commun
       GoRoute(path: '/wallet', builder: (c, s) => WalletScreen()),

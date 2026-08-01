@@ -25,6 +25,25 @@ export async function POST(req) {
 }
 
 async function finalizePayment(payment) {
+  if (payment.adCampaignId) {
+    const startAt = new Date();
+    const endAt = new Date();
+    const campaignRef = db.collection('ad_campaigns').doc(payment.adCampaignId);
+    const campaignSnap = await campaignRef.get();
+    if (campaignSnap.exists) {
+      endAt.setTime(startAt.getTime() + campaignSnap.data().days * 24 * 60 * 60 * 1000);
+      await campaignRef.update({ status: 'active', startAt, endAt });
+      await sendNotification({
+        userId: payment.userId,
+        title: 'Publicité lancée',
+        body: `Votre campagne pour "${campaignSnap.data().productName}" est active.`,
+        type: 'ad_activated',
+        relatedId: payment.adCampaignId,
+      });
+    }
+    return;
+  }
+
   if (payment.walletUserId) {
     // Dépôt sur le portefeuille Livra
     const walletRef = db.collection('wallets').doc(payment.walletUserId);

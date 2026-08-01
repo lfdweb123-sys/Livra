@@ -36,6 +36,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   bool _fitted = false;
   String? _clientName;
   String? _clientPhone;
+  String? _clientUid;
 
   @override
   void initState() {
@@ -59,6 +60,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             setState(() {
               _clientName = userSnap.data()?['name'] ?? 'Client';
               _clientPhone = userSnap.data()?['phone'];
+              _clientUid = clientId;
             });
           }
         }
@@ -205,6 +207,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                         'name': _clientName ?? 'Client',
                         'phoneNumber': _clientPhone,
                         'role': 'Client Livra',
+                        'calleeUid': _clientUid,
                       }),
                       icon: const Icon(Icons.call_outlined, size: 18),
                       label: Text('Contacter ${_clientName ?? "le client"}'),

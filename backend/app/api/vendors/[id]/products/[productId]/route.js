@@ -13,7 +13,7 @@ export async function PATCH(req, { params }) {
 
   const body = await req.json();
   const update = { updatedAt: FieldValue.serverTimestamp() };
-  ['name', 'description', 'price', 'imageUrl', 'category', 'isAvailable', 'stock'].forEach((k) => {
+  ['name', 'description', 'price', 'imageUrl', 'category', 'isAvailable', 'stock', 'pinned'].forEach((k) => {
     if (body[k] !== undefined) update[k] = body[k];
   });
   await db.doc(`vendors/${params.id}/products/${params.productId}`).update(update);

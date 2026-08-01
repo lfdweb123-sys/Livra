@@ -25,6 +25,8 @@ export async function PATCH(req, { params }) {
     if (body.status === 'rejected' && body.rejectionReason) update.rejectionReason = body.rejectionReason;
   } else if (auth.uid === driver.ownerId) {
     if (body.documentsR2) update.documentsR2 = body.documentsR2;
+    if (body.photoUrl !== undefined) update.photoUrl = body.photoUrl;
+    if (body.bio !== undefined) update.bio = body.bio;
   } else {
     return jsonError('forbidden', 403);
   }

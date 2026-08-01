@@ -181,6 +181,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         actions: [
           IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
           IconButton(icon: Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
+          IconButton(icon: Icon(Icons.person_outline_rounded), onPressed: () => context.push('/driver/profile')),
           notificationBellAction(context),
         ],
       ),

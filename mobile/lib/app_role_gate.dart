@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'core/models/user_model.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/twilio_call_service.dart';
 import 'core/routing/app_router.dart';
 
 /// Écoute l'auth + le doc users/{uid} pour maintenir AppRouter.currentRole
@@ -31,6 +32,8 @@ class _RoleGateState extends State<RoleGate> {
           AppRouter.refresh();
         }
       });
+      // best-effort — ne bloque jamais le flux de connexion si Twilio échoue
+      TwilioCallService.instance.registerForIncomingCalls().catchError((_) {});
     });
   }
 

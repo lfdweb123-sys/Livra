@@ -1,21 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/twilio_call_service.dart';
 import '../theme/app_colors.dart';
-import '../widgets/app_bottom_sheet.dart';
+import 'in_app_call_screen.dart';
 
-/// Appel/WhatsApp — ouvre l'app téléphone ou WhatsApp du système avec le
-/// numéro pré-rempli. Ce n'est PAS un vrai appel intégré (pas de VoIP dans
-/// l'app) : construire un vrai système d'appel sans jamais quitter l'app
-/// demanderait une infrastructure WebRTC complète (serveur de signalisation,
-/// etc.), un chantier à part entière. Ceci reste la façon la plus fiable et
-/// rapide de mettre client et livreur/vendeur en contact aujourd'hui — et
-/// les deux parties utilisent bien leur propre forfait/data, pas celui de Livra.
+/// Appel/WhatsApp/Appel Livra — le bouton "Appel Livra" utilise Twilio Voice
+/// (vraie VoIP intégrée, chacun sur sa propre connexion internet, sans
+/// jamais quitter l'app). "Appeler" et "WhatsApp" restent en repli fiable
+/// si l'appel Livra échoue (réseau instable, etc.).
 class ContactScreen extends StatelessWidget {
   final String name;
   final String phoneNumber;
   final String role; // "votre livreur", "votre client", etc.
+  final String? calleeUid; // requis pour l'appel Livra (VoIP)
 
-  const ContactScreen({super.key, required this.name, required this.phoneNumber, required this.role});
+  const ContactScreen({super.key, required this.name, required this.phoneNumber, required this.role, this.calleeUid});
+
+  Future<void> _callLivra(BuildContext context) async {
+    if (calleeUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appel Livra indisponible pour ce contact.')));
+      return;
+    }
+    try {
+      await TwilioCallService.instance.call(toUid: calleeUid!, displayName: name);
+      if (context.mounted) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => InAppCallScreen(name: name)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Appel Livra indisponible : $e. Essayez "Appeler".')));
+      }
+    }
+  }
 
   Future<void> _call() async {
     final uri = Uri(scheme: 'tel', path: phoneNumber);
@@ -47,25 +63,37 @@ class ContactScreen extends StatelessWidget {
               Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(role, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+              if (calleeUid != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _callLivra(context),
+                    icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
+                    label: const Text('Appel Livra (gratuit, via internet)'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: Container(height: 1, color: AppColors.divider)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('ou', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    ),
+                    Expanded(child: Container(height: 1, color: AppColors.divider)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               Row(
                 children: [
                   Expanded(
-                    child: _actionButton(
-                      icon: Icons.call_rounded,
-                      label: 'Appeler',
-                      color: AppColors.success,
-                      onTap: _call,
-                    ),
+                    child: _actionButton(icon: Icons.call_rounded, label: 'Appeler', color: AppColors.success, onTap: _call),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _actionButton(
-                      icon: Icons.chat_rounded,
-                      label: 'WhatsApp',
-                      color: const Color(0xFF25D366),
-                      onTap: _whatsapp,
-                    ),
+                    child: _actionButton(icon: Icons.chat_rounded, label: 'WhatsApp', color: const Color(0xFF25D366), onTap: _whatsapp),
                   ),
                 ],
               ),
@@ -99,28 +127,4 @@ class ContactScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Bottom sheet rapide pour choisir "Appeler" / "WhatsApp" sans changer
-/// d'écran (utilisé depuis le suivi de commande/course).
-Future<void> showQuickContactSheet(BuildContext context, {required String name, required String phoneNumber}) {
-  return showAppBottomSheet(
-    context,
-    title: 'Contacter $name',
-    child: Row(
-      children: [
-        Expanded(
-          child: ListTile(
-            leading: Icon(Icons.call_rounded, color: AppColors.success),
-            title: const Text('Appeler'),
-            onTap: () async {
-              Navigator.pop(context);
-              final uri = Uri(scheme: 'tel', path: phoneNumber);
-              if (await canLaunchUrl(uri)) await launchUrl(uri);
-            },
-          ),
-        ),
-      ],
-    ),
-  );
 }

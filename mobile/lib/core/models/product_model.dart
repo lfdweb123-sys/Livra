@@ -6,6 +6,7 @@ class ProductModel {
   final String? imageUrl;
   final String category;
   final bool isAvailable;
+  final bool pinned;
 
   ProductModel({
     required this.id,
@@ -15,6 +16,7 @@ class ProductModel {
     this.imageUrl,
     required this.category,
     this.isAvailable = true,
+    this.pinned = false,
   });
 
   factory ProductModel.fromMap(String id, Map<String, dynamic> map) => ProductModel(
@@ -25,5 +27,6 @@ class ProductModel {
         imageUrl: map['imageUrl'],
         category: map['category'] ?? '',
         isAvailable: map['isAvailable'] ?? true,
+        pinned: map['pinned'] ?? false,
       );
 }

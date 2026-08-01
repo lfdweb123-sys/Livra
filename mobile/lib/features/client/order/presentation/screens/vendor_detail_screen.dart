@@ -26,6 +26,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
   Future<void> _load() async {
     final res = await ApiClient.instance.get('/api/vendors/${widget.vendorId}/products');
     final items = (res['items'] as List).map((e) => ProductModel.fromMap(e['id'], e)).toList();
+    items.sort((a, b) => b.pinned == a.pinned ? 0 : (b.pinned ? 1 : -1));
     setState(() {
       _products = items;
       _catalog = {for (final p in items) p.id: p};

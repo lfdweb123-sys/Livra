@@ -1,0 +1,104 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/storage/upload_service.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/primary_button.dart';
+import '../../../../../core/widgets/notification_bell_action.dart';
+
+class DriverProfileScreen extends StatefulWidget {
+  const DriverProfileScreen({super.key});
+  @override
+  State<DriverProfileScreen> createState() => _DriverProfileScreenState();
+}
+
+class _DriverProfileScreenState extends State<DriverProfileScreen> {
+  String? _driverId;
+  final _bioCtrl = TextEditingController();
+  String? _photoUrl;
+  File? _newPhoto;
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final snap = await FirebaseFirestore.instance.collection('drivers').where('ownerId', isEqualTo: uid).limit(1).get();
+    if (snap.docs.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final data = snap.docs.first.data();
+    setState(() {
+      _driverId = snap.docs.first.id;
+      _bioCtrl.text = data['bio'] ?? '';
+      _photoUrl = data['photoUrl'];
+      _loading = false;
+    });
+  }
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75);
+    if (picked != null) setState(() => _newPhoto = File(picked.path));
+  }
+
+  Future<void> _save() async {
+    if (_driverId == null) return;
+    setState(() => _saving = true);
+    try {
+      final data = <String, dynamic>{'bio': _bioCtrl.text.trim()};
+      if (_newPhoto != null) data['photoUrl'] = await UploadService().uploadFile(_newPhoto!, folder: 'drivers');
+      await ApiClient.instance.patch('/api/drivers/$_driverId', data: data);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil mis à jour.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.gold)));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mon profil'), actions: [notificationBellAction(context)]),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Center(
+            child: GestureDetector(
+              onTap: _pickPhoto,
+              child: CircleAvatar(
+                radius: 44,
+                backgroundColor: AppColors.surfaceElevated,
+                backgroundImage: _newPhoto != null
+                    ? FileImage(_newPhoto!)
+                    : (_photoUrl != null ? NetworkImage(_photoUrl!) as ImageProvider : null),
+                child: (_newPhoto == null && _photoUrl == null) ? const Icon(Icons.person_outline_rounded, size: 32) : null,
+              ),
+            ),
+          ),
+          Center(
+            child: TextButton(onPressed: _pickPhoto, child: const Text('Changer la photo')),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _bioCtrl,
+            maxLines: 3,
+            decoration: const InputDecoration(hintText: 'Présentez-vous en quelques mots...'),
+          ),
+          const SizedBox(height: 24),
+          PrimaryButton(label: 'Enregistrer', onPressed: _save, loading: _saving),
+        ],
+      ),
+    );
+  }
+}

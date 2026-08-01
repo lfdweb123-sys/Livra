@@ -104,6 +104,27 @@ export async function POST(req) {
 
   await logActivity('order_created', `Commande ${type} créée — ${priceBreakdown.total} XOF`, { orderId: orderRef.id, clientId: auth.uid });
 
+  // Conversion pub : si un des produits commandés est sous campagne active,
+  // ça compte comme conversion — best-effort, ne doit jamais faire échouer
+  // la commande.
+  if (type === 'nourriture' && items?.length) {
+    try {
+      const productIds = items.map((i) => i.productId);
+      const adsSnap = await db
+        .collection('ad_campaigns')
+        .where('vendorId', '==', vendorId)
+        .where('status', '==', 'active')
+        .get();
+      for (const doc of adsSnap.docs) {
+        if (productIds.includes(doc.data().productId)) {
+          await doc.ref.update({ conversions: FieldValue.increment(1) });
+        }
+      }
+    } catch (e) {
+      console.error('[AD_CONVERSION_TRACKING_ERROR]', e.message);
+    }
+  }
+
   return Response.json({ id: orderRef.id, priceBreakdown, status: 'pending' });
 }
 
