@@ -297,7 +297,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(12),
-                        leading: CircleAvatar(backgroundColor: AppColors.surfaceElevated, child: Text(v.businessName.isNotEmpty ? v.businessName[0] : '?')),
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.surfaceElevated,
+                          backgroundImage: v.logoUrl != null ? NetworkImage(v.logoUrl!) : null,
+                          child: v.logoUrl == null ? Text(v.businessName.isNotEmpty ? v.businessName[0] : '?') : null,
+                        ),
                         title: Text(v.businessName),
                         subtitle: Text(v.address, maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [

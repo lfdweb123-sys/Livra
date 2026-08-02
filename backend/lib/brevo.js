@@ -1,8 +1,15 @@
 // Emails transactionnels Brevo — confirmations commande, notifications
 // de validation vendeur/chauffeur (remplace le "reviewedAt/rejectionReason"
 // silencieux par un vrai email au destinataire).
+//
+// L'expéditeur doit être une adresse VÉRIFIÉE dans Brevo (Senders & IP >
+// Senders), sinon Brevo rejette l'envoi en silence. Tant que le domaine
+// livra.app n'est pas configuré (DKIM/SPF), on utilise une adresse Gmail
+// vérifiée via BREVO_SENDER_EMAIL — configure-la dans Vercel une fois le
+// domaine prêt, sans toucher au code.
 export async function sendTransactionalEmail({ to, toName, subject, htmlContent }) {
   if (!process.env.BREVO_API_KEY) return { sent: false, reason: 'missing_api_key' };
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'gerardfreelancer123@gmail.com';
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -11,7 +18,7 @@ export async function sendTransactionalEmail({ to, toName, subject, htmlContent 
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'Livra', email: 'no-reply@livra.app' },
+      sender: { name: 'Livra', email: senderEmail },
       to: [{ email: to, name: toName || to }],
       subject,
       htmlContent,

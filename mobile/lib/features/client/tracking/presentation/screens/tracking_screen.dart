@@ -27,6 +27,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   String? _driverName;
   String? _driverPhone;
   String? _driverUid;
+  String? _driverPhotoUrl;
   StreamSubscription? _sub;
   StreamSubscription? _driverSub;
 
@@ -55,6 +56,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
           _previousPosition = _driverPosition ?? newPos;
           _driverPosition = newPos;
         });
+      }
+      if (_driverPhotoUrl != driverData['photoUrl'] && mounted) {
+        setState(() => _driverPhotoUrl = driverData['photoUrl']);
       }
       if (_driverName == null && driverData['ownerId'] != null) {
         final userSnap = await _db.collection('users').doc(driverData['ownerId']).get();
@@ -157,6 +161,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 Text('Nous vous notifions à chaque étape.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 if (_driverPhone != null) ...[
                   const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.surfaceElevated,
+                        backgroundImage: _driverPhotoUrl != null ? NetworkImage(_driverPhotoUrl!) : null,
+                        child: _driverPhotoUrl == null ? Icon(Icons.person_outline_rounded, color: AppColors.textSecondary) : null,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(_driverName ?? 'Votre livreur', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -165,6 +182,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         'phoneNumber': _driverPhone,
                         'role': 'Livreur/chauffeur Livra',
                         'calleeUid': _driverUid,
+                        'photoUrl': _driverPhotoUrl,
                       }),
                       icon: const Icon(Icons.call_outlined, size: 18),
                       label: Text('Contacter ${_driverName ?? "le livreur"}'),

@@ -11,7 +11,8 @@ import '../../../../core/widgets/primary_button.dart';
 /// Candidature vendeur — documents obligatoires pour vérification
 /// d'identité par l'admin avant activation (même logique que les livreurs).
 class ApplyVendorScreen extends StatefulWidget {
-  const ApplyVendorScreen({super.key});
+  final String? initialCategory;
+  const ApplyVendorScreen({super.key, this.initialCategory});
   @override
   State<ApplyVendorScreen> createState() => _ApplyVendorScreenState();
 }
@@ -19,14 +20,16 @@ class ApplyVendorScreen extends StatefulWidget {
 class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  String _category = 'resto';
+  late String _category = widget.initialCategory ?? 'resto';
   final Map<String, File> _docs = {};
   bool _loading = false;
 
   static const _requiredDocs = {
     'cni': "Pièce d'identité (CNI/passeport)",
-    'registreCommerce': 'Registre de commerce ou équivalent',
     'photoLocal': 'Photo de la boutique/restaurant',
+  };
+  static const _optionalDocs = {
+    'registreCommerce': 'Registre de commerce (si vous en avez un)',
   };
 
   Future<void> _pickDoc(String key) async {
@@ -117,6 +120,17 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                     title: Text(e.value),
                     trailing: Icon(
                       _docs.containsKey(e.key) ? Icons.check_circle : Icons.camera_alt,
+                      color: _docs.containsKey(e.key) ? AppColors.success : AppColors.textSecondary,
+                    ),
+                    onTap: () => _pickDoc(e.key),
+                  ),
+                )),
+            ..._optionalDocs.entries.map((e) => Card(
+                  child: ListTile(
+                    title: Text(e.value),
+                    subtitle: const Text('Optionnel', style: TextStyle(fontSize: 11)),
+                    trailing: Icon(
+                      _docs.containsKey(e.key) ? Icons.check_circle : Icons.camera_alt_outlined,
                       color: _docs.containsKey(e.key) ? AppColors.success : AppColors.textSecondary,
                     ),
                     onTap: () => _pickDoc(e.key),

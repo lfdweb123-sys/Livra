@@ -14,7 +14,10 @@ class NotificationsScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
       appBar: AppBar(title: Text('Notifications')),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: RefreshIndicator(
+        onRefresh: () async => Future.delayed(const Duration(milliseconds: 400)),
+        color: AppColors.gold,
+        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('notifications')
             .where('userId', isEqualTo: uid)
@@ -49,6 +52,7 @@ class NotificationsScreen extends StatelessWidget {
             },
           );
         },
+        ),
       ),
     );
   }

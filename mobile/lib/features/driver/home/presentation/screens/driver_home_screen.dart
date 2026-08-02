@@ -214,7 +214,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                   ? EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des courses et commandes.')
                   : items.isEmpty
                       ? EmptyState(icon: Icons.inbox_outlined, message: 'Rien de disponible à proximité pour le moment.')
-                      : ListView.builder(
+                      : RefreshIndicator(
+                          onRefresh: () async => Future.delayed(const Duration(milliseconds: 400)),
+                          color: AppColors.gold,
+                          child: ListView.builder(
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           itemCount: items.length,
                           itemBuilder: (context, i) {
@@ -236,6 +239,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                               ),
                             );
                           },
+                        ),
                         ),
             ),
           ],

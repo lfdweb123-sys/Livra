@@ -78,10 +78,16 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
       ),
-      body: (_allVendors == null || _productResults == null)
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _loadVendors();
+          await _searchProducts(_controller.text);
+        },
+        color: AppColors.gold,
+        child: (_allVendors == null || _productResults == null)
           ? const SkeletonCardList()
           : nothingFound
-              ? const EmptyState(icon: Icons.search_off_rounded, message: 'Aucun résultat pour cette recherche.')
+              ? ListView(children: const [SizedBox(height: 100), EmptyState(icon: Icons.search_off_rounded, message: 'Aucun résultat pour cette recherche.')])
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
@@ -139,7 +145,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: AppColors.surfaceElevated,
-                                child: Text(v.businessName.isNotEmpty ? v.businessName[0] : '?'),
+                                backgroundImage: v.logoUrl != null ? NetworkImage(v.logoUrl!) : null,
+                                child: v.logoUrl == null ? Text(v.businessName.isNotEmpty ? v.businessName[0] : '?') : null,
                               ),
                               title: Text(v.businessName),
                               subtitle: Text(v.category == 'resto' ? 'Restaurant' : 'Boutique'),
@@ -153,6 +160,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ],
                 ),
+      ),
     );
   }
 }

@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/remote_logger.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/app_logo.dart';
+import '../../../../core/widgets/phone_number_field.dart';
 
-/// Inscription = toujours "client" au départ. Devenir livreur/vendeur se
-/// fait ensuite via une candidature séparée (apply-driver / apply-vendor),
-/// accessible à tout moment depuis Profil.
+/// Inscription = toujours "client" en base (role='client'), mais on demande
+/// directement l'intention (client simple, ou candidat vendeur/livreur) pour
+/// enchaîner sur la vérification d'identité correspondante juste après —
+/// sauf pour un client, qui va directement à l'accueil.
+enum _Intent { client, resto, shop, livreurColis, taxiMoto, chauffeurVoiture }
+
+const _intentLabels = {
+  _Intent.client: 'Client — je commande sur Livra',
+  _Intent.resto: 'Restaurant — je vends de la nourriture',
+  _Intent.shop: 'Boutique — je vends des produits',
+  _Intent.livreurColis: 'Livreur — je livre des colis',
+  _Intent.taxiMoto: 'Taxi-moto — je transporte des clients',
+  _Intent.chauffeurVoiture: 'Chauffeur voiture — je transporte des clients',
+};
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
   @override
@@ -19,16 +34,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final _authService = AuthService();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   String _country = _countries.first;
+  _Intent _intent = _Intent.client;
   bool _loading = false;
   bool _obscure = true;
   String? _error;
 
   Future<void> _submit() async {
     if (_nameCtrl.text.trim().isEmpty ||
+        _cityCtrl.text.trim().isEmpty ||
         _phoneCtrl.text.trim().isEmpty ||
         _emailCtrl.text.trim().isEmpty ||
         _passwordCtrl.text.isEmpty) {
@@ -43,7 +61,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
         country: _country,
+        city: _cityCtrl.text.trim(),
       );
+      if (!mounted) return;
+      TextInput.finishAutofillContext();
+      // Client simple -> accueil directement (redirection automatique).
+      // Toute autre intention -> vérification d'identité obligatoire avant
+      // l'accueil, préremplie selon le choix fait ici.
+      switch (_intent) {
+        case _Intent.client:
+          break;
+        case _Intent.resto:
+          context.go('/apply-vendor', extra: {'category': 'resto'});
+          break;
+        case _Intent.shop:
+          context.go('/apply-vendor', extra: {'category': 'shop'});
+          break;
+        case _Intent.livreurColis:
+          context.go('/apply-driver', extra: {'vehicleType': 'coursier'});
+          break;
+        case _Intent.taxiMoto:
+          context.go('/apply-driver', extra: {'vehicleType': 'moto'});
+          break;
+        case _Intent.chauffeurVoiture:
+          context.go('/apply-driver', extra: {'vehicleType': 'voiture'});
+          break;
+      }
     } catch (e, stack) {
       RemoteLogger.log(context: 'register', error: e, stack: stack);
       setState(() => _error = RemoteLogger.readableAuthError(e));
@@ -55,9 +98,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
+    _cityCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -72,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Center(child: AppLogo(size: 100, full: true)),
+              const Center(child: AppLogo(size: 64, full: true)),
               const SizedBox(height: 16),
               const Text('Créer un compte', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 4),
@@ -96,30 +140,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(hintText: 'Téléphone (+229...)', prefixIcon: Icon(Icons.phone_outlined)),
+                controller: _cityCtrl,
+                decoration: const InputDecoration(hintText: 'Ville', prefixIcon: Icon(Icons.location_city_rounded)),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-              ),
+              PhoneNumberField(initialCountry: _country, onChanged: (v) => _phoneCtrl.text = v),
               const SizedBox(height: 12),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: _obscure,
-                onSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  hintText: 'Mot de passe (6 caractères min.)',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.textSecondary),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
+              AutofillGroup(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.username, AutofillHints.email],
+                      decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscure,
+                      autofillHints: const [AutofillHints.newPassword],
+                      onSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        hintText: 'Mot de passe (6 caractères min.)',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.textSecondary),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 12),
+              Text('Vous êtes', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<_Intent>(
+                value: _intent,
+                isExpanded: true,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.badge_outlined)),
+                dropdownColor: AppColors.surfaceElevated,
+                items: _Intent.values.map((i) => DropdownMenuItem(value: i, child: Text(_intentLabels[i]!, overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (v) => setState(() => _intent = v ?? _intent),
+              ),
+              if (_intent != _Intent.client) ...[
+                const SizedBox(height: 6),
+                Text(
+                  "Une vérification d'identité (documents) vous sera demandée juste après, avant de pouvoir démarrer.",
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 14),
                 Container(

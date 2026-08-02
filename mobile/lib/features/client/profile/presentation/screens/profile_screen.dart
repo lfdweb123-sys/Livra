@@ -114,20 +114,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email copié.')));
   }
 
-  Widget _smallLink(BuildContext context, String label, String route) {
-    return InkWell(
-      onTap: () => context.push(route),
-      borderRadius: BorderRadius.circular(6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.gold, decoration: TextDecoration.underline),
+  Widget _partnerButton(BuildContext context, String label, IconData icon, String route) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(colors: [AppColors.goldSoft, AppColors.gold], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          boxShadow: [BoxShadow(color: AppColors.gold.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5))],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => context.push(route),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: Colors.black),
+                const SizedBox(width: 8),
+                Text(label, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
+              ],
+            ),
           ),
-          const SizedBox(width: 4),
-          Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.gold),
-        ],
+        ),
       ),
     );
   }
@@ -137,7 +148,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(title: const Text('Profil'), actions: [notificationBellAction(context)]),
-      body: swipeableTab(context: context, currentIndex: 3, child: ListView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _loadLockState();
+          await _loadSupportContacts();
+        },
+        color: AppColors.gold,
+        child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           CircleAvatar(
@@ -175,18 +192,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.6),
             ),
           ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Wrap(
-              spacing: 20,
-              runSpacing: 8,
-              children: [
-                _smallLink(context, 'Devenir livreur / chauffeur', '/apply-driver'),
-                _smallLink(context, 'Devenir vendeur', '/apply-vendor'),
-              ],
-            ),
-          ),
+          const SizedBox(height: 8),
+          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver'),
+          const SizedBox(height: 12),
+          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor'),
           const Divider(height: 28),
           SwitchListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -231,10 +240,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ListTile(
               leading: const Icon(Icons.chat_rounded),
               title: const Text('WhatsApp'),
-              subtitle: Text('+$_supportWhatsapp', style: const TextStyle(fontSize: 12)),
+              subtitle: Text('+${_supportWhatsapp.replaceAll('+', '')}', style: const TextStyle(fontSize: 12)),
               onTap: () async {
-                final uri = Uri.parse('https://wa.me/$_supportWhatsapp');
-                if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                final digits = _supportWhatsapp.replaceAll('+', '').trim();
+                final uri = Uri.parse('https://wa.me/$digits');
+                // canLaunchUrl donne souvent un faux négatif sur les liens
+                // https (dépend du PackageManager du téléphone) — on tente
+                // directement le launchUrl et on ne prévient l'utilisateur
+                // que si ça échoue réellement, au lieu de bloquer le bouton
+                // en amont sur un simple "je ne sais pas".
+                try {
+                  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (!opened && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Impossible d'ouvrir WhatsApp. Est-il installé ?")),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur WhatsApp : $e')));
+                  }
+                }
               },
             ),
           const SizedBox(height: 8),

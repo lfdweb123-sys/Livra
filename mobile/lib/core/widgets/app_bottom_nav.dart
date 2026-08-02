@@ -36,20 +36,14 @@ const _vendorItems = [
 /// Enveloppe un contenu pour permettre la navigation entre onglets en
 /// glissant l'écran horizontalement (gauche <-> droite), en plus des taps
 /// sur la barre du bas.
+/// Le glissement horizontal entre onglets a été désactivé : son
+/// GestureDetector entrait en conflit avec le geste vertical du
+/// RefreshIndicator (tirer pour actualiser), qui ne fonctionnait plus du
+/// tout sur aucune page. La navigation par onglets reste pleinement
+/// fonctionnelle via la barre du bas — priorité donnée à l'actualisation,
+/// demandée explicitement sur toutes les pages sans exception.
 Widget swipeableTab({required BuildContext context, required int currentIndex, required Widget child}) {
-  final items = _itemsForRole();
-  return GestureDetector(
-    onHorizontalDragEnd: (details) {
-      final velocity = details.primaryVelocity ?? 0;
-      if (velocity.abs() < 200) return;
-      if (velocity < 0 && currentIndex < items.length - 1) {
-        context.go(items[currentIndex + 1].route);
-      } else if (velocity > 0 && currentIndex > 0) {
-        context.go(items[currentIndex - 1].route);
-      }
-    },
-    child: child,
-  );
+  return child;
 }
 
 List<_NavItem> _itemsForRole() {

@@ -78,8 +78,14 @@ class AppRouter {
       GoRoute(path: '/onboarding', builder: (c, s) => OnboardingScreen()),
       GoRoute(path: '/login', builder: (c, s) => LoginScreen()),
       GoRoute(path: '/register', builder: (c, s) => RegisterScreen()),
-      GoRoute(path: '/apply-driver', builder: (c, s) => ApplyDriverScreen()),
-      GoRoute(path: '/apply-vendor', builder: (c, s) => ApplyVendorScreen()),
+      GoRoute(
+        path: '/apply-driver',
+        builder: (c, s) => ApplyDriverScreen(initialVehicleType: (s.extra as Map<String, dynamic>?)?['vehicleType']),
+      ),
+      GoRoute(
+        path: '/apply-vendor',
+        builder: (c, s) => ApplyVendorScreen(initialCategory: (s.extra as Map<String, dynamic>?)?['category']),
+      ),
 
       // Espace Client
       GoRoute(path: '/client/home', builder: (c, s) => ClientHomeScreen()),
@@ -93,6 +99,7 @@ class AppRouter {
             phoneNumber: extra['phoneNumber'] ?? '',
             role: extra['role'] ?? '',
             calleeUid: extra['calleeUid'],
+            photoUrl: extra['photoUrl'],
           );
         },
       ),

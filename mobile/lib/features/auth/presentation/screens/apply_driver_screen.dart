@@ -11,13 +11,14 @@ import '../../../../core/widgets/primary_button.dart';
 /// Candidature livreur/chauffeur : documents envoyés directement sur le
 /// profil driver (pas de flux KYC séparé) — l'admin active depuis le dashboard.
 class ApplyDriverScreen extends StatefulWidget {
-  ApplyDriverScreen({super.key});
+  final String? initialVehicleType;
+  const ApplyDriverScreen({super.key, this.initialVehicleType});
   @override
   State<ApplyDriverScreen> createState() => _ApplyDriverScreenState();
 }
 
 class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
-  String _vehicleType = 'moto';
+  late String _vehicleType = widget.initialVehicleType ?? 'moto';
   final Map<String, File> _docs = {};
   bool _loading = false;
 

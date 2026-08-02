@@ -13,8 +13,9 @@ class ContactScreen extends StatelessWidget {
   final String phoneNumber;
   final String role; // "votre livreur", "votre client", etc.
   final String? calleeUid; // requis pour l'appel Livra (VoIP)
+  final String? photoUrl;
 
-  const ContactScreen({super.key, required this.name, required this.phoneNumber, required this.role, this.calleeUid});
+  const ContactScreen({super.key, required this.name, required this.phoneNumber, required this.role, this.calleeUid, this.photoUrl});
 
   Future<void> _callLivra(BuildContext context) async {
     if (calleeUid == null) {
@@ -41,7 +42,7 @@ class ContactScreen extends StatelessWidget {
   Future<void> _whatsapp() async {
     final digits = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '').replaceAll('+', '');
     final uri = Uri.parse('https://wa.me/$digits');
-    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -57,7 +58,8 @@ class ContactScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 44,
                 backgroundColor: AppColors.surfaceElevated,
-                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(fontSize: 32)),
+                backgroundImage: photoUrl != null ? NetworkImage(photoUrl!) : null,
+                child: photoUrl == null ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(fontSize: 32)) : null,
               ),
               const SizedBox(height: 16),
               Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

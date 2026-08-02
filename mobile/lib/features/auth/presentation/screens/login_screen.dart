@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/remote_logger.dart';
@@ -53,6 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await _credentialsStore.clear();
       }
+      // Signale à Android que la saisie est terminée avec succès — c'est ce
+      // qui déclenche le prompt système "Enregistrer le mot de passe ?".
+      TextInput.finishAutofillContext();
       // La redirection vers /client/home, /driver/home ou /vendor/dashboard
       // se fait automatiquement via RoleGate + AppRouter.redirect.
     } catch (e, stack) {
@@ -90,23 +94,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: _obscure,
-                onSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  hintText: 'Mot de passe',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.textSecondary),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
+              AutofillGroup(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.username, AutofillHints.email],
+                      decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscure,
+                      autofillHints: const [AutofillHints.password],
+                      onSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        hintText: 'Mot de passe',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.textSecondary),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 6),
