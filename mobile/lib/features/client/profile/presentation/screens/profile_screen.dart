@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/services/auth_service.dart';
@@ -20,11 +21,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _supportEmail = 'support@livra.app';
   String _supportPhone = '';
   String _supportWhatsapp = '';
+  // null = pas encore candidat, sinon 'pending' | 'active' | 'suspended' | 'rejected'
+  String? _vendorStatus;
+  String? _driverStatus;
 
   @override
   void initState() {
     super.initState();
     _loadSupportContacts();
+    _loadApplicationStatus();
+  }
+
+  Future<void> _loadApplicationStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final vendorSnap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
+    final driverSnap = await FirebaseFirestore.instance.collection('drivers').where('ownerId', isEqualTo: uid).limit(1).get();
+    if (mounted) {
+      setState(() {
+        _vendorStatus = vendorSnap.docs.isNotEmpty ? vendorSnap.docs.first.data()['status'] : null;
+        _driverStatus = driverSnap.docs.isNotEmpty ? driverSnap.docs.first.data()['status'] : null;
+      });
+    }
   }
 
   Future<void> _loadSupportContacts() async {
@@ -69,27 +87,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email copié.')));
   }
 
-  Widget _partnerButton(BuildContext context, String label, IconData icon, String route) {
+  static const _statusLabelsFr = {
+    'pending': 'Candidature en cours de vérification',
+    'active': 'Déjà activé',
+    'suspended': 'Compte suspendu',
+    'rejected': 'Candidature refusée — retenter',
+  };
+
+  Widget _partnerButton(BuildContext context, String label, IconData icon, String route, String? status) {
+    final disabled = status == 'pending' || status == 'active' || status == 'suspended';
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: status != null ? 60 : 52,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(colors: [AppColors.goldSoft, AppColors.gold], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          boxShadow: [BoxShadow(color: AppColors.gold.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5))],
+          gradient: disabled
+              ? null
+              : LinearGradient(colors: [AppColors.goldSoft, AppColors.gold], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          color: disabled ? AppColors.surfaceElevated : null,
+          boxShadow: disabled ? null : [BoxShadow(color: AppColors.gold.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5))],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => context.push(route),
-            child: Row(
+            onTap: disabled ? null : () => context.push(route),
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 18, color: Colors.black),
-                const SizedBox(width: 8),
-                Text(label, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 18, color: disabled ? AppColors.textSecondary : Colors.black),
+                    const SizedBox(width: 8),
+                    Text(label, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
+                  ],
+                ),
+                if (status != null)
+                  Text(_statusLabelsFr[status] ?? status, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black87, fontSize: 10.5)),
               ],
             ),
           ),
@@ -106,6 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await _loadSupportContacts();
+          await _loadApplicationStatus();
         },
         color: AppColors.gold,
         child: ListView(
@@ -147,9 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver'),
+          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver', _driverStatus),
           const SizedBox(height: 12),
-          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor'),
+          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor', _vendorStatus),
           const Divider(height: 28),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeController.instance.mode,
