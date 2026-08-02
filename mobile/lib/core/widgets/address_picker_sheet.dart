@@ -37,9 +37,10 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
   List<Map<String, dynamic>> _results = [];
   bool _searching = false;
   bool _locating = false;
+  bool _searchedOnce = false;
 
   Future<void> _search(String query) async {
-    setState(() => _searching = true);
+    setState(() { _searching = true; _searchedOnce = true; });
     try {
       final res = await _mapsService.searchAddress(query);
       setState(() => _results = res);
@@ -59,6 +60,29 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
           context,
           PickedAddress(lat: pos.latitude, lng: pos.longitude, label: 'Ma position actuelle'),
         );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Localisation indisponible : $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  /// Adresse introuvable sur la carte (ex: pas de nom de rue officiel) —
+  /// on garde quand même la position GPS actuelle comme coordonnée réelle,
+  /// mais avec le texte tapé par l'utilisateur comme repère ("près du
+  /// grand fromager", "en face de la pharmacie X"...), pour que le
+  /// livreur puisse le localiser sur le terrain même sans adresse formelle.
+  Future<void> _useTypedAsLandmark() async {
+    final text = _searchCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _locating = true);
+    try {
+      final pos = await LocationService().getCurrentPosition();
+      if (mounted) {
+        Navigator.pop(context, PickedAddress(lat: pos.latitude, lng: pos.longitude, label: text));
       }
     } catch (e) {
       if (mounted) {
@@ -123,7 +147,46 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
             Flexible(
               child: _searching
                   ? Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: AppColors.gold)))
-                  : ListView.builder(
+                  : (_searchedOnce && _results.isEmpty)
+                      ? SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  "Cette adresse n'a pas été trouvée sur la carte. Vous pouvez quand même la garder — elle sera enregistrée avec votre position actuelle, et ce texte servira de repère pour vous trouver.",
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: _locating ? null : _useTypedAsLandmark,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: BorderRadius.circular(12)),
+                                  child: Row(
+                                    children: [
+                                      _locating
+                                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                          : Icon(Icons.push_pin_outlined, color: AppColors.gold, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Utiliser "${_searchCtrl.text.trim()}" comme repère ici',
+                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
                       shrinkWrap: true,
                       itemCount: _results.length,
                       itemBuilder: (context, i) {
