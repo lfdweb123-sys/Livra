@@ -1,5 +1,6 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 import { sendNotification } from '../../../../../lib/fcm';
+import { notifyOrderPaid } from '../../../../../lib/matching';
 
 // Webhook Verzapay confirmé: payload plat, pas de wrapper "data", pas de signature
 // cryptographique (pattern confirmé empiriquement sur les autres intégrations Verzapay).
@@ -63,6 +64,13 @@ export async function POST(req) {
           type: 'payment_confirmed',
           relatedId: targetId,
         });
+      }
+      if (payment.orderId) {
+        try {
+          await notifyOrderPaid(payment.orderId);
+        } catch (e) {
+          console.error('[NOTIFY_ORDER_PAID_ERROR]', payment.orderId, e.message);
+        }
       }
     }
   } else if (event.type === 'payment.failed') {

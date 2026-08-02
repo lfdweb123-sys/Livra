@@ -2,7 +2,6 @@ import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeOrderBreakdown, computeDeliveryFee } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
-import { notifyNearbyDrivers, notifyVendor } from '../../../lib/matching';
 import { logActivity } from '../../../lib/activityLog';
 
 // POST /api/orders — crée une commande, prix toujours recalculé serveur
@@ -77,30 +76,10 @@ export async function POST(req) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  // Notification immédiate — même app fermée — du côté concerné :
-  // le vendeur pour une commande nourriture (à préparer), les livreurs à
-  // proximité pour un colis (disponible tout de suite, pas de préparation).
-  if (type === 'nourriture' && vendorId) {
-    const vendorSnap = await db.collection('vendors').doc(vendorId).get();
-    if (vendorSnap.exists) {
-      await notifyVendor({
-        vendorOwnerId: vendorSnap.data().ownerId,
-        title: 'Nouvelle commande reçue',
-        body: `Une nouvelle commande de ${priceBreakdown.subtotal} XOF vient d'arriver.`,
-        type: 'new_order',
-        relatedId: orderRef.id,
-      });
-    }
-  } else if (type === 'colis') {
-    await notifyNearbyDrivers({
-      pickupLat: vendorGeopoint.latitude,
-      pickupLng: vendorGeopoint.longitude,
-      title: 'Nouvelle livraison disponible',
-      body: `Un colis à récupérer, ${priceBreakdown.deliveryFee} XOF de frais.`,
-      type: 'new_delivery',
-      relatedId: orderRef.id,
-    });
-  }
+  // Notification vendeur/livreurs déplacée volontairement APRÈS paiement
+  // confirmé (voir notifyOrderPaid dans lib/matching.js, appelée depuis le
+  // webhook de paiement, le paiement wallet, ou le choix "espèces") — pour
+  // ne jamais faire préparer/livrer une commande jamais réellement payée.
 
   await logActivity('order_created', `Commande ${type} créée — ${priceBreakdown.total} XOF`, { orderId: orderRef.id, clientId: auth.uid });
 

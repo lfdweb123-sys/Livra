@@ -2,7 +2,7 @@ import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
 import { sendTransactionalEmail, orderDeliveredEmail } from '../../../../lib/brevo';
-import { notifyNearbyDrivers } from '../../../../lib/matching';
+import { notifyNearbyDrivers, notifyOrderPaid } from '../../../../lib/matching';
 
 const VENDOR_ALLOWED = ['accepted', 'preparing', 'picked_up'];
 const DRIVER_ALLOWED = ['picked_up', 'delivering', 'delivered'];
@@ -62,10 +62,26 @@ export async function PATCH(req, { params }) {
         type: 'payment_confirmed',
         relatedId: params.id,
       });
+      try {
+        await notifyOrderPaid(params.id);
+      } catch (e) {
+        console.error('[NOTIFY_ORDER_PAID_ERROR]', params.id, e.message);
+      }
       return Response.json({ ok: true });
     }
 
     await ref.update({ paymentMethod, updatedAt: FieldValue.serverTimestamp() });
+    if (paymentMethod === 'cash') {
+      // Espèces à la livraison : il n'y aura pas d'autre événement de
+      // "paiement confirmé" avant la livraison elle-même, donc c'est ici
+      // qu'on informe le vendeur/les livreurs pour ne pas les faire
+      // attendre indéfiniment un paiement qui n'arrivera qu'à la fin.
+      try {
+        await notifyOrderPaid(params.id);
+      } catch (e) {
+        console.error('[NOTIFY_ORDER_PAID_ERROR]', params.id, e.message);
+      }
+    }
     return Response.json({ ok: true });
   }
 

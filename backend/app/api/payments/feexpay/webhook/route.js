@@ -1,5 +1,6 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 import { sendNotification } from '../../../../../lib/fcm';
+import { notifyOrderPaid } from '../../../../../lib/matching';
 
 // FeexPay callback_info == notre paymentId (pattern déjà utilisé sur les autres projets)
 export async function POST(req) {
@@ -81,5 +82,12 @@ async function finalizePayment(payment) {
       type: 'payment_confirmed',
       relatedId: targetId,
     });
+  }
+  if (payment.orderId) {
+    try {
+      await notifyOrderPaid(payment.orderId);
+    } catch (e) {
+      console.error('[NOTIFY_ORDER_PAID_ERROR]', payment.orderId, e.message);
+    }
   }
 }
