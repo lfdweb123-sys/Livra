@@ -72,6 +72,19 @@ class AppRouter {
 
       if (!loggedIn && !loggingIn && !onboarding) return '/login';
       if (loggedIn && loggingIn) return _homeForRole(currentRole);
+
+      // Vendor/driver ne doivent JAMAIS voir les pages client (achat, panier,
+      // course, recherche...) — source de confusion. /client/profile reste
+      // partagé par tous les rôles (c'est le vrai Profil de chacun), donc
+      // exclu de cette garde. Peu importe comment on y arrive (lien resté
+      // en mémoire, deep link, ancienne page ouverte...), on est renvoyé
+      // d'office vers son propre tableau de bord.
+      if (loggedIn && (currentRole == UserRole.vendor || currentRole == UserRole.driver)) {
+        final loc = state.matchedLocation;
+        final isClientOnlyPage = loc.startsWith('/client/') && loc != '/client/profile';
+        if (isClientOnlyPage) return _homeForRole(currentRole);
+      }
+
       return null;
     },
     routes: [
