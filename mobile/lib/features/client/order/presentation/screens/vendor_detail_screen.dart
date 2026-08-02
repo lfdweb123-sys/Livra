@@ -5,6 +5,8 @@ import '../../../../../core/models/product_model.dart';
 import '../../../../../core/models/vendor_model.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
+import '../../../../../core/widgets/app_bottom_sheet.dart';
+import '../../../../../core/widgets/primary_button.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
@@ -39,6 +41,65 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
 
   num get _total => _cart.entries.fold(0, (sum, e) => sum + (_catalog[e.key]?.price ?? 0) * e.value);
 
+  /// Détail produit — image en grand + description, avec le même contrôle
+  /// de quantité que dans la liste.
+  void _showProductDetail(ProductModel p) {
+    showAppBottomSheet(
+      context,
+      child: StatefulBuilder(builder: (context, setSheetState) {
+        final qty = _cart[p.id] ?? 0;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (p.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(p.imageUrl!, height: 200, width: double.infinity, fit: BoxFit.cover),
+              ),
+            const SizedBox(height: 14),
+            Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 6),
+            if (p.description.isNotEmpty)
+              Text(p.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5)),
+            const SizedBox(height: 10),
+            Text('${p.price} XOF', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 18),
+            if (qty == 0)
+              PrimaryButton(
+                label: 'Ajouter au panier',
+                onPressed: () {
+                  setState(() => _cart[p.id] = 1);
+                  setSheetState(() {});
+                },
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: () {
+                      setState(() => _cart[p.id] = qty - 1 <= 0 ? 0 : qty - 1);
+                      setSheetState(() {});
+                    },
+                  ),
+                  Text('$qty', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: () {
+                      setState(() => _cart[p.id] = qty + 1);
+                      setSheetState(() {});
+                    },
+                  ),
+                ],
+              ),
+          ],
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,25 +116,40 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 if (i == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.surfaceElevated,
-                          backgroundImage: _vendor?.logoUrl != null ? NetworkImage(_vendor!.logoUrl!) : null,
-                          child: _vendor?.logoUrl == null ? Icon(Icons.storefront_outlined, color: AppColors.textSecondary) : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_vendor?.businessName ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              if (_vendor?.address != null)
-                                Text(_vendor!.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                            ],
+                        if (_vendor?.coverImageUrl != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(_vendor!.coverImageUrl!, height: 140, width: double.infinity, fit: BoxFit.cover),
                           ),
+                        if (_vendor?.coverImageUrl != null) const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: AppColors.surfaceElevated,
+                              backgroundImage: _vendor?.logoUrl != null ? NetworkImage(_vendor!.logoUrl!) : null,
+                              child: _vendor?.logoUrl == null ? Icon(Icons.storefront_outlined, color: AppColors.textSecondary) : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_vendor?.businessName ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  if (_vendor?.address != null)
+                                    Text(_vendor!.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        if (_vendor?.description != null && _vendor!.description!.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(_vendor!.description!, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        ],
                       ],
                     ),
                   );
@@ -82,10 +158,20 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 final qty = _cart[p.id] ?? 0;
                 return Card(
                   margin: EdgeInsets.only(bottom: 12),
-                  child: Padding(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _showProductDetail(p),
+                    child: Padding(
                     padding: EdgeInsets.all(12),
                     child: Row(
                       children: [
+                        if (p.imageUrl != null) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(p.imageUrl!, width: 56, height: 56, fit: BoxFit.cover),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,6 +195,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             ],
                           ),
                       ],
+                    ),
                     ),
                   ),
                 );

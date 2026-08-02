@@ -11,6 +11,8 @@ class VendorModel {
   final String address;
   final String? coverImageUrl;
   final String? logoUrl;
+  final String? description;
+  final num? deliveryFee;
   final double rating;
   final bool isOpen;
 
@@ -25,6 +27,8 @@ class VendorModel {
     required this.address,
     this.coverImageUrl,
     this.logoUrl,
+    this.description,
+    this.deliveryFee,
     this.rating = 0,
     this.isOpen = false,
   });
@@ -40,6 +44,8 @@ class VendorModel {
         address: map['address'] ?? '',
         coverImageUrl: map['coverImageUrl'],
         logoUrl: map['logoUrl'],
+        description: map['description'],
+        deliveryFee: map['deliveryFee'],
         rating: (map['rating'] ?? 0).toDouble(),
         isOpen: map['isOpen'] ?? false,
       );

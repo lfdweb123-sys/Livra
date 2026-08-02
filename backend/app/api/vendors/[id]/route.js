@@ -28,7 +28,7 @@ export async function PATCH(req, { params }) {
     if (body.status === 'rejected' && body.rejectionReason) update.rejectionReason = body.rejectionReason;
     if (body.commission !== undefined) update.commission = body.commission;
   } else if (auth.uid === vendor.ownerId) {
-    ['businessName', 'address', 'coverImageUrl', 'logoUrl', 'isOpen', 'description'].forEach((k) => {
+    ['businessName', 'address', 'coverImageUrl', 'logoUrl', 'isOpen', 'description', 'deliveryFee'].forEach((k) => {
       if (body[k] !== undefined) update[k] = body[k];
     });
   } else {

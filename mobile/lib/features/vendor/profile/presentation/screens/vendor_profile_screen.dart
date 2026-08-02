@@ -18,6 +18,7 @@ class VendorProfileScreen extends StatefulWidget {
 class _VendorProfileScreenState extends State<VendorProfileScreen> {
   String? _vendorId;
   final _descCtrl = TextEditingController();
+  final _deliveryFeeCtrl = TextEditingController();
   String? _logoUrl;
   String? _coverImageUrl;
   File? _newLogo;
@@ -42,6 +43,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     setState(() {
       _vendorId = snap.docs.first.id;
       _descCtrl.text = data['description'] ?? '';
+      _deliveryFeeCtrl.text = data['deliveryFee'] != null ? '${data['deliveryFee']}' : '';
       _logoUrl = data['logoUrl'];
       _coverImageUrl = data['coverImageUrl'];
       _loading = false;
@@ -66,7 +68,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     setState(() => _saving = true);
     try {
       final upload = UploadService();
-      final data = <String, dynamic>{'description': _descCtrl.text.trim()};
+      final data = <String, dynamic>{
+        'description': _descCtrl.text.trim(),
+        if (_deliveryFeeCtrl.text.trim().isNotEmpty) 'deliveryFee': num.tryParse(_deliveryFeeCtrl.text.trim()),
+      };
       if (_newLogo != null) data['logoUrl'] = await upload.uploadFile(_newLogo!, folder: 'vendors');
       if (_newCover != null) data['coverImageUrl'] = await upload.uploadFile(_newCover!, folder: 'vendors');
       await ApiClient.instance.patch('/api/vendors/$_vendorId', data: data);
@@ -126,6 +131,14 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
             controller: _descCtrl,
             maxLines: 4,
             decoration: const InputDecoration(hintText: 'Décrivez votre boutique/restaurant en quelques mots...'),
+          ),
+          const SizedBox(height: 16),
+          Text('Frais de livraison', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _deliveryFeeCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(hintText: 'Montant fixe en XOF (laisser vide = calcul automatique à la distance)'),
           ),
           const SizedBox(height: 24),
           PrimaryButton(label: 'Enregistrer', onPressed: _save, loading: _saving),

@@ -19,6 +19,7 @@ export async function POST(req) {
 
   let vendorCommissionPercent = 0;
   let vendorGeopoint = pickupAddress?.geopoint;
+  let vendorDeliveryFee = null;
 
   if (type === 'nourriture') {
     const vendorSnap = await db.collection('vendors').doc(vendorId).get();
@@ -27,6 +28,7 @@ export async function POST(req) {
     }
     vendorCommissionPercent = vendorSnap.data().commission || 0;
     vendorGeopoint = vendorSnap.data().position.geopoint;
+    vendorDeliveryFee = vendorSnap.data().deliveryFee;
 
     // recalcule les prix produits depuis Firestore, jamais depuis le payload client
     const productsSnap = await db.collection(`vendors/${vendorId}/products`).get();
@@ -40,7 +42,13 @@ export async function POST(req) {
     }
   }
 
-  const deliveryFee = computeDeliveryFee('coursier', vendorGeopoint, deliveryAddress.geopoint);
+  // Nourriture : le vendeur peut fixer son propre frais de livraison (voir
+  // profil boutique) — sinon on retombe sur le calcul à la distance comme
+  // pour un colis. Un colis, lui, reste TOUJOURS calculé à la distance.
+  const deliveryFee =
+    type === 'nourriture' && typeof vendorDeliveryFee === 'number' && vendorDeliveryFee >= 0
+      ? vendorDeliveryFee
+      : computeDeliveryFee('coursier', vendorGeopoint, deliveryAddress.geopoint);
   const priceBreakdown =
     type === 'nourriture'
       ? computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee })
