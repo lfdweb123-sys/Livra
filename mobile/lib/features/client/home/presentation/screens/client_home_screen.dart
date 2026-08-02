@@ -73,33 +73,48 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => Dialog(
         backgroundColor: AppColors.surface,
-        icon: Icon(Icons.handshake_rounded, color: AppColors.gold, size: 36),
-        title: const Text('Devenez partenaire Livra', textAlign: TextAlign.center),
-        content: Text(
-          'Livreur, chauffeur ou vendeur ? Gagnez un revenu complémentaire en rejoignant Livra.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.handshake_rounded, color: AppColors.gold, size: 40),
+              const SizedBox(height: 16),
+              const Text('Devenez partenaire Livra', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              Text(
+                'Livreur, chauffeur ou vendeur ? Gagnez un revenu complémentaire en rejoignant Livra.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  context.push('/apply-driver');
+                },
+                child: const Text('Devenir livreur'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  context.push('/apply-vendor');
+                },
+                child: const Text('Devenir vendeur'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('Plus tard', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
         ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Plus tard')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.push('/apply-driver');
-            },
-            child: const Text('Devenir livreur'),
-          ),
-          OutlinedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.push('/apply-vendor');
-            },
-            child: const Text('Devenir vendeur'),
-          ),
-        ],
       ),
     );
   }

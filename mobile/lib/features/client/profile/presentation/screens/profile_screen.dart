@@ -94,8 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'rejected': 'Candidature refusée — retenter',
   };
 
-  Widget _partnerButton(BuildContext context, String label, IconData icon, String route, String? status) {
-    final disabled = status == 'pending' || status == 'active' || status == 'suspended';
+  Widget _partnerButton(BuildContext context, String label, IconData icon, String route, String? status, String dashboardRoute) {
+    final disabled = status == 'pending' || status == 'suspended';
+    final goToDashboard = status == 'active';
     return SizedBox(
       width: double.infinity,
       height: status != null ? 60 : 52,
@@ -112,16 +113,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: disabled ? null : () => context.push(route),
+            onTap: disabled ? null : () => context.push(goToDashboard ? dashboardRoute : route),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 18, color: disabled ? AppColors.textSecondary : Colors.black),
+                    Icon(goToDashboard ? Icons.dashboard_rounded : icon, size: 18, color: disabled ? AppColors.textSecondary : Colors.black),
                     const SizedBox(width: 8),
-                    Text(label, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
+                    Text(goToDashboard ? 'Aller à mon espace' : label, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
                   ],
                 ),
                 if (status != null)
@@ -184,9 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver', _driverStatus),
+          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver', _driverStatus, '/driver/home'),
           const SizedBox(height: 12),
-          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor', _vendorStatus),
+          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor', _vendorStatus, '/vendor/dashboard'),
           const Divider(height: 28),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeController.instance.mode,

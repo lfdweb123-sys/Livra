@@ -105,7 +105,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                   ),
                 )),
             SizedBox(height: 24),
-            PrimaryButton(label: 'Envoyer ma candidature', onPressed: _submit, loading: _loading),
+            PrimaryButton(label: 'Envoyer', onPressed: _submit, loading: _loading),
           ],
         ),
       ),

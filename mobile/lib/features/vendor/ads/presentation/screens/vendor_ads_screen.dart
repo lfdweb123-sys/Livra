@@ -31,19 +31,32 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
   }
 
   Future<void> _init() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    final snap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
-    if (snap.docs.isEmpty) return;
-    setState(() => _vendorId = snap.docs.first.id);
-    final productsSnap = await FirebaseFirestore.instance.collection('vendors/$_vendorId/products').where('isAvailable', isEqualTo: true).get();
-    setState(() => _products = productsSnap.docs.map((d) => ProductModel.fromMap(d.id, d.data())).toList());
-    _loadCampaigns();
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final snap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
+      if (snap.docs.isEmpty) {
+        if (mounted) setState(() { _campaigns = []; _error = "Aucune boutique associée à ce compte."; });
+        return;
+      }
+      setState(() => _vendorId = snap.docs.first.id);
+      final productsSnap = await FirebaseFirestore.instance.collection('vendors/$_vendorId/products').where('isAvailable', isEqualTo: true).get();
+      setState(() => _products = productsSnap.docs.map((d) => ProductModel.fromMap(d.id, d.data())).toList());
+      await _loadCampaigns();
+    } catch (e) {
+      if (mounted) setState(() { _campaigns = []; _error = 'Erreur de chargement : $e'; });
+    }
   }
+
+  String? _error;
 
   Future<void> _loadCampaigns() async {
     if (_vendorId == null) return;
-    final res = await ApiClient.instance.get('/api/ads/campaigns', query: {'vendorId': _vendorId!});
-    setState(() => _campaigns = res['items']);
+    try {
+      final res = await ApiClient.instance.get('/api/ads/campaigns', query: {'vendorId': _vendorId!});
+      if (mounted) setState(() { _campaigns = res['items']; _error = null; });
+    } catch (e) {
+      if (mounted) setState(() { _campaigns = []; _error = 'Erreur de chargement : $e'; });
+    }
   }
 
   Future<void> _startCampaign() async {
@@ -232,7 +245,9 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
       ),
       body: _campaigns == null
           ? const SkeletonCardList()
-          : _campaigns!.isEmpty
+          : (_campaigns!.isEmpty && _error != null)
+              ? EmptyState(icon: Icons.error_outline_rounded, message: _error!)
+              : _campaigns!.isEmpty
               ? const EmptyState(icon: Icons.campaign_outlined, message: 'Aucune campagne pour le moment.\nMettez vos meilleurs produits en avant sur l\'accueil.')
               : RefreshIndicator(
                   onRefresh: _loadCampaigns,
