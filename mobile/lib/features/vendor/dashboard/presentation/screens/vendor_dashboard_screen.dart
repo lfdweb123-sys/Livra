@@ -18,7 +18,8 @@ class VendorDashboardScreen extends StatefulWidget {
 class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   Map<String, dynamic>? _vendor;
   String? _vendorId;
-  bool _checkedOnce = false;
+  bool _checkedNoApplication = false;
+  bool _popupShown = false;
 
   @override
   void initState() {
@@ -31,18 +32,59 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     if (uid == null) return;
     FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).snapshots().listen((snap) {
       if (snap.docs.isEmpty) {
-        // Rôle "vendor" mais candidature jamais terminée (app fermée en
-        // cours de route) — sans ça, l'écran restait bloqué en chargement
-        // indéfiniment, jamais d'erreur, jamais de sortie possible.
-        if (_checkedOnce && mounted) context.go('/apply-vendor');
-        setState(() => _checkedOnce = true);
+        setState(() { _checkedNoApplication = true; _vendor = null; });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowIdentityPopup());
         return;
       }
       setState(() {
         _vendorId = snap.docs.first.id;
         _vendor = snap.docs.first.data();
+        _checkedNoApplication = false;
       });
     });
+  }
+
+  void _maybeShowIdentityPopup() {
+    if (_popupShown || !mounted) return;
+    _popupShown = true;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.badge_outlined, color: AppColors.gold, size: 40),
+              const SizedBox(height: 16),
+              const Text('Vérification d\'identité requise', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              Text(
+                'Votre compte vendeur est créé. Il ne reste qu\'à envoyer vos documents pour l\'activer.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  context.push('/apply-vendor');
+                },
+                child: const Text('Compléter maintenant'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('Plus tard', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _toggleOpen(bool value) async {
@@ -52,7 +94,35 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_vendor == null) return Scaffold(body: SkeletonCardList());
+    if (_vendor == null && !_checkedNoApplication) return Scaffold(body: SkeletonCardList());
+
+    if (_vendor == null) {
+      // Rôle "vendor" mais aucune candidature envoyée pour l'instant — page
+      // d'accueil normale avec invite claire, pas de redirection forcée.
+      return Scaffold(
+        appBar: AppBar(title: const Text('Espace vendeur'), actions: [notificationBellAction(context)]),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.badge_outlined, size: 48, color: AppColors.gold),
+              const SizedBox(height: 16),
+              const Text('Vérification d\'identité requise', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                'Envoyez vos documents pour activer votre boutique et accéder à votre tableau de bord.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: () => context.push('/apply-vendor'), child: const Text('Envoyer mes documents')),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_vendor!['status'] != 'active') {
       return Scaffold(
         appBar: AppBar(title: Text('Espace vendeur'), actions: [notificationBellAction(context)]),

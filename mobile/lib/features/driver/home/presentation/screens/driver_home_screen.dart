@@ -31,7 +31,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   StreamSubscription? _geoRidesSub;
   List<Map<String, dynamic>> _incomingOrders = [];
   List<Map<String, dynamic>> _incomingRides = [];
-  bool _checkedOnce = false;
+  bool _checkedNoApplication = false;
+  bool _popupShown = false;
 
   @override
   void initState() {
@@ -49,11 +50,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         .snapshots()
         .listen((snap) {
       if (snap.docs.isEmpty) {
-        // Rôle "driver" mais candidature jamais terminée — sans ça, l'écran
-        // affichait indéfiniment "en attente de validation" alors qu'aucune
-        // candidature n'a même été envoyée, sans issue possible.
-        if (_checkedOnce && mounted) context.go('/apply-driver');
-        setState(() => _checkedOnce = true);
+        setState(() { _checkedNoApplication = true; _driverId = null; });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowIdentityPopup());
         return;
       }
       final doc = snap.docs.first;
@@ -62,8 +60,52 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _driverStatus = doc.data()['status'] ?? 'pending';
         _online = doc.data()['isOnline'] ?? false;
         _vehicleType = doc.data()['vehicleType'] ?? 'moto';
+        _checkedNoApplication = false;
       });
     });
+  }
+
+  void _maybeShowIdentityPopup() {
+    if (_popupShown || !mounted) return;
+    _popupShown = true;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.badge_outlined, color: AppColors.gold, size: 40),
+              const SizedBox(height: 16),
+              const Text('Vérification d\'identité requise', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              Text(
+                'Votre compte livreur est créé. Il ne reste qu\'à envoyer vos documents pour l\'activer.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  context.push('/apply-driver');
+                },
+                child: const Text('Compléter maintenant'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('Plus tard', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _toggleOnline(bool value) async {
@@ -163,7 +205,33 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_driverId == null) return Scaffold(body: SkeletonCardList());
+    if (_driverId == null && !_checkedNoApplication) return Scaffold(body: SkeletonCardList());
+
+    if (_driverId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Espace livreur'), actions: [notificationBellAction(context)]),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.badge_outlined, size: 48, color: AppColors.gold),
+              const SizedBox(height: 16),
+              const Text('Vérification d\'identité requise', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                'Envoyez vos documents pour activer votre compte et accéder à votre tableau de bord.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: () => context.push('/apply-driver'), child: const Text('Envoyer mes documents')),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_driverStatus != 'active') {
       return Scaffold(
         appBar: AppBar(title: Text('Espace livreur'), actions: [notificationBellAction(context)]),
