@@ -55,6 +55,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() { _loading = true; _error = null; });
     try {
+      final role = switch (_intent) {
+        _Intent.client => 'client',
+        _Intent.resto || _Intent.shop => 'vendor',
+        _Intent.livreurColis || _Intent.taxiMoto || _Intent.chauffeurVoiture => 'driver',
+      };
       await _authService.registerClient(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text,
@@ -62,6 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneCtrl.text.trim(),
         country: _country,
         city: _cityCtrl.text.trim(),
+        role: role,
       );
       if (!mounted) return;
       TextInput.finishAutofillContext();

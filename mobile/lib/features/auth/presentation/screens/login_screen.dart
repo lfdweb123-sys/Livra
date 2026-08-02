@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/remote_logger.dart';
 import '../../../../core/services/credentials_store.dart';
+import '../../../../core/services/api/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/app_logo.dart';
+import '../../../../core/widgets/phone_number_field.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,10 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   final _credentialsStore = CredentialsStore();
   final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
   bool _rememberMe = false;
+  bool _usePhone = false;
   String? _error;
 
   @override
@@ -42,15 +46,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (_emailCtrl.text.trim().isEmpty || _passwordCtrl.text.isEmpty) {
-      setState(() => _error = 'Renseignez votre email et votre mot de passe.');
+    final identifier = _usePhone ? _phoneCtrl.text.trim() : _emailCtrl.text.trim();
+    if (identifier.isEmpty || _passwordCtrl.text.isEmpty) {
+      setState(() => _error = _usePhone ? 'Renseignez votre numéro et votre mot de passe.' : 'Renseignez votre email et votre mot de passe.');
       return;
     }
     setState(() { _loading = true; _error = null; });
     try {
-      await _authService.login(email: _emailCtrl.text.trim(), password: _passwordCtrl.text);
+      String email;
+      if (_usePhone) {
+        // Le téléphone n'est pas un identifiant Firebase Auth ici — on
+        // retrouve d'abord l'email associé, puis la connexion se fait
+        // normalement avec ce mot de passe (jamais transmis à cette étape).
+        final res = await ApiClient.instance.post('/api/auth/lookup-phone', data: {'phone': identifier});
+        email = res['email'];
+      } else {
+        email = identifier;
+      }
+      await _authService.login(email: email, password: _passwordCtrl.text);
       if (_rememberMe) {
-        await _credentialsStore.save(_emailCtrl.text.trim(), _passwordCtrl.text);
+        await _credentialsStore.save(email, _passwordCtrl.text);
       } else {
         await _credentialsStore.clear();
       }
@@ -61,7 +76,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // se fait automatiquement via RoleGate + AppRouter.redirect.
     } catch (e, stack) {
       RemoteLogger.log(context: 'login', error: e, stack: stack);
-      setState(() => _error = RemoteLogger.readableAuthError(e));
+      final msg = e.toString().contains('no_account_for_this_phone')
+          ? 'Aucun compte associé à ce numéro.'
+          : RemoteLogger.readableAuthError(e);
+      setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -70,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -93,16 +112,38 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
+              Center(
+                child: SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Email'), icon: Icon(Icons.mail_outline_rounded, size: 16)),
+                    ButtonSegment(value: true, label: Text('Téléphone'), icon: Icon(Icons.phone_outlined, size: 16)),
+                  ],
+                  selected: {_usePhone},
+                  onSelectionChanged: (s) => setState(() => _usePhone = s.first),
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected) ? AppColors.gold : AppColors.surfaceElevated,
+                    ),
+                    foregroundColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected) ? Colors.black : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               AutofillGroup(
                 child: Column(
                   children: [
-                    TextField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.username, AutofillHints.email],
-                      decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-                    ),
+                    if (_usePhone)
+                      PhoneNumberField(onChanged: (v) => _phoneCtrl.text = v)
+                    else
+                      TextField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                      ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _passwordCtrl,

@@ -18,6 +18,7 @@ class VendorDashboardScreen extends StatefulWidget {
 class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   Map<String, dynamic>? _vendor;
   String? _vendorId;
+  bool _checkedOnce = false;
 
   @override
   void initState() {
@@ -29,7 +30,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).snapshots().listen((snap) {
-      if (snap.docs.isEmpty) return;
+      if (snap.docs.isEmpty) {
+        // Rôle "vendor" mais candidature jamais terminée (app fermée en
+        // cours de route) — sans ça, l'écran restait bloqué en chargement
+        // indéfiniment, jamais d'erreur, jamais de sortie possible.
+        if (_checkedOnce && mounted) context.go('/apply-vendor');
+        setState(() => _checkedOnce = true);
+        return;
+      }
       setState(() {
         _vendorId = snap.docs.first.id;
         _vendor = snap.docs.first.data();

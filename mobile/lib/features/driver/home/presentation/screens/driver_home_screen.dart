@@ -31,6 +31,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   StreamSubscription? _geoRidesSub;
   List<Map<String, dynamic>> _incomingOrders = [];
   List<Map<String, dynamic>> _incomingRides = [];
+  bool _checkedOnce = false;
 
   @override
   void initState() {
@@ -47,7 +48,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         .limit(1)
         .snapshots()
         .listen((snap) {
-      if (snap.docs.isEmpty) return;
+      if (snap.docs.isEmpty) {
+        // Rôle "driver" mais candidature jamais terminée — sans ça, l'écran
+        // affichait indéfiniment "en attente de validation" alors qu'aucune
+        // candidature n'a même été envoyée, sans issue possible.
+        if (_checkedOnce && mounted) context.go('/apply-driver');
+        setState(() => _checkedOnce = true);
+        return;
+      }
       final doc = snap.docs.first;
       setState(() {
         _driverId = doc.id;

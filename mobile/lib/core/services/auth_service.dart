@@ -15,11 +15,12 @@ class AuthService {
     required String phone,
     required String country,
     required String city,
+    String role = 'client',
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
     await _db.collection('users').doc(cred.user!.uid).set({
       'uid': cred.user!.uid,
-      'role': 'client',
+      'role': role,
       'name': name,
       'phone': phone,
       'email': email,
