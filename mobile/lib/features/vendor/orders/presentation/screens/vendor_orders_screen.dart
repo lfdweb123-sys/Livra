@@ -33,6 +33,15 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   }
 
   static const _next = {'pending': 'accepted', 'accepted': 'preparing', 'preparing': 'picked_up'};
+  static const _statusLabelsFr = {
+    'pending': 'En attente',
+    'accepted': 'Acceptée',
+    'preparing': 'En préparation',
+    'picked_up': 'Prête, en attente de collecte',
+    'delivering': 'En livraison',
+    'delivered': 'Livrée',
+    'cancelled': 'Annulée',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -58,10 +67,10 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Commande ${o['id'].toString().substring(0, 6)}', style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text('${o['priceBreakdown']?['subtotal'] ?? 0} XOF — ${o['status']}', style: TextStyle(color: AppColors.textSecondary)),
+                              Text('${o['priceBreakdown']?['subtotal'] ?? 0} XOF — ${_statusLabelsFr[o['status']] ?? o['status']}', style: TextStyle(color: AppColors.textSecondary)),
                               if (next != null) ...[
                                 SizedBox(height: 8),
-                                ElevatedButton(onPressed: () => _advance(o['id'], next), child: Text('Marquer: $next')),
+                                ElevatedButton(onPressed: () => _advance(o['id'], next), child: Text('Marquer : ${_statusLabelsFr[next] ?? next}')),
                               ],
                             ],
                           ),

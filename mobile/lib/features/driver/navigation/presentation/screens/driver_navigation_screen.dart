@@ -131,6 +131,19 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     super.dispose();
   }
 
+  static const _statusLabelsFr = {
+    'pending': 'En attente',
+    'accepted': 'Acceptée',
+    'preparing': 'En préparation',
+    'picked_up': 'Récupérée',
+    'delivering': 'En livraison',
+    'arriving': 'Chauffeur en approche',
+    'in_progress': 'En cours',
+    'delivered': 'Livrée',
+    'completed': 'Terminée',
+    'cancelled': 'Annulée',
+  };
+
   @override
   Widget build(BuildContext context) {
     if (_target == null) return Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.gold)));
@@ -197,7 +210,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Statut actuel: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Statut actuel : ${_statusLabelsFr[status] ?? status}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 if (_clientPhone != null) ...[
                   SizedBox(
@@ -216,7 +229,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                   const SizedBox(height: 12),
                 ],
                 if (nextStatus != null)
-                  PrimaryButton(label: 'Marquer: $nextStatus', onPressed: () => _advanceStatus(nextStatus)),
+                  PrimaryButton(label: 'Marquer : ${_statusLabelsFr[nextStatus] ?? nextStatus}', onPressed: () => _advanceStatus(nextStatus)),
               ],
             ),
           ),

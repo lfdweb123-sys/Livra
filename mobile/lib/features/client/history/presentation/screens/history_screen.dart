@@ -7,6 +7,7 @@ import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
+import '../../../../../core/constants/status_labels.dart';
 
 class HistoryScreen extends StatefulWidget {
   HistoryScreen({super.key});
@@ -62,7 +63,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                           margin: EdgeInsets.only(bottom: 10),
                           child: ListTile(
                             title: Text('${o['type']} — ${o['priceBreakdown']?['total'] ?? '-'} XOF'),
-                            subtitle: Text(o['status']),
+                            subtitle: Text(statusLabelFr(o['status'])),
                             onTap: () => context.push('/client/tracking/order/${o['id']}'),
                           ),
                         );
@@ -85,7 +86,7 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                           margin: EdgeInsets.only(bottom: 10),
                           child: ListTile(
                             title: Text('${r['vehicleType']} — ${r['price']} XOF'),
-                            subtitle: Text(r['status']),
+                            subtitle: Text(statusLabelFr(r['status'])),
                             onTap: () => context.push('/client/tracking/ride/${r['id']}'),
                           ),
                         );
