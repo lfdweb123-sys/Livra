@@ -29,6 +29,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   String? _driverPhone;
   String? _driverUid;
   String? _driverPhotoUrl;
+  double _driverRating = 0;
   StreamSubscription? _sub;
   StreamSubscription? _driverSub;
 
@@ -76,6 +77,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
       }
       if (_driverPhotoUrl != driverData['photoUrl'] && mounted) {
         setState(() => _driverPhotoUrl = driverData['photoUrl']);
+      }
+      if (_driverRating != driverData['rating'] && mounted) {
+        setState(() => _driverRating = (driverData['rating'] ?? 0).toDouble());
       }
       if (_driverName == null && driverData['ownerId'] != null) {
         final userSnap = await _db.collection('users').doc(driverData['ownerId']).get();
@@ -187,7 +191,22 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         child: _driverPhotoUrl == null ? Icon(Icons.person_outline_rounded, color: AppColors.textSecondary) : null,
                       ),
                       const SizedBox(width: 10),
-                      Expanded(child: Text(_driverName ?? 'Votre livreur', style: const TextStyle(fontWeight: FontWeight.w600))),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_driverName ?? 'Votre livreur', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            if (_driverRating > 0)
+                              Row(
+                                children: [
+                                  Icon(Icons.star_rounded, color: AppColors.gold, size: 14),
+                                  const SizedBox(width: 2),
+                                  Text(_driverRating.toStringAsFixed(1), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),

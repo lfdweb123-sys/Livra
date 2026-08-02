@@ -42,6 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordCtrl.text = saved.password;
         _rememberMe = true;
       });
+      // Les identifiants sont déjà là et complets — pas besoin de faire
+      // retaper quoi que ce soit, on lance la connexion directement.
+      await _submit();
     }
   }
 
