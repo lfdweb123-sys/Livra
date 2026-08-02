@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/review_sheet.dart';
 
 /// Tracking live : le marker interpole entre l'ancienne et la nouvelle
 /// position du chauffeur au lieu de sauter, via un TweenAnimationBuilder
@@ -38,10 +39,26 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _sub = _db.collection(collection).doc(widget.id).snapshots().listen((snap) {
       if (!snap.exists) return;
       final data = snap.data()!;
-      setState(() => _status = data['status'] ?? 'pending');
+      final newStatus = data['status'] ?? 'pending';
+      final justFinished = (widget.type == 'order' && newStatus == 'delivered' && _status != 'delivered') ||
+          (widget.type == 'ride' && newStatus == 'completed' && _status != 'completed');
+      setState(() => _status = newStatus);
       final driverId = data['driverId'];
       if (driverId != null) _listenDriver(driverId);
+      if (justFinished) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _promptReview());
+      }
     });
+  }
+
+  Future<void> _promptReview() async {
+    if (!mounted) return;
+    await showReviewSheet(
+      context,
+      orderId: widget.type == 'order' ? widget.id : null,
+      rideId: widget.type == 'ride' ? widget.id : null,
+      targetLabel: widget.type == 'order' ? (_driverName ?? 'ce service') : (_driverName ?? 'votre chauffeur'),
+    );
   }
 
   void _listenDriver(String driverId) {

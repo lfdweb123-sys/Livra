@@ -141,6 +141,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Avis clients — lecture publique (visible sur la page vendeur), mais
+    // écriture UNIQUEMENT via le backend (Admin SDK, contourne ces règles) :
+    // /api/reviews vérifie que la commande/course est bien livrée/terminée
+    // et appartient au client avant de créer l'avis, chose impossible à
+    // garantir avec de simples règles Firestore côté client.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ───────── disputes (litiges) ─────────
     match /disputes/{disputeId} {
       allow read: if isAdmin() || isOwner(resource.data.raisedBy) || isOwner(resource.data.against);

@@ -18,6 +18,7 @@ class VendorDetailScreen extends StatefulWidget {
 class _VendorDetailScreenState extends State<VendorDetailScreen> {
   List<ProductModel>? _products;
   VendorModel? _vendor;
+  List<Map<String, dynamic>> _reviews = [];
   final Map<String, int> _cart = {};
   Map<String, ProductModel> _catalog = {};
 
@@ -37,6 +38,52 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
       _products = items;
       _catalog = {for (final p in items) p.id: p};
     });
+    try {
+      final reviewsRes = await ApiClient.instance.get('/api/reviews', query: {'targetType': 'vendor', 'targetId': widget.vendorId});
+      if (mounted) setState(() => _reviews = List<Map<String, dynamic>>.from(reviewsRes['items'] ?? []));
+    } catch (_) {}
+  }
+
+  void _showReviews() {
+    showAppBottomSheet(
+      context,
+      title: 'Avis clients',
+      child: _reviews.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text('Aucun avis pour le moment.', style: TextStyle(color: AppColors.textSecondary)),
+            )
+          : SizedBox(
+              height: 350,
+              child: ListView.builder(
+                itemCount: _reviews.length,
+                itemBuilder: (context, i) {
+                  final r = _reviews[i];
+                  final rating = (r['rating'] ?? 0) as num;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: List.generate(5, (j) => Icon(
+                                j < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                color: AppColors.gold,
+                                size: 16,
+                              )),
+                        ),
+                        if ((r['comment'] as String?)?.isNotEmpty == true) ...[
+                          const SizedBox(height: 4),
+                          Text(r['comment'], style: TextStyle(fontSize: 13)),
+                        ],
+                        const Divider(height: 20),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+    );
   }
 
   num get _total => _cart.entries.fold(0, (sum, e) => sum + (_catalog[e.key]?.price ?? 0) * e.value);
@@ -150,6 +197,21 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           const SizedBox(height: 10),
                           Text(_vendor!.description!, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                         ],
+                        const SizedBox(height: 10),
+                        InkWell(
+                          onTap: _showReviews,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star_rounded, color: AppColors.gold, size: 18),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${(_vendor?.rating ?? 0).toStringAsFixed(1)} (${_reviews.length} avis)',
+                                style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600, fontSize: 13, decoration: TextDecoration.underline),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   );

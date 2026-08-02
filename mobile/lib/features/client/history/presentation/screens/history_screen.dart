@@ -8,6 +8,7 @@ import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/constants/status_labels.dart';
+import '../../../../../core/widgets/review_sheet.dart';
 
 class HistoryScreen extends StatefulWidget {
   HistoryScreen({super.key});
@@ -64,6 +65,13 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                           child: ListTile(
                             title: Text('${o['type']} — ${o['priceBreakdown']?['total'] ?? '-'} XOF'),
                             subtitle: Text(statusLabelFr(o['status'])),
+                            trailing: o['status'] == 'delivered'
+                                ? TextButton.icon(
+                                    icon: Icon(Icons.star_outline_rounded, size: 16, color: AppColors.gold),
+                                    label: Text('Avis', style: TextStyle(color: AppColors.gold)),
+                                    onPressed: () => showReviewSheet(context, orderId: o['id'], targetLabel: 'cette commande'),
+                                  )
+                                : null,
                             onTap: () => context.push('/client/tracking/order/${o['id']}'),
                           ),
                         );
@@ -87,6 +95,13 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                           child: ListTile(
                             title: Text('${r['vehicleType']} — ${r['price']} XOF'),
                             subtitle: Text(statusLabelFr(r['status'])),
+                            trailing: r['status'] == 'completed'
+                                ? TextButton.icon(
+                                    icon: Icon(Icons.star_outline_rounded, size: 16, color: AppColors.gold),
+                                    label: Text('Avis', style: TextStyle(color: AppColors.gold)),
+                                    onPressed: () => showReviewSheet(context, rideId: r['id'], targetLabel: 'ce chauffeur'),
+                                  )
+                                : null,
                             onTap: () => context.push('/client/tracking/ride/${r['id']}'),
                           ),
                         );
