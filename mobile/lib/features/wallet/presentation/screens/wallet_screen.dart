@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/api/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -90,13 +91,23 @@ class _WalletScreenState extends State<WalletScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(controller: amountCtrl, decoration: InputDecoration(hintText: 'Montant (XOF)'), keyboardType: TextInputType.number),
+          TextField(
+            controller: amountCtrl,
+            decoration: InputDecoration(hintText: 'Montant (XOF)'),
+            keyboardType: TextInputType.numberWithOptions(decimal: false),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
           SizedBox(height: 16),
           PrimaryButton(
             label: 'Continuer',
             onPressed: () {
-              final amount = num.tryParse(amountCtrl.text) ?? 0;
-              if (amount < 100) return;
+              final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
+              if (amount < 100) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Entrez un montant valide (minimum 100 XOF).')),
+                );
+                return;
+              }
               Navigator.pop(context);
               _chooseDepositMethod(uid, amount);
             },

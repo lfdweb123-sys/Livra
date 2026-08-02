@@ -44,6 +44,19 @@ export async function feexpayRequestToPay({ network, phoneNumber, amount, firstN
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'feexpay_error');
+  if (!res.ok) {
+    // Log complet cote serveur (Vercel > Deployments > Functions > Logs) —
+    // le message renvoye au client est deja fidele, mais sans ce log on ne
+    // voit jamais la vraie reponse FeexPay pour diagnostiquer.
+    console.error('[FEEXPAY_ERROR]', {
+      network,
+      httpStatus: res.status,
+      requestPhoneNumber: phoneNumber,
+      requestPayload: { ...payload, phoneNumber: undefined },
+      feexpayResponse: data,
+    });
+    throw new Error(data.message || `feexpay_http_${res.status}`);
+  }
+  console.log('[FEEXPAY_SUCCESS]', { network, reference: data.reference || data.order_id });
   return data; // { reference, status: PENDING, ... } ou { payment_url } selon réseau
 }

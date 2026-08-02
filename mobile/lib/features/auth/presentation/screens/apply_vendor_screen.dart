@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/services/api/api_client.dart';
@@ -68,7 +69,11 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Candidature envoyée ! Notre équipe vérifie votre identité avant l'activation."),
         ));
-        Navigator.pop(context);
+        // context.go() (pas Navigator.pop()) : cet écran est parfois atteint
+        // depuis l'inscription via context.go(), qui vide la pile de
+        // navigation — un pop() n'a alors nulle part où revenir et laisse
+        // l'utilisateur bloqué ici, sans jamais atteindre son accueil.
+        context.go('/client/home');
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));

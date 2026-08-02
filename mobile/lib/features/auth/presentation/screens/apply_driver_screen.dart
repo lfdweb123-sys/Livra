@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/services/api/api_client.dart';
@@ -59,7 +60,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Candidature envoyée ! Vous serez notifié dès validation par notre équipe.'),
         ));
-        Navigator.pop(context);
+        context.go('/client/home');
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));

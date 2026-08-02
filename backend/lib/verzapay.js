@@ -20,7 +20,10 @@ export async function verzapayCreatePayment({ amount, currency, description, cus
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'verzapay_error');
+  if (!res.ok) {
+    console.error('[VERZAPAY_PAYMENT_ERROR]', { httpStatus: res.status, response: data, amount, customerPhone });
+    throw new Error(data.message || `verzapay_http_${res.status}`);
+  }
   return data; // { id, status, checkout_url }
 }
 
@@ -36,6 +39,9 @@ export async function verzapayCreatePayout({ amount, currency, recipientPhone, r
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'verzapay_error');
+  if (!res.ok) {
+    console.error('[VERZAPAY_PAYOUT_ERROR]', { httpStatus: res.status, response: data, amount, recipientPhone });
+    throw new Error(data.message || `verzapay_http_${res.status}`);
+  }
   return data;
 }

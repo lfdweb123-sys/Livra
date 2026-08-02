@@ -42,6 +42,7 @@ export async function POST(req, { params }) {
     });
     return Response.json({ ok: true, transactionId: result, payoutId: payout.id });
   } catch (e) {
+    console.error('[WITHDRAW_PAYOUT_ERROR]', { userId: params.userId, amount, phoneNumber, message: e.message, stack: e.stack });
     // rollback du débit si le payout échoue au niveau de l'appel API
     await walletRef.update({ balance: FieldValue.increment(amount) });
     await walletRef.collection('transactions').doc(result).update({ reason: 'withdrawal_failed_rollback' });

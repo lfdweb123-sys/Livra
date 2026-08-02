@@ -7,7 +7,6 @@ import 'core/theme/theme_controller.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/notifications/fcm_service.dart';
 import 'app_role_gate.dart';
-import 'app_lock_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,22 +32,20 @@ class _LivraAppState extends State<LivraApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AppLockGate(
-      child: ValueListenableBuilder<ThemeMode>(
-        valueListenable: ThemeController.instance.mode,
-        builder: (context, mode, _) {
-          return RoleGate(
-            child: MaterialApp.router(
-              title: 'Livra',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.current,
-              darkTheme: AppTheme.current,
-              themeMode: mode,
-              routerConfig: AppRouter.router,
-            ),
-          );
-        },
-      ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance.mode,
+      builder: (context, mode, _) {
+        return RoleGate(
+          child: MaterialApp.router(
+            title: 'Livra',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.current,
+            darkTheme: AppTheme.current,
+            themeMode: mode,
+            routerConfig: AppRouter.router,
+          ),
+        );
+      },
     );
   }
 }

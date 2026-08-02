@@ -4,8 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/services/auth_service.dart';
-import '../../../../../core/services/lock_service.dart';
-import '../../../../../core/services/inactivity_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/theme_controller.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
@@ -19,10 +17,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _lockService = LockService();
-  bool _biometricEnabled = false;
-  bool _biometricAvailable = false;
-  bool _busy = false;
   String _supportEmail = 'support@livra.app';
   String _supportPhone = '';
   String _supportWhatsapp = '';
@@ -30,7 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLockState();
     _loadSupportContacts();
   }
 
@@ -42,44 +35,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _supportPhone = config.supportPhone;
         _supportWhatsapp = config.supportWhatsapp;
       });
-    }
-  }
-
-  Future<void> _loadLockState() async {
-    final enabled = await _lockService.isLockEnabled();
-    final available = await _lockService.canUseBiometrics();
-    if (mounted) {
-      setState(() {
-        _biometricEnabled = enabled;
-        _biometricAvailable = available;
-      });
-    }
-  }
-
-  Future<void> _toggleBiometric(bool value) async {
-    if (value) {
-      if (!_biometricAvailable) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Aucune empreinte enregistrée sur cet appareil.")),
-        );
-        return;
-      }
-      setState(() => _busy = true);
-      try {
-        final ok = await _lockService.authenticateBiometric(reason: "Confirmez pour activer l'empreinte digitale");
-        if (!ok) return;
-        await _lockService.setLockEnabled(true);
-        if (mounted) setState(() => _biometricEnabled = true);
-        InactivityService.instance.start();
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
-      } finally {
-        if (mounted) setState(() => _busy = false);
-      }
-    } else {
-      await _lockService.setLockEnabled(false);
-      InactivityService.instance.stop();
-      if (mounted) setState(() => _biometricEnabled = false);
     }
   }
 
@@ -150,7 +105,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(title: const Text('Profil'), actions: [notificationBellAction(context)]),
       body: RefreshIndicator(
         onRefresh: () async {
-          await _loadLockState();
           await _loadSupportContacts();
         },
         color: AppColors.gold,
@@ -197,16 +151,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 12),
           _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor'),
           const Divider(height: 28),
-          SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            secondary: _busy
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.fingerprint),
-            title: const Text('Empreinte digitale'),
-            value: _biometricEnabled,
-            activeColor: AppColors.gold,
-            onChanged: _busy ? null : _toggleBiometric,
-          ),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeController.instance.mode,
             builder: (context, mode, _) => SwitchListTile(

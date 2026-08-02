@@ -52,6 +52,7 @@ export async function POST(req, { params }) {
       return Response.json({ paymentId: paymentRef.id, checkoutUrl: result.checkout_url });
     }
   } catch (e) {
+    console.error('[WALLET_DEPOSIT_ERROR]', { userId: params.userId, provider, network, message: e.message, stack: e.stack });
     await paymentRef.update({ status: 'failed' });
     return jsonError(e.message, 400);
   }
