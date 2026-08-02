@@ -2,6 +2,7 @@ import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendTransactionalEmail, driverStatusEmail } from '../../../../lib/brevo';
 import { logActivity } from '../../../../lib/activityLog';
+import { sendNotification } from '../../../../lib/fcm';
 
 export async function GET(req, { params }) {
   const snap = await db.collection('drivers').doc(params.id).get();
@@ -33,12 +34,35 @@ export async function PATCH(req, { params }) {
   await ref.update(update);
 
   if (auth.role === 'admin' && (body.status === 'active' || body.status === 'rejected')) {
-    const ownerSnap = await db.collection('users').doc(driver.ownerId).get();
-    if (ownerSnap.exists) {
-      const { subject, htmlContent } = driverStatusEmail(body.status, body.rejectionReason);
-      const email = ownerSnap.data().email;
-      if (email) await sendTransactionalEmail({ to: email, toName: ownerSnap.data().name, subject, htmlContent });
+    try {
+      const ownerSnap = await db.collection('users').doc(driver.ownerId).get();
+      if (ownerSnap.exists) {
+        const { subject, htmlContent } = driverStatusEmail(body.status, body.rejectionReason);
+        const email = ownerSnap.data().email;
+        if (email) {
+          const emailResult = await sendTransactionalEmail({ to: email, toName: ownerSnap.data().name, subject, htmlContent });
+          console.log('[DRIVER_STATUS_EMAIL]', driver.ownerId, emailResult);
+        } else {
+          console.error('[DRIVER_STATUS_EMAIL] pas d\'email pour', driver.ownerId);
+        }
+
+        const pushResult = await sendNotification({
+          userId: driver.ownerId,
+          title: body.status === 'active' ? 'Compte livreur validé !' : 'Candidature refusée',
+          body: body.status === 'active'
+            ? 'Vous pouvez passer en ligne dans l\'app pour recevoir vos premières courses.'
+            : `Votre candidature n'a pas été retenue.${body.rejectionReason ? ` Motif : ${body.rejectionReason}.` : ''}`,
+          type: 'driver_status',
+          relatedId: params.id,
+        });
+        console.log('[DRIVER_STATUS_PUSH]', driver.ownerId, pushResult);
+      } else {
+        console.error('[DRIVER_STATUS_NOTIF] user introuvable', driver.ownerId);
+      }
+    } catch (e) {
+      console.error('[DRIVER_STATUS_NOTIF_ERROR]', e.message, e.stack);
     }
+
     await logActivity(
       body.status === 'active' ? 'driver_approved' : 'driver_rejected',
       `Livreur/chauffeur (${driver.vehicleType}) ${body.status === 'active' ? 'approuvé' : 'rejeté'} par l'admin${body.rejectionReason ? ` — ${body.rejectionReason}` : ''}`,

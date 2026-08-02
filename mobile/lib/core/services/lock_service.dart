@@ -29,7 +29,12 @@ class LockService {
   Future<bool> authenticateBiometric({String reason = 'Confirmez votre identité pour accéder à Livra'}) {
     return _localAuth.authenticate(
       localizedReason: reason,
-      options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true, useErrorDialogs: true),
+      // stickyAuth retiré volontairement : bug documenté de local_auth
+      // (github.com/flutter/flutter/issues/80438) qui fait apparaître le
+      // prompt DEUX FOIS sur certains appareils Android — le premier réussit,
+      // un second réapparaît aussitôt, ce qui donnait l'impression que l'app
+      // se reverrouillait juste après un déverrouillage pourtant réussi.
+      options: const AuthenticationOptions(biometricOnly: false, useErrorDialogs: true),
       authMessages: const [
         AndroidAuthMessages(
           signInTitle: 'Déverrouillage',

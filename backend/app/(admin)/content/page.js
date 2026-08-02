@@ -23,12 +23,22 @@ export default function ContentPage() {
   useEffect(() => { load(); }, []);
 
   async function saveSupport() {
-    await save(supportForm);
+    try {
+      await save(supportForm);
+    } catch (e) {
+      alert(`Erreur : ${e.message}`);
+    }
   }
 
   async function save(patch) {
-    await apiFetch('/api/admin/app-content', { method: 'PATCH', body: JSON.stringify(patch) });
-    load();
+    try {
+      await apiFetch('/api/admin/app-content', { method: 'PATCH', body: JSON.stringify(patch) });
+      await load();
+    } catch (e) {
+      console.error('[ADMIN_CONTENT_SAVE_ERROR]', e);
+      alert(`Erreur lors de l'enregistrement : ${e.message}. Reconnecte-toi si le problème persiste.`);
+      throw e;
+    }
   }
 
   async function addBanner(e) {

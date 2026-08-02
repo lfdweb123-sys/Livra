@@ -24,6 +24,8 @@ class VendorCatalogScreen extends StatefulWidget {
 class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
   String? _vendorId;
   List<ProductModel> _products = [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -32,15 +34,24 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
   }
 
   Future<void> _init() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    final snap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
-    if (snap.docs.isEmpty) return;
-    setState(() => _vendorId = snap.docs.first.id);
-    FirebaseFirestore.instance.collection('vendors/${snap.docs.first.id}/products').snapshots().listen((s) {
-      final items = s.docs.map((d) => ProductModel.fromMap(d.id, d.data())).toList();
-      items.sort((a, b) => b.pinned == a.pinned ? 0 : (b.pinned ? 1 : -1));
-      setState(() => _products = items);
-    });
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final snap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
+      if (snap.docs.isEmpty) {
+        if (mounted) setState(() { _loading = false; _error = "Aucune boutique associée à ce compte."; });
+        return;
+      }
+      setState(() => _vendorId = snap.docs.first.id);
+      FirebaseFirestore.instance.collection('vendors/${snap.docs.first.id}/products').snapshots().listen((s) {
+        final items = s.docs.map((d) => ProductModel.fromMap(d.id, d.data())).toList();
+        items.sort((a, b) => b.pinned == a.pinned ? 0 : (b.pinned ? 1 : -1));
+        if (mounted) setState(() { _products = items; _loading = false; });
+      }, onError: (e) {
+        if (mounted) setState(() { _loading = false; _error = 'Erreur de chargement : $e'; });
+      });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = 'Erreur de chargement : $e'; });
+    }
   }
 
   Future<void> _addProduct() async {
@@ -149,9 +160,16 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
         onPressed: _addProduct,
         child: const Icon(Icons.add, color: Colors.black),
       ),
-      body: _products.isEmpty
-          ? const EmptyState(icon: Icons.restaurant_menu_outlined, message: 'Ajoutez votre premier produit avec le bouton +.')
-          : ListView.builder(
+      body: RefreshIndicator(
+        onRefresh: _init,
+        color: AppColors.gold,
+        child: _loading
+            ? Center(child: CircularProgressIndicator(color: AppColors.gold))
+            : _error != null
+                ? ListView(children: [SizedBox(height: 120), EmptyState(icon: Icons.error_outline_rounded, message: _error!)])
+                : _products.isEmpty
+                    ? ListView(children: const [SizedBox(height: 120), EmptyState(icon: Icons.restaurant_menu_outlined, message: 'Ajoutez votre premier produit avec le bouton +.')])
+                    : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _products.length,
               itemBuilder: (context, i) {
@@ -183,6 +201,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                 );
               },
             ),
+      ),
     );
   }
 }

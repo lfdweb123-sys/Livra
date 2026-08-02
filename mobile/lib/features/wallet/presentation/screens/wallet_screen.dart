@@ -8,6 +8,7 @@ import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/notification_bell_action.dart';
 import '../../../../core/widgets/phone_number_field.dart';
+import '../../../../core/services/phone_number_cache.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -35,6 +36,8 @@ class _WalletScreenState extends State<WalletScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final amountCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    final cachedPhone = await PhoneNumberCache().load();
+    if (cachedPhone != null) phoneCtrl.text = cachedPhone;
     await showAppBottomSheet(
       context,
       title: 'Retirer vers Mobile Money',
@@ -44,7 +47,7 @@ class _WalletScreenState extends State<WalletScreen> {
         children: [
           TextField(controller: amountCtrl, decoration: InputDecoration(hintText: 'Montant (XOF)'), keyboardType: TextInputType.number),
           SizedBox(height: 12),
-          PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
+          PhoneNumberField(initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
           SizedBox(height: 16),
           PrimaryButton(
             label: 'Confirmer le retrait',
@@ -58,6 +61,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   'amount': num.tryParse(amountCtrl.text) ?? 0,
                   'phoneNumber': phoneCtrl.text.trim(),
                 });
+                await PhoneNumberCache().save(phoneCtrl.text.trim());
                 if (mounted) {
                   Navigator.pop(context);
                   _load();
@@ -128,6 +132,8 @@ class _WalletScreenState extends State<WalletScreen> {
     Navigator.pop(context);
     final phoneCtrl = TextEditingController();
     String network = 'mtn';
+    final cachedPhone = await PhoneNumberCache().load();
+    if (cachedPhone != null) phoneCtrl.text = cachedPhone;
     await showAppBottomSheet(
       context,
       title: 'Paiement Mobile Money',
@@ -150,7 +156,7 @@ class _WalletScreenState extends State<WalletScreen> {
               }).toList(),
             ),
             SizedBox(height: 12),
-            PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
+            PhoneNumberField(initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
             SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer $amount XOF',
@@ -166,6 +172,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     'network': network,
                     'phoneNumber': phoneCtrl.text.trim(),
                   });
+                  await PhoneNumberCache().save(phoneCtrl.text.trim());
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(

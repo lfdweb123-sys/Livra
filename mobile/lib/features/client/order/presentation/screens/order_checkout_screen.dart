@@ -229,7 +229,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro (sans le 0 initial)'), keyboardType: TextInputType.phone),
+                  child: TextField(controller: phoneCtrl, decoration: InputDecoration(hintText: 'Numéro complet (avec le 0)'), keyboardType: TextInputType.phone),
                 ),
               ],
             ),
@@ -252,7 +252,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                   await PaymentService().payWithFeexPay(
                     orderId: _orderId,
                     network: network,
-                    phoneNumber: '${_countryCallingCode[country]}${phoneCtrl.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
+                    phoneNumber: '${_countryCallingCode[country]}${phoneCtrl.text.trim()}',
                     otp: requiresOtp ? otpCtrl.text.trim() : null,
                   );
                   if (mounted) {
