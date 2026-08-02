@@ -51,9 +51,12 @@ export async function feexpayRequestToPay({ network, phoneNumber, amount, firstN
     console.error('[FEEXPAY_ERROR]', {
       network,
       httpStatus: res.status,
-      requestPhoneNumber: phoneNumber,
-      requestPayload: { ...payload, phoneNumber: undefined },
-      feexpayResponse: data,
+      // numéro partiellement masqué (pas undefined — juste pas en clair)
+      requestPhoneNumberMasked: phoneNumber ? `${phoneNumber.slice(0, 6)}***${phoneNumber.slice(-2)}` : null,
+      amount: payload.amount,
+      feexpayMessage: data.message,
+      feexpayErrorsDetail: JSON.stringify(data.errors),
+      feexpayFullResponse: data,
     });
     throw new Error(data.message || `feexpay_http_${res.status}`);
   }
