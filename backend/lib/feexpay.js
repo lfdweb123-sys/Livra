@@ -23,10 +23,15 @@ export function isValidNetwork(network) {
 export async function feexpayRequestToPay({ network, phoneNumber, amount, firstName, lastName, description, callbackInfo, otp }) {
   if (!isValidNetwork(network)) throw new Error('invalid_network');
 
+  // FeexPay exige des chiffres purs (ex: 2290143260596), sans "+" ni espace
+  // — le "+" envoyé jusqu'ici faisait échouer TOUTE tentative de paiement
+  // FeexPay, quel que soit le réseau ou le pays.
+  const cleanPhoneNumber = (phoneNumber || '').replace(/[^0-9]/g, '');
+
   const payload = {
     shop: process.env.FEEXPAY_SHOP_ID,
     amount,
-    phoneNumber,
+    phoneNumber: cleanPhoneNumber,
     first_name: firstName || 'Livra',
     last_name: lastName || 'Client',
     description: description || 'Paiement Livra',
@@ -52,7 +57,7 @@ export async function feexpayRequestToPay({ network, phoneNumber, amount, firstN
       network,
       httpStatus: res.status,
       // numéro partiellement masqué (pas undefined — juste pas en clair)
-      requestPhoneNumberMasked: phoneNumber ? `${phoneNumber.slice(0, 6)}***${phoneNumber.slice(-2)}` : null,
+      requestPhoneNumberMasked: cleanPhoneNumber ? `${cleanPhoneNumber.slice(0, 6)}***${cleanPhoneNumber.slice(-2)}` : null,
       amount: payload.amount,
       feexpayMessage: data.message,
       feexpayErrorsDetail: JSON.stringify(data.errors),
