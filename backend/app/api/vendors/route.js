@@ -13,6 +13,14 @@ export async function POST(req) {
   const existing = await db.collection('vendors').where('ownerId', '==', auth.uid).limit(1).get();
   if (!existing.empty) return jsonError('already_applied', 400);
 
+  // Un compte ne peut être QUE vendeur OU livreur, jamais les deux —
+  // vérifié aussi ici (pas seulement le bouton grisé côté app) au cas où
+  // l'appel API serait fait directement.
+  const existingDriver = await db.collection('drivers').where('ownerId', '==', auth.uid).limit(1).get();
+  if (!existingDriver.empty && existingDriver.docs[0].data().status !== 'rejected') {
+    return jsonError('already_a_driver', 400);
+  }
+
   const ref = await db.collection('vendors').add({
     ownerId: auth.uid,
     businessName: body.businessName,

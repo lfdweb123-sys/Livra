@@ -94,12 +94,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'rejected': 'Candidature refusée — retenter',
   };
 
-  Widget _partnerButton(BuildContext context, String label, IconData icon, String route, String? status, String dashboardRoute) {
-    final disabled = status == 'pending' || status == 'suspended';
+  Widget _partnerButton(BuildContext context, String label, IconData icon, String route, String? status, String dashboardRoute, {bool blockedByOtherRole = false}) {
+    final disabled = status == 'pending' || status == 'suspended' || blockedByOtherRole;
     final goToDashboard = status == 'active';
+    final statusText = blockedByOtherRole && status == null
+        ? 'Indisponible — un compte ne peut être que vendeur OU livreur'
+        : (status != null ? (_statusLabelsFr[status] ?? status) : null);
     return SizedBox(
       width: double.infinity,
-      height: status != null ? 60 : 52,
+      height: statusText != null ? 60 : 52,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
@@ -125,8 +128,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(goToDashboard ? 'Aller à mon espace' : label, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black, fontWeight: FontWeight.w700, fontSize: 14.5)),
                   ],
                 ),
-                if (status != null)
-                  Text(_statusLabelsFr[status] ?? status, style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black87, fontSize: 10.5)),
+                if (statusText != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(color: disabled ? AppColors.textSecondary : Colors.black87, fontSize: 10.5),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -185,9 +197,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          _partnerButton(context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver', _driverStatus, '/driver/home'),
+          _partnerButton(
+            context, 'Devenir livreur / chauffeur', Icons.two_wheeler_rounded, '/apply-driver', _driverStatus, '/driver/home',
+            blockedByOtherRole: _vendorStatus != null && _vendorStatus != 'rejected',
+          ),
           const SizedBox(height: 12),
-          _partnerButton(context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor', _vendorStatus, '/vendor/dashboard'),
+          _partnerButton(
+            context, 'Devenir vendeur', Icons.storefront_rounded, '/apply-vendor', _vendorStatus, '/vendor/dashboard',
+            blockedByOtherRole: _driverStatus != null && _driverStatus != 'rejected',
+          ),
           const Divider(height: 28),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: ThemeController.instance.mode,

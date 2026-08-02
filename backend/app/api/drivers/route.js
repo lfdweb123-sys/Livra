@@ -10,6 +10,11 @@ export async function POST(req) {
   const existing = await db.collection('drivers').where('ownerId', '==', auth.uid).limit(1).get();
   if (!existing.empty) return jsonError('already_applied', 400);
 
+  const existingVendor = await db.collection('vendors').where('ownerId', '==', auth.uid).limit(1).get();
+  if (!existingVendor.empty && existingVendor.docs[0].data().status !== 'rejected') {
+    return jsonError('already_a_vendor', 400);
+  }
+
   const body = await req.json();
   const ref = await db.collection('drivers').add({
     ownerId: auth.uid,
