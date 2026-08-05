@@ -24,7 +24,8 @@ final _slides = [
   ),
   _Slide(
     'Suivez en temps réel',
-    (_) => 'Un marker animé qui bouge vraiment avec votre livreur, sur la carte.',
+    (_) =>
+        'Un marker animé qui bouge vraiment avec votre livreur, sur la carte.',
     'assets/images/onboarding/slide1.png',
   ),
   _Slide(
@@ -34,7 +35,8 @@ final _slides = [
   ),
   _Slide(
     'Devenez partenaire',
-    (_) => "Livreur, chauffeur ou vendeur ? Postulez à tout moment depuis l'onglet Profil.",
+    (_) =>
+        "Livreur, chauffeur ou vendeur ? Postulez à tout moment depuis l'onglet Profil.",
     'assets/images/onboarding/slide4.png',
   ),
 ];
@@ -45,7 +47,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
   final _controller = PageController();
   final _onboardingService = OnboardingService();
   int _index = 0;
@@ -53,12 +56,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _checking = true;
   List<String?> _overrideImages = [];
 
+  late final AnimationController _floatCtrl;
+  late final AnimationController _entranceCtrl;
+  late final Animation<double> _floatAnim;
+  late final Animation<double> _entranceScale;
+  late final Animation<double> _entranceFade;
+
   @override
   void initState() {
     super.initState();
     _checkAlreadySeen();
     _detectCity();
     _loadAppContent();
+
+    _floatCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat(reverse: true);
+    _floatAnim = Tween<double>(begin: -8, end: 8)
+        .animate(CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut));
+
+    _entranceCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _entranceScale = Tween<double>(begin: 0.85, end: 1.0).animate(
+        CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOutBack));
+    _entranceFade =
+        CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
+    _entranceCtrl.forward();
   }
 
   Future<void> _loadAppContent() async {
@@ -68,11 +91,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await _finish();
       return;
     }
-    if (config.onboardingSlides.isNotEmpty) setState(() => _overrideImages = config.onboardingSlides);
+    if (config.onboardingSlides.isNotEmpty)
+      setState(() => _overrideImages = config.onboardingSlides);
   }
 
   String _imageFor(int i) {
-    if (i < _overrideImages.length && _overrideImages[i] != null) return _overrideImages[i]!;
+    if (i < _overrideImages.length && _overrideImages[i] != null)
+      return _overrideImages[i]!;
     return _slides[i].image;
   }
 
@@ -88,7 +113,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _detectCity() async {
     try {
       final pos = await LocationService().getCurrentPosition();
-      final city = await MapsService().reverseGeocodeCity(pos.latitude, pos.longitude);
+      final city =
+          await MapsService().reverseGeocodeCity(pos.latitude, pos.longitude);
       if (city != null && mounted) setState(() => _city = city);
     } catch (_) {
       // permission refusée ou géoloc indisponible — on garde le texte générique
@@ -98,6 +124,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     await _onboardingService.markSeen();
     if (mounted) context.go('/login');
+  }
+
+  @override
+  void dispose() {
+    _floatCtrl.dispose();
+    _entranceCtrl.dispose();
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -116,7 +150,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const AppLogo(size: 36, full: true),
                   TextButton(
                     onPressed: _finish,
-                    child: Text('Passer', style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text('Passer',
+                        style: TextStyle(color: AppColors.textSecondary)),
                   ),
                 ],
               ),
@@ -125,7 +160,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: PageView.builder(
                 controller: _controller,
                 itemCount: _slides.length,
-                onPageChanged: (i) => setState(() => _index = i),
+                onPageChanged: (i) {
+                  setState(() => _index = i);
+                  _entranceCtrl
+                    ..reset()
+                    ..forward();
+                },
                 itemBuilder: (context, i) {
                   final s = _slides[i];
                   return Column(
@@ -134,11 +174,93 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         flex: 5,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: (i < _overrideImages.length && _overrideImages[i] != null)
-                                ? Image.network(_imageFor(i), fit: BoxFit.contain, width: double.infinity)
-                                : Image.asset(_imageFor(i), fit: BoxFit.contain, width: double.infinity),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: AnimatedBuilder(
+                                  animation: _floatCtrl,
+                                  builder: (context, child) =>
+                                      Transform.translate(
+                                    offset: Offset(0, _floatAnim.value),
+                                    child: child,
+                                  ),
+                                  child: Container(
+                                    width: 90,
+                                    height: 90,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.goldSoft,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 20,
+                                left: 0,
+                                child: AnimatedBuilder(
+                                  animation: _floatCtrl,
+                                  builder: (context, child) =>
+                                      Transform.translate(
+                                    offset: Offset(0, -_floatAnim.value),
+                                    child: child,
+                                  ),
+                                  child: Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(18),
+                                      color: AppColors.surfaceElevated,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              AnimatedBuilder(
+                                animation: _entranceCtrl,
+                                builder: (context, child) => Opacity(
+                                  opacity: _entranceFade.value,
+                                  child: Transform.scale(
+                                    scale: _entranceScale.value,
+                                    child: child,
+                                  ),
+                                ),
+                                child: AnimatedBuilder(
+                                  animation: _floatCtrl,
+                                  builder: (context, child) =>
+                                      Transform.translate(
+                                    offset: Offset(0, _floatAnim.value * 0.4),
+                                    child: child,
+                                  ),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(24),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              AppColors.gold.withOpacity(0.18),
+                                          blurRadius: 30,
+                                          spreadRadius: 4,
+                                          offset: const Offset(0, 12),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: (i < _overrideImages.length &&
+                                              _overrideImages[i] != null)
+                                          ? Image.network(_imageFor(i),
+                                              fit: BoxFit.contain,
+                                              width: double.infinity)
+                                          : Image.asset(_imageFor(i),
+                                              fit: BoxFit.contain,
+                                              width: double.infinity),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -146,13 +268,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         flex: 3,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(s.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                              const SizedBox(height: 12),
-                              Text(s.subtitleBuilder(_city), style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
-                            ],
+                          child: AnimatedBuilder(
+                            animation: _entranceCtrl,
+                            builder: (context, child) => Opacity(
+                              opacity: _entranceFade.value,
+                              child: Transform.translate(
+                                offset:
+                                    Offset(0, (1 - _entranceFade.value) * 16),
+                                child: child,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(s.title,
+                                    style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center),
+                                const SizedBox(height: 12),
+                                Text(s.subtitleBuilder(_city),
+                                    style: TextStyle(
+                                        color: AppColors.textSecondary),
+                                    textAlign: TextAlign.center),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -164,7 +304,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             SmoothPageIndicator(
               controller: _controller,
               count: _slides.length,
-              effect: ExpandingDotsEffect(activeDotColor: AppColors.gold, dotColor: AppColors.divider, dotHeight: 6),
+              effect: ExpandingDotsEffect(
+                  activeDotColor: AppColors.gold,
+                  dotColor: AppColors.divider,
+                  dotHeight: 6),
             ),
             const SizedBox(height: 24),
             Padding(
@@ -175,7 +318,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if (_index == _slides.length - 1) {
                     _finish();
                   } else {
-                    _controller.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                    _controller.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut);
                   }
                 },
               ),
