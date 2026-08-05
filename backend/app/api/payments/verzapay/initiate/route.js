@@ -1,6 +1,6 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../../lib/auth';
-import { verzapayCreatePayment } from '../../../../../lib/verzapay';
+import { verzapayCreatePayment, resolveCustomerPhone } from '../../../../../lib/verzapay';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
@@ -16,6 +16,10 @@ export async function POST(req) {
   if (target.clientId !== auth.uid) return jsonError('forbidden', 403);
 
   const amount = target.priceBreakdown ? target.priceBreakdown.total : target.price;
+
+  // Fallback: numéro saisi, sinon numéro du profil utilisateur.
+  const customerPhone = resolveCustomerPhone(phoneNumber, auth.user.phone);
+  if (!customerPhone) return jsonError('phone_required', 400);
 
   const paymentRef = await db.collection('payments').add({
     orderId: orderId || null,
@@ -36,7 +40,7 @@ export async function POST(req) {
       currency: 'XOF',
       description: `Livra ${orderId ? 'commande' : 'course'} ${orderId || rideId}`,
       customerName: auth.user.name,
-      customerPhone: phoneNumber,
+      customerPhone,
     });
     await paymentRef.update({ providerReference: result.id });
     return Response.json({ paymentId: paymentRef.id, checkoutUrl: result.checkout_url });

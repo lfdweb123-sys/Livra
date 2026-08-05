@@ -11,6 +11,7 @@ import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
+import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 class RequestRideScreen extends StatefulWidget {
   final String? initialVehicleType;
@@ -198,12 +199,13 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
 
   Future<void> _payVerzapay() async {
     Navigator.pop(context);
-    try {
-      await PaymentService().payWithVerzapay(rideId: _rideId, phoneNumber: '');
-      if (mounted) context.go('/client/tracking/ride/$_rideId');
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-    }
+    await payWithVerzapayFlow(
+      context,
+      initiate: (phone) => PaymentService().payWithVerzapay(rideId: _rideId, phoneNumber: phone),
+      onSuccess: () {
+        if (mounted) context.go('/client/tracking/ride/$_rideId');
+      },
+    );
   }
 
   Future<void> _payWallet() async {

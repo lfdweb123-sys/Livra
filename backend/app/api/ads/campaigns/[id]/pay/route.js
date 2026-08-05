@@ -1,7 +1,7 @@
 import { db, FieldValue } from '../../../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../../../lib/auth';
 import { feexpayRequestToPay } from '../../../../../../lib/feexpay';
-import { verzapayCreatePayment } from '../../../../../../lib/verzapay';
+import { verzapayCreatePayment, resolveCustomerPhone } from '../../../../../../lib/verzapay';
 
 // POST { provider: 'feexpay'|'verzapay'|'wallet', network?, phoneNumber?, otp? }
 // Le paiement suit exactement le même pattern que le dépôt portefeuille
@@ -75,12 +75,17 @@ export async function POST(req, { params }) {
       await paymentRef.update({ providerReference: result.reference || result.order_id || null });
       return Response.json({ paymentId: paymentRef.id, ...result });
     } else {
+      const customerPhone = resolveCustomerPhone(phoneNumber, auth.user.phone);
+      if (!customerPhone) {
+        await paymentRef.update({ status: 'failed' });
+        return jsonError('phone_required', 400);
+      }
       const result = await verzapayCreatePayment({
         amount: campaign.pricePaid,
         currency: 'XOF',
         description: `Publicité Livra — ${campaign.productName}`,
         customerName: auth.user.name,
-        customerPhone: phoneNumber,
+        customerPhone,
       });
       await paymentRef.update({ providerReference: result.id });
       return Response.json({ paymentId: paymentRef.id, checkoutUrl: result.checkout_url });

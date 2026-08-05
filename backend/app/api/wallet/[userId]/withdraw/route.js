@@ -1,6 +1,6 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../../lib/auth';
-import { verzapayCreatePayout } from '../../../../../lib/verzapay';
+import { verzapayCreatePayout, resolveCustomerPhone } from '../../../../../lib/verzapay';
 
 // POST { amount, phoneNumber } — décaissement du solde wallet Livra vers Mobile Money
 export async function POST(req, { params }) {
@@ -10,6 +10,11 @@ export async function POST(req, { params }) {
 
   const { amount, phoneNumber } = await req.json();
   const walletRef = db.collection('wallets').doc(params.userId);
+
+  // On valide le téléphone AVANT de toucher au solde: inutile de débiter
+  // puis rollback si on sait déjà que Verzapay refusera le payout.
+  const recipientPhone = resolveCustomerPhone(phoneNumber, auth.user.phone);
+  if (!recipientPhone) return jsonError('phone_required', 400);
 
   let result;
   try {
@@ -37,7 +42,7 @@ export async function POST(req, { params }) {
     const payout = await verzapayCreatePayout({
       amount,
       currency: 'XOF',
-      recipientPhone: phoneNumber,
+      recipientPhone,
       recipientName: auth.user.name,
     });
     return Response.json({ ok: true, transactionId: result, payoutId: payout.id });

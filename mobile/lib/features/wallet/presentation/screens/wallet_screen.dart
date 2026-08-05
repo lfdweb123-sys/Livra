@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/notification_bell_action.dart';
 import '../../../../core/widgets/phone_number_field.dart';
 import '../../../../core/services/phone_number_cache.dart';
+import '../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -223,22 +224,22 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _depositVerzapay(String uid, num amount) async {
     Navigator.pop(context);
-    try {
-      await ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
+    await payWithVerzapayFlow(
+      context,
+      title: 'Carte bancaire / International — $amount XOF',
+      initiate: (phone) => ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
         'amount': amount,
         'provider': 'verzapay',
-        'phoneNumber': '',
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Dépôt en cours de traitement.')));
-        _load();
-      }
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
-    }
+        'phoneNumber': phone,
+      }),
+      onSuccess: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Dépôt en cours de traitement.')));
+          _load();
+        }
+      },
+    );
   }
 
   @override

@@ -1,7 +1,7 @@
 import { db, FieldValue } from '../../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../../lib/auth';
 import { feexpayRequestToPay } from '../../../../../lib/feexpay';
-import { verzapayCreatePayment } from '../../../../../lib/verzapay';
+import { verzapayCreatePayment, resolveCustomerPhone } from '../../../../../lib/verzapay';
 
 // POST { amount, provider: 'feexpay'|'verzapay', network?, phoneNumber, otp? }
 // Crée un paiement dont le succès (webhook) crédite le portefeuille au lieu
@@ -41,12 +41,20 @@ export async function POST(req, { params }) {
       await paymentRef.update({ providerReference: result.reference || result.order_id || null });
       return Response.json({ paymentId: paymentRef.id, ...result });
     } else {
+      // Fallback: numéro saisi dans le formulaire, sinon numéro du profil
+      // utilisateur (auth.user.phone) — sans ça Verzapay refuse toujours
+      // la création du lien de paiement (customer_phone requis, >=6 car.).
+      const customerPhone = resolveCustomerPhone(phoneNumber, auth.user.phone);
+      if (!customerPhone) {
+        await paymentRef.update({ status: 'failed' });
+        return jsonError('phone_required', 400);
+      }
       const result = await verzapayCreatePayment({
         amount,
         currency: 'XOF',
         description: 'Dépôt portefeuille Livra',
         customerName: auth.user.name,
-        customerPhone: phoneNumber,
+        customerPhone,
       });
       await paymentRef.update({ providerReference: result.id });
       return Response.json({ paymentId: paymentRef.id, checkoutUrl: result.checkout_url });

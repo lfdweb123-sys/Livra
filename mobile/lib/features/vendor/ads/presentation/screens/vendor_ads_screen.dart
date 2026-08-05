@@ -10,6 +10,7 @@ import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/phone_number_field.dart';
+import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 const int _pricePerDayXof = 500;
 
@@ -177,6 +178,27 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
       return;
     }
 
+    if (provider == 'verzapay') {
+      // Flux dédié: demande le numéro (obligatoire côté Verzapay) et ouvre
+      // le lien de paiement retourné — même logique que partout ailleurs.
+      await payWithVerzapayFlow(
+        context,
+        initiate: (phone) => ApiClient.instance.post('/api/ads/campaigns/$campaignId/pay', data: {
+          'provider': 'verzapay',
+          'phoneNumber': phone,
+        }),
+        onSuccess: () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Paiement en cours — la publicité démarre après confirmation.')));
+            _loadCampaigns();
+          }
+        },
+      );
+      return;
+    }
+
+    // provider == 'feexpay'
     final phoneCtrl = TextEditingController();
     String network = 'mtn';
     await showAppBottomSheet(
@@ -187,20 +209,19 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (provider == 'feexpay')
-              Wrap(
-                spacing: 8,
-                children: ['mtn', 'moov', 'celtiis_bj', 'coris'].map((n) {
-                  final selected = network == n;
-                  return ChoiceChip(
-                    label: Text(n),
-                    selected: selected,
-                    onSelected: (_) => setSheetState(() => network = n),
-                    selectedColor: AppColors.gold,
-                    labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
-                  );
-                }).toList(),
-              ),
+            Wrap(
+              spacing: 8,
+              children: ['mtn', 'moov', 'celtiis_bj', 'coris'].map((n) {
+                final selected = network == n;
+                return ChoiceChip(
+                  label: Text(n),
+                  selected: selected,
+                  onSelected: (_) => setSheetState(() => network = n),
+                  selectedColor: AppColors.gold,
+                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 12),
             PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             const SizedBox(height: 16),
@@ -214,7 +235,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
                 try {
                   await ApiClient.instance.post('/api/ads/campaigns/$campaignId/pay', data: {
                     'provider': provider,
-                    if (provider == 'feexpay') 'network': network,
+                    'network': network,
                     'phoneNumber': phoneCtrl.text,
                   });
                   if (mounted) {

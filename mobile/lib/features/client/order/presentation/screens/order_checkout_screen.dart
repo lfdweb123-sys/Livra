@@ -8,6 +8,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
+import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 /// Étape 1 : confirmation/choix des adresses (livraison, + collecte si colis)
 /// — automatique par GPS par défaut, mais toujours modifiable manuellement.
@@ -278,13 +279,13 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
 
   Future<void> _payVerzapay() async {
     Navigator.pop(context);
-    try {
-      final phone = ''; // à récupérer depuis le profil utilisateur (users/{uid}.phone)
-      await PaymentService().payWithVerzapay(orderId: _orderId, phoneNumber: phone);
-      if (mounted) context.go('/client/tracking/order/$_orderId');
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-    }
+    await payWithVerzapayFlow(
+      context,
+      initiate: (phone) => PaymentService().payWithVerzapay(orderId: _orderId, phoneNumber: phone),
+      onSuccess: () {
+        if (mounted) context.go('/client/tracking/order/$_orderId');
+      },
+    );
   }
 
   @override
