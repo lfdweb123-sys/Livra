@@ -35,6 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadSavedCredentials() async {
+    // IMPORTANT: on pré-remplit UNIQUEMENT le formulaire ici — on ne
+    // déclenche JAMAIS une connexion automatique. L'utilisateur doit
+    // toujours appuyer lui-même sur "Se connecter". Avant ce correctif,
+    // _submit() était appelé ici automatiquement, ce qui reconnectait
+    // silencieusement l'utilisateur au démarrage — y compris juste après
+    // s'être déconnecté, tant que les identifiants "Se souvenir de moi"
+    // n'étaient pas explicitement effacés (voir AuthService.logout()).
     final saved = await _credentialsStore.read();
     if (saved != null && mounted) {
       setState(() {
@@ -42,7 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordCtrl.text = saved.password;
         _rememberMe = true;
       });
-      await _submit();
     }
   }
 

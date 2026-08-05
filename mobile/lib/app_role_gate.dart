@@ -28,6 +28,10 @@ class _RoleGateState extends State<RoleGate> {
   @override
   void initState() {
     super.initState();
+    // Déconnexion automatique après 30 jours de session (voir
+    // SessionStore) — vérifié une fois au démarrage, avant de laisser
+    // authStateChanges() router l'utilisateur vers son tableau de bord.
+    _authService.enforceSessionExpiry();
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user == null) {
         AppRouter.currentRole = null;
