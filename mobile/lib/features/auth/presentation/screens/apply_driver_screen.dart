@@ -9,8 +9,6 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 
-/// Candidature livreur/chauffeur : documents envoyés directement sur le
-/// profil driver (pas de flux KYC séparé) — l'admin active depuis le dashboard.
 class ApplyDriverScreen extends StatefulWidget {
   final String? initialVehicleType;
   const ApplyDriverScreen({super.key, this.initialVehicleType});
@@ -31,14 +29,17 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   };
 
   Future<void> _pickDoc(String key) async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 80);
+    final picked = await ImagePicker()
+        .pickImage(source: ImageSource.camera, imageQuality: 80);
     if (picked != null) setState(() => _docs[key] = File(picked.path));
   }
 
   Future<void> _submit() async {
     if (_docs.length < _requiredDocs.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tous les documents sont requis pour la vérification d'identité.")),
+        const SnackBar(
+            content: Text(
+                "Tous les documents sont requis pour la vérification d'identité.")),
       );
       return;
     }
@@ -47,7 +48,8 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
       final uploadService = UploadService();
       final documentsR2 = <String, String>{};
       for (final entry in _docs.entries) {
-        documentsR2[entry.key] = await uploadService.uploadFile(entry.value, folder: 'drivers');
+        documentsR2[entry.key] =
+            await uploadService.uploadFile(entry.value, folder: 'drivers');
       }
       final position = await LocationService().getCurrentPosition();
       await ApiClient.instance.post(ApiConstants.drivers, data: {
@@ -58,12 +60,15 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Candidature envoyée ! Vous serez notifié dès validation par notre équipe.'),
+          content: Text(
+              'Candidature envoyée ! Vous serez notifié dès validation par notre équipe.'),
         ));
         context.go('/client/home');
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -72,40 +77,103 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Devenir livreur/chauffeur')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Livra',
+            style:
+                TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
       body: Padding(
-        padding: EdgeInsets.all(20),
+        padding: EdgeInsets.symmetric(horizontal: 20),
         child: ListView(
           children: [
-            Text('Type de véhicule', style: TextStyle(color: AppColors.textSecondary)),
             SizedBox(height: 8),
+            Text(
+              'Devenir livreur/chauffeur',
+              style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary),
+            ),
+            SizedBox(height: 24),
+            Text('Type de véhicule',
+                style: TextStyle(color: AppColors.textSecondary)),
+            SizedBox(height: 10),
             Wrap(
-              spacing: 8,
+              spacing: 10,
               children: ['moto', 'voiture', 'coursier'].map((v) {
                 final selected = _vehicleType == v;
                 return ChoiceChip(
                   label: Text(v),
+                  avatar: selected
+                      ? Icon(Icons.check, size: 16, color: Colors.black)
+                      : null,
                   selected: selected,
                   onSelected: (_) => setState(() => _vehicleType = v),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                  backgroundColor: AppColors.surface,
+                  side: BorderSide(
+                      color: selected ? AppColors.gold : AppColors.divider),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.black : AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 );
               }).toList(),
             ),
-            SizedBox(height: 24),
-            Text('Documents (vérification d\'identité)', style: TextStyle(color: AppColors.textSecondary)),
+            SizedBox(height: 28),
+            Text("Documents (vérification d'identité)",
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600)),
             SizedBox(height: 4),
-            Text('Tous requis avant activation par notre équipe.', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-            SizedBox(height: 8),
-            ..._requiredDocs.entries.map((e) => Card(
-                  child: ListTile(
-                    title: Text(e.value),
-                    trailing: Icon(_docs.containsKey(e.key) ? Icons.check_circle : Icons.camera_alt, color: _docs.containsKey(e.key) ? AppColors.success : AppColors.textSecondary),
-                    onTap: () => _pickDoc(e.key),
+            Text('Tous requis avant activation par notre équipe.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            SizedBox(height: 12),
+            ..._requiredDocs.entries.map((e) {
+              final done = _docs.containsKey(e.key);
+              return Container(
+                margin: EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: ListTile(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  title: Text(e.value,
+                      style: TextStyle(color: AppColors.textPrimary)),
+                  trailing: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: done
+                          ? AppColors.success.withOpacity(0.12)
+                          : AppColors.goldSoft,
+                    ),
+                    child: Icon(
+                      done ? Icons.check_circle : Icons.camera_alt_outlined,
+                      color: done ? AppColors.success : AppColors.textSecondary,
+                      size: 20,
+                    ),
                   ),
-                )),
+                  onTap: () => _pickDoc(e.key),
+                ),
+              );
+            }),
             SizedBox(height: 24),
-            PrimaryButton(label: 'Envoyer', onPressed: _submit, loading: _loading),
+            PrimaryButton(
+                label: 'Envoyer', onPressed: _submit, loading: _loading),
+            SizedBox(height: 20),
           ],
         ),
       ),
