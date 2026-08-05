@@ -46,19 +46,25 @@ class _WalletScreenState extends State<WalletScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(controller: amountCtrl, decoration: InputDecoration(hintText: 'Montant (XOF)'), keyboardType: TextInputType.number),
+          TextField(
+              controller: amountCtrl,
+              decoration: InputDecoration(hintText: 'Montant (XOF)'),
+              keyboardType: TextInputType.number),
           SizedBox(height: 12),
-          PhoneNumberField(initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
+          PhoneNumberField(
+              initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
           SizedBox(height: 16),
           PrimaryButton(
             label: 'Confirmer le retrait',
             onPressed: () async {
               if (phoneCtrl.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Renseignez votre numéro Mobile Money.')));
                 return;
               }
               try {
-                await ApiClient.instance.post('/api/wallet/$uid/withdraw', data: {
+                await ApiClient.instance
+                    .post('/api/wallet/$uid/withdraw', data: {
                   'amount': num.tryParse(amountCtrl.text) ?? 0,
                   'phoneNumber': phoneCtrl.text.trim(),
                 });
@@ -71,7 +77,9 @@ class _WalletScreenState extends State<WalletScreen> {
                 final msg = e.toString().contains('insufficient_balance')
                     ? 'Solde insuffisant sur votre portefeuille.'
                     : 'Erreur lors du retrait. Réessayez dans un instant.';
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                if (mounted)
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(msg)));
               }
             },
           ),
@@ -104,7 +112,9 @@ class _WalletScreenState extends State<WalletScreen> {
               final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
               if (amount < 100) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Entrez un montant valide (minimum 100 XOF).')),
+                  SnackBar(
+                      content:
+                          Text('Entrez un montant valide (minimum 100 XOF).')),
                 );
                 return;
               }
@@ -162,22 +172,27 @@ class _WalletScreenState extends State<WalletScreen> {
                   selected: selected,
                   onSelected: (_) => setSheetState(() => network = n),
                   selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                  labelStyle: TextStyle(
+                      color: selected ? Colors.black : AppColors.textPrimary),
                 );
               }).toList(),
             ),
             SizedBox(height: 12),
-            PhoneNumberField(initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
+            PhoneNumberField(
+                initialValue: cachedPhone,
+                onChanged: (v) => phoneCtrl.text = v),
             SizedBox(height: 16),
             PrimaryButton(
               label: 'Payer $amount XOF',
               onPressed: () async {
                 if (phoneCtrl.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Renseignez votre numéro Mobile Money.')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Renseignez votre numéro Mobile Money.')));
                   return;
                 }
                 try {
-                  await ApiClient.instance.post('/api/wallet/$uid/deposit', data: {
+                  await ApiClient.instance
+                      .post('/api/wallet/$uid/deposit', data: {
                     'amount': amount,
                     'provider': 'feexpay',
                     'network': network,
@@ -187,12 +202,16 @@ class _WalletScreenState extends State<WalletScreen> {
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Dépôt en cours — validez sur votre téléphone.')),
+                      SnackBar(
+                          content: Text(
+                              'Dépôt en cours — validez sur votre téléphone.')),
                     );
                     _load();
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  if (mounted)
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('Erreur: $e')));
                 }
               },
             ),
@@ -211,63 +230,152 @@ class _WalletScreenState extends State<WalletScreen> {
         'phoneNumber': '',
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dépôt en cours de traitement.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Dépôt en cours de traitement.')));
         _load();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Portefeuille Livra'), actions: [notificationBellAction(context)]),
-      body: swipeableTab(context: context, currentIndex: 2, child: _wallet == null
-          ? SkeletonCardList()
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.gold,
-              child: ListView(
-              padding: EdgeInsets.all(20),
-              children: [
-                Container(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+          title: Text('Portefeuille Livra'),
+          actions: [notificationBellAction(context)]),
+      body: swipeableTab(
+        context: context,
+        currentIndex: 2,
+        child: _wallet == null
+            ? SkeletonCardList()
+            : RefreshIndicator(
+                onRefresh: _load,
+                color: AppColors.gold,
+                child: ListView(
                   padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [AppColors.surface, AppColors.surfaceElevated]),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Solde', style: TextStyle(color: AppColors.textSecondary)),
-                      SizedBox(height: 6),
-                      Text('${_wallet!['balance']} XOF', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.gold)),
-                      SizedBox(height: 16),
-                      Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          AppColors.surface,
+                          AppColors.surfaceElevated
+                        ]),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: PrimaryButton(label: 'Déposer', onPressed: _deposit)),
-                          SizedBox(width: 12),
-                          Expanded(child: PrimaryButton(label: 'Retirer', onPressed: _withdraw, outlined: true)),
+                          Text('Solde disponible',
+                              style: TextStyle(color: AppColors.textSecondary)),
+                          SizedBox(height: 6),
+                          Text('${_wallet!['balance']} XOF',
+                              style: TextStyle(
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.gold)),
+                          SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                  child: PrimaryButton(
+                                      label: 'Déposer', onPressed: _deposit)),
+                              SizedBox(width: 12),
+                              Expanded(
+                                  child: PrimaryButton(
+                                      label: 'Retirer',
+                                      onPressed: _withdraw,
+                                      outlined: true)),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Transactions',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: AppColors.textPrimary)),
+                        TextButton(
+                          onPressed: () {},
+                          style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 0)),
+                          child: Text('Voir tout',
+                              style: TextStyle(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    if ((_wallet!['transactions'] as List).isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 40, horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.goldSoft),
+                              child: Icon(Icons.receipt_long_outlined,
+                                  color: AppColors.textSecondary, size: 32),
+                            ),
+                            const SizedBox(height: 16),
+                            Text('Aucune transaction',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    color: AppColors.textPrimary)),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Vos transactions récentes apparaîtront ici une fois que vous aurez effectué des opérations.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  height: 1.4),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...List<Widget>.from(
+                          (_wallet!['transactions'] as List).map((t) => Card(
+                                margin: EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: Icon(
+                                      t['type'] == 'credit'
+                                          ? Icons.arrow_downward
+                                          : Icons.arrow_upward,
+                                      color: t['type'] == 'credit'
+                                          ? AppColors.success
+                                          : AppColors.danger),
+                                  title: Text(t['reason'] ?? ''),
+                                  trailing: Text('${t['amount']} XOF'),
+                                ),
+                              ))),
+                  ],
                 ),
-                SizedBox(height: 20),
-                Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                ...List<Widget>.from((_wallet!['transactions'] as List).map((t) => Card(
-                      margin: EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Icon(t['type'] == 'credit' ? Icons.arrow_downward : Icons.arrow_upward, color: t['type'] == 'credit' ? AppColors.success : AppColors.danger),
-                        title: Text(t['reason'] ?? ''),
-                        trailing: Text('${t['amount']} XOF'),
-                      ),
-                    ))),
-              ],
-            ),
-            ),
+              ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 2),
     );
