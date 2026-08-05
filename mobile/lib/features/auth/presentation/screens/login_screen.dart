@@ -42,26 +42,28 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordCtrl.text = saved.password;
         _rememberMe = true;
       });
-      // Les identifiants sont déjà là et complets — pas besoin de faire
-      // retaper quoi que ce soit, on lance la connexion directement.
       await _submit();
     }
   }
 
   Future<void> _submit() async {
-    final identifier = _usePhone ? _phoneCtrl.text.trim() : _emailCtrl.text.trim();
+    final identifier =
+        _usePhone ? _phoneCtrl.text.trim() : _emailCtrl.text.trim();
     if (identifier.isEmpty || _passwordCtrl.text.isEmpty) {
-      setState(() => _error = _usePhone ? 'Renseignez votre numéro et votre mot de passe.' : 'Renseignez votre email et votre mot de passe.');
+      setState(() => _error = _usePhone
+          ? 'Renseignez votre numéro et votre mot de passe.'
+          : 'Renseignez votre email et votre mot de passe.');
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       String email;
       if (_usePhone) {
-        // Le téléphone n'est pas un identifiant Firebase Auth ici — on
-        // retrouve d'abord l'email associé, puis la connexion se fait
-        // normalement avec ce mot de passe (jamais transmis à cette étape).
-        final res = await ApiClient.instance.post('/api/auth/lookup-phone', data: {'phone': identifier});
+        final res = await ApiClient.instance
+            .post('/api/auth/lookup-phone', data: {'phone': identifier});
         email = res['email'];
       } else {
         email = identifier;
@@ -72,11 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await _credentialsStore.clear();
       }
-      // Signale à Android que la saisie est terminée avec succès — c'est ce
-      // qui déclenche le prompt système "Enregistrer le mot de passe ?".
       TextInput.finishAutofillContext();
-      // La redirection vers /client/home, /driver/home ou /vendor/dashboard
-      // se fait automatiquement via RoleGate + AppRouter.redirect.
     } catch (e, stack) {
       RemoteLogger.log(context: 'login', error: e, stack: stack);
       final msg = e.toString().contains('no_account_for_this_phone')
@@ -96,42 +94,146 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  InputDecoration _decoration(
+      {required String hint, required IconData icon, Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: AppColors.textSecondary),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.divider),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.divider),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: AppColors.gold, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
-              const Center(child: AppLogo(size: 130, full: true)),
-              const SizedBox(height: 20),
-              const Text('Content de vous revoir', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              Text(
-                'Connectez-vous pour continuer',
-                style: TextStyle(color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  height: 150,
+                  width: double.infinity,
+                  color: AppColors.surfaceElevated,
+                  child: const Center(child: AppLogo(size: 72, full: true)),
+                ),
               ),
               const SizedBox(height: 20),
-              Center(
-                child: SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Email'), icon: Icon(Icons.mail_outline_rounded, size: 16)),
-                    ButtonSegment(value: true, label: Text('Téléphone'), icon: Icon(Icons.phone_outlined, size: 16)),
+              Text(
+                'Content de vous revoir',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Connectez-vous pour continuer',
+                style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _usePhone = false),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: !_usePhone
+                                ? AppColors.surface
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.mail_outline_rounded,
+                                  size: 16,
+                                  color: !_usePhone
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Email',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: !_usePhone
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _usePhone = true),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _usePhone
+                                ? AppColors.surface
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.phone_outlined,
+                                  size: 16,
+                                  color: _usePhone
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Téléphone',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: _usePhone
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
-                  selected: {_usePhone},
-                  onSelectionChanged: (s) => setState(() => _usePhone = s.first),
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.resolveWith(
-                      (states) => states.contains(WidgetState.selected) ? AppColors.gold : AppColors.surfaceElevated,
-                    ),
-                    foregroundColor: WidgetStateProperty.resolveWith(
-                      (states) => states.contains(WidgetState.selected) ? Colors.black : AppColors.textSecondary,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -144,8 +246,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.username, AutofillHints.email],
-                        decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                        autofillHints: const [
+                          AutofillHints.username,
+                          AutofillHints.email
+                        ],
+                        decoration: _decoration(
+                            hint: 'Adresse email',
+                            icon: Icons.mail_outline_rounded),
                       ),
                     const SizedBox(height: 14),
                     TextField(
@@ -153,11 +260,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: _obscure,
                       autofillHints: const [AutofillHints.password],
                       onSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        hintText: 'Mot de passe',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      decoration: _decoration(
+                        hint: 'Mot de passe',
+                        icon: Icons.lock_outline_rounded,
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: AppColors.textSecondary),
+                          icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: AppColors.textSecondary),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -165,20 +276,50 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      activeColor: AppColors.gold,
-                      onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            activeColor: AppColors.gold,
+                            onChanged: (v) =>
+                                setState(() => _rememberMe = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Se souvenir de moi',
+                            style: TextStyle(
+                                fontSize: 13, color: AppColors.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text('Se souvenir de moi', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(width: 12),
+                  TextButton(
+                    onPressed: () => context.push('/forgot-password'),
+                    style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0)),
+                    child: Text(
+                      'Mot de passe oublié ?',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gold),
+                    ),
+                  ),
                 ],
               ),
               if (_error != null) ...[
@@ -187,29 +328,39 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.danger.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 18),
+                      Icon(Icons.error_outline_rounded,
+                          color: AppColors.danger, size: 18),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13))),
+                      Expanded(
+                          child: Text(_error!,
+                              style: TextStyle(
+                                  color: AppColors.danger, fontSize: 13))),
                     ],
                   ),
                 ),
               ],
               const SizedBox(height: 20),
-              PrimaryButton(label: 'Se connecter', onPressed: _submit, loading: _loading),
+              PrimaryButton(
+                  label: 'Se connecter', onPressed: _submit, loading: _loading),
               const SizedBox(height: 20),
               Center(
                 child: TextButton(
                   onPressed: () => context.push('/register'),
                   child: RichText(
                     text: TextSpan(
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 14),
                       children: [
-                        TextSpan(text: "Pas encore de compte ? "),
-                        TextSpan(text: "S'inscrire", style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700)),
+                        const TextSpan(text: "Pas encore de compte ? "),
+                        TextSpan(
+                            text: "S'inscrire",
+                            style: TextStyle(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -221,6 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
