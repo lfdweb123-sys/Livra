@@ -31,12 +31,16 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   List<VendorModel>? _vendors;
-  String? _categoryFilter; // null = tout, 'resto' = Nourriture, 'shop' = boutiques
+  String?
+      _categoryFilter; // null = tout, 'resto' = Nourriture, 'shop' = boutiques
   final _listKey = GlobalKey();
   List<Map<String, dynamic>> _featured = [];
   Timer? _featuredTimer;
   final _discoveryService = DiscoveryService();
-  List<String> _bannerImages = ['assets/images/banners/banner1.png', 'assets/images/banners/banner2.png'];
+  List<String> _bannerImages = [
+    'assets/images/banners/banner1.png',
+    'assets/images/banners/banner2.png'
+  ];
   bool _bannerIsNetwork = false;
 
   @override
@@ -45,8 +49,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     _loadVendors();
     _loadFeatured();
     _loadAppContent();
-    _featuredTimer = Timer.periodic(const Duration(minutes: 1), (_) => _loadFeatured());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowPartnerPopup());
+    _featuredTimer =
+        Timer.periodic(const Duration(minutes: 1), (_) => _loadFeatured());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _maybeShowPartnerPopup());
   }
 
   Future<void> _loadAppContent() async {
@@ -65,9 +71,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Future<void> _maybeShowPartnerPopup() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final vendorSnap = await FirebaseFirestore.instance.collection('vendors').where('ownerId', isEqualTo: uid).limit(1).get();
+    final vendorSnap = await FirebaseFirestore.instance
+        .collection('vendors')
+        .where('ownerId', isEqualTo: uid)
+        .limit(1)
+        .get();
     if (vendorSnap.docs.isNotEmpty) return;
-    final driverSnap = await FirebaseFirestore.instance.collection('drivers').where('ownerId', isEqualTo: uid).limit(1).get();
+    final driverSnap = await FirebaseFirestore.instance
+        .collection('drivers')
+        .where('ownerId', isEqualTo: uid)
+        .limit(1)
+        .get();
     if (driverSnap.docs.isNotEmpty) return;
     if (!mounted) return;
 
@@ -84,12 +98,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             children: [
               Icon(Icons.handshake_rounded, color: AppColors.gold, size: 40),
               const SizedBox(height: 16),
-              const Text('Devenez partenaire Livra', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const Text('Devenez partenaire Livra',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 10),
               Text(
                 'Livreur, chauffeur ou vendeur ? Gagnez un revenu complémentaire en rejoignant Livra.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+                style:
+                    TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -110,7 +127,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: Text('Plus tard', style: TextStyle(color: AppColors.textSecondary)),
+                child: Text('Plus tard',
+                    style: TextStyle(color: AppColors.textSecondary)),
               ),
             ],
           ),
@@ -139,9 +157,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
   Future<void> _loadVendors() async {
     try {
-      final query = {'status': 'active', if (_categoryFilter != null) 'category': _categoryFilter!};
-      final res = await ApiClient.instance.get(ApiConstants.vendors, query: query);
-      final items = (res['items'] as List).map((e) => VendorModel.fromMap(e['id'], e)).toList();
+      final query = {
+        'status': 'active',
+        if (_categoryFilter != null) 'category': _categoryFilter!
+      };
+      final res =
+          await ApiClient.instance.get(ApiConstants.vendors, query: query);
+      final items = (res['items'] as List)
+          .map((e) => VendorModel.fromMap(e['id'], e))
+          .toList();
       if (mounted) setState(() => _vendors = items);
     } catch (_) {
       if (mounted) setState(() => _vendors = []);
@@ -155,16 +179,28 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     });
     _loadVendors();
     final ctx = _listKey.currentContext;
-    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300));
+    if (ctx != null)
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 300));
   }
 
   @override
   Widget build(BuildContext context) {
     final services = [
-      _Service('Colis', Icons.inventory_2_rounded, () => context.push('/client/checkout', extra: {'type': 'colis', 'items': []})),
-      _Service('Nourriture', Icons.restaurant_rounded, () => _filterByCategory('resto')),
-      _Service('Moto-taxi', Icons.two_wheeler_rounded, () => context.push('/client/ride', extra: {'vehicleType': 'moto'})),
-      _Service('Voiture-taxi', Icons.local_taxi_rounded, () => context.push('/client/ride', extra: {'vehicleType': 'voiture'})),
+      _Service(
+          'Colis',
+          Icons.inventory_2_rounded,
+          () => context
+              .push('/client/checkout', extra: {'type': 'colis', 'items': []})),
+      _Service('Nourriture', Icons.restaurant_rounded,
+          () => _filterByCategory('resto')),
+      _Service('Moto-taxi', Icons.two_wheeler_rounded,
+          () => context.push('/client/ride', extra: {'vehicleType': 'moto'})),
+      _Service(
+          'Voiture-taxi',
+          Icons.local_taxi_rounded,
+          () =>
+              context.push('/client/ride', extra: {'vehicleType': 'voiture'})),
     ];
 
     return Scaffold(
@@ -172,7 +208,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         title: const AppLogo(size: 40, full: true),
         actions: [
           notificationBellAction(context),
-          IconButton(icon: const Icon(Icons.account_circle_outlined), onPressed: () => context.push('/client/profile')),
+          IconButton(
+              icon: const Icon(Icons.account_circle_outlined),
+              onPressed: () => context.push('/client/profile')),
         ],
       ),
       body: swipeableTab(
@@ -185,15 +223,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             children: [
               InkWell(
                 onTap: () => context.push('/client/search'),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(28),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(28)),
                   child: Row(
                     children: [
-                      Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                      Icon(Icons.search_rounded,
+                          color: AppColors.textSecondary),
                       const SizedBox(width: 10),
-                      Text('Rechercher restaurants, boutiques...', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      Text('Rechercher restaurants, boutiques...',
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -212,21 +256,28 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               Container(
                                 width: 56,
                                 height: 56,
-                                decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    shape: BoxShape.circle),
                                 child: Icon(s.icon, color: AppColors.gold),
                               ),
                               const SizedBox(height: 6),
-                              Text(s.label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+                              Text(s.label,
+                                  style: const TextStyle(fontSize: 11),
+                                  textAlign: TextAlign.center),
                             ],
                           ),
                         ))
                     .toList(),
               ),
               const SizedBox(height: 20),
-              AutoBannerCarousel(imagePaths: _bannerImages, isNetwork: _bannerIsNetwork),
+              AutoBannerCarousel(
+                  imagePaths: _bannerImages, isNetwork: _bannerIsNetwork),
               const SizedBox(height: 18),
               if (_featured.isNotEmpty) ...[
-                Text('Découverte', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Découverte',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 168,
@@ -238,33 +289,52 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       final item = _featured[i];
                       return GestureDetector(
                         onTap: () {
-                          if (item['sponsored'] == true && item['campaignId'] != null) {
+                          if (item['sponsored'] == true &&
+                              item['campaignId'] != null) {
                             _discoveryService.trackClick(item['campaignId']);
                           }
-                          if (item['vendorId'] != null) context.push('/client/vendor/${item['vendorId']}');
+                          if (item['vendorId'] != null)
+                            context.push('/client/vendor/${item['vendorId']}');
                         },
                         child: Container(
                           width: 130,
-                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
+                          decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(14)),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Stack(
                                 children: [
                                   ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                    borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(14)),
                                     child: item['imageUrl'] != null
-                                        ? Image.network(item['imageUrl'], height: 90, width: 130, fit: BoxFit.cover)
-                                        : Container(height: 90, width: 130, color: AppColors.surfaceElevated),
+                                        ? Image.network(item['imageUrl'],
+                                            height: 90,
+                                            width: 130,
+                                            fit: BoxFit.cover)
+                                        : Container(
+                                            height: 90,
+                                            width: 130,
+                                            color: AppColors.surfaceElevated),
                                   ),
                                   if (item['sponsored'] == true)
                                     Positioned(
                                       top: 6,
                                       left: 6,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(6)),
-                                        child: const Text('Sponsorisé', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black)),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                            color: AppColors.gold,
+                                            borderRadius:
+                                                BorderRadius.circular(6)),
+                                        child: const Text('Sponsorisé',
+                                            style: TextStyle(
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black)),
                                       ),
                                     ),
                                 ],
@@ -274,9 +344,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                    Text(item['name'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
                                     const SizedBox(height: 2),
-                                    Text('${item['price']} XOF', style: TextStyle(fontSize: 11, color: AppColors.gold)),
+                                    Text('${item['price']} XOF',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.gold)),
                                   ],
                                 ),
                               ),
@@ -295,18 +373,26 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _categoryFilter == 'resto' ? 'Restaurants près de vous' : 'Restaurants & boutiques près de vous',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    _categoryFilter == 'resto'
+                        ? 'Restaurants près de vous'
+                        : 'Restaurants & boutiques près de vous',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   if (_categoryFilter != null)
-                    TextButton(onPressed: () => _filterByCategory(null), child: Text('Tout voir', style: TextStyle(color: AppColors.gold))),
+                    TextButton(
+                        onPressed: () => _filterByCategory(null),
+                        child: Text('Tout voir',
+                            style: TextStyle(color: AppColors.gold))),
                 ],
               ),
               const SizedBox(height: 12),
               if (_vendors == null)
                 const SkeletonCardList(count: 3)
               else if (_vendors!.isEmpty)
-                const EmptyState(icon: Icons.storefront_outlined, message: 'Aucun vendeur actif pour le moment.')
+                const EmptyState(
+                    icon: Icons.storefront_outlined,
+                    message: 'Aucun vendeur actif pour le moment.')
               else
                 ..._vendors!.map((v) => Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -314,12 +400,20 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         contentPadding: const EdgeInsets.all(12),
                         leading: CircleAvatar(
                           backgroundColor: AppColors.surfaceElevated,
-                          backgroundImage: v.logoUrl != null ? NetworkImage(v.logoUrl!) : null,
-                          child: v.logoUrl == null ? Text(v.businessName.isNotEmpty ? v.businessName[0] : '?') : null,
+                          backgroundImage: v.logoUrl != null
+                              ? NetworkImage(v.logoUrl!)
+                              : null,
+                          child: v.logoUrl == null
+                              ? Text(v.businessName.isNotEmpty
+                                  ? v.businessName[0]
+                                  : '?')
+                              : null,
                         ),
                         title: Text(v.businessName),
-                        subtitle: Text(v.address, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        subtitle: Text(v.address,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing:
+                            Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(Icons.star, size: 14, color: AppColors.gold),
                           Text(v.rating.toStringAsFixed(1)),
                         ]),
