@@ -301,6 +301,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
             children: [
               _row('Sous-total', _priceBreakdown!['subtotal']),
               _row('Frais de livraison', _priceBreakdown!['deliveryFee']),
+              _row('Frais de service (${_priceBreakdown!['serviceFeePercent'] ?? 5}%)', _priceBreakdown!['serviceFee']),
               Divider(color: AppColors.divider, height: 32),
               _row('Total', _priceBreakdown!['total'], bold: true),
               Spacer(),

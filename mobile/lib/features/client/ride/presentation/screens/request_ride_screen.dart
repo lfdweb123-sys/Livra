@@ -85,7 +85,10 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Prix: ${res['price']} XOF'),
+              Text('Course: ${res['basePrice']} XOF'),
+              Text('Frais de service (${res['serviceFeePercent'] ?? 5}%): ${res['serviceFee']} XOF'),
+              const Divider(),
+              Text('Prix total: ${res['price']} XOF', style: const TextStyle(fontWeight: FontWeight.bold)),
               Text('Distance: ${res['distanceKm']} km'),
               Text('ETA: ${res['etaMinutes']} min'),
               const SizedBox(height: 16),

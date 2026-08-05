@@ -21,7 +21,10 @@ export async function GET(req) {
   [...orders, ...rides].forEach((o) => {
     if (o.paymentStatus !== 'paid') return;
     const day = o.createdAt?.toDate ? o.createdAt.toDate().toISOString().slice(0, 10) : 'unknown';
-    const amount = o.priceBreakdown ? o.priceBreakdown.commission : Math.round((o.price || 0) * 0.15);
+    // Revenu plateforme = frais de service de 5% réellement facturé à
+    // l'acheteur (voir lib/pricing.js) — pas l'ancien champ "commission"
+    // qui n'a jamais été prélevé nulle part.
+    const amount = o.priceBreakdown ? o.priceBreakdown.serviceFee || 0 : o.serviceFee || 0;
     revenueByDay[day] = (revenueByDay[day] || 0) + amount;
   });
 

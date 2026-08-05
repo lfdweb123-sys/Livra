@@ -13,7 +13,8 @@ export async function POST(req) {
   if (!pickupLocation?.geopoint || !dropoffLocation?.geopoint) return jsonError('locations_required', 400);
   if (!['moto', 'voiture'].includes(vehicleType)) return jsonError('invalid_vehicleType', 400);
 
-  const { price, distanceKm, etaMinutes } = computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint);
+  const { price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes } =
+    computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint);
   const matchPosition = toGeoPoint(pickupLocation.geopoint.latitude, pickupLocation.geopoint.longitude);
 
   const rideRef = await db.collection('rides').add({
@@ -25,7 +26,10 @@ export async function POST(req) {
     status: 'pending',
     readyForPickup: true, // une course est disponible immédiatement, pas d'étape de préparation
     matchPosition,
-    price,
+    price, // total facturé au client (basePrice + serviceFee)
+    basePrice,
+    serviceFee,
+    serviceFeePercent,
     distanceKm,
     etaMinutes,
     paymentMethod: paymentMethod || null,
@@ -44,7 +48,7 @@ export async function POST(req) {
     relatedId: rideRef.id,
   });
 
-  return Response.json({ id: rideRef.id, price, distanceKm, etaMinutes });
+  return Response.json({ id: rideRef.id, price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes });
 }
 
 export async function GET(req) {

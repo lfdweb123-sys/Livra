@@ -1,6 +1,6 @@
 import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
-import { computeOrderBreakdown, computeDeliveryFee } from '../../../lib/pricing';
+import { computeOrderBreakdown, computeDeliveryFee, computeServiceFee, SERVICE_FEE_PERCENT } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
 import { logActivity } from '../../../lib/activityLog';
 
@@ -52,7 +52,12 @@ export async function POST(req) {
   const priceBreakdown =
     type === 'nourriture'
       ? computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee })
-      : { subtotal: 0, deliveryFee, commission: 0, total: deliveryFee };
+      : (() => {
+          // Colis: pas de vendeur, mais le frais de service de 5% s'applique
+          // quand même côté livreur, sur le frais de livraison.
+          const serviceFee = computeServiceFee(deliveryFee);
+          return { subtotal: 0, deliveryFee, commission: 0, serviceFee, serviceFeePercent: SERVICE_FEE_PERCENT, total: deliveryFee + serviceFee };
+        })();
 
   // matchPosition = point de collecte (vendeur pour nourriture, pickupAddress pour colis).
   // C'est ce champ que le driver_home_screen interroge en géo-requête (geoflutterfire2)
