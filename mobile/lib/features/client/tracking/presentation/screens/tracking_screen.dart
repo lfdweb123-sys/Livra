@@ -6,6 +6,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/review_sheet.dart';
+import '../../../../../core/widgets/driver_picker.dart';
+import '../../../../../core/services/api/api_client.dart';
 
 /// Tracking live : le marker interpole entre l'ancienne et la nouvelle
 /// position du chauffeur au lieu de sauter, via un TweenAnimationBuilder
@@ -32,6 +34,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   double _driverRating = 0;
   StreamSubscription? _sub;
   StreamSubscription? _driverSub;
+  Timer? _slowAssignTimer;
+  bool _showChooseDriverPrompt = false;
+  Map<String, dynamic>? _orderData;
 
   @override
   void initState() {
@@ -40,16 +45,58 @@ class _TrackingScreenState extends State<TrackingScreen> {
     _sub = _db.collection(collection).doc(widget.id).snapshots().listen((snap) {
       if (!snap.exists) return;
       final data = snap.data()!;
+      _orderData = data;
       final newStatus = data['status'] ?? 'pending';
       final justFinished = (widget.type == 'order' && newStatus == 'delivered' && _status != 'delivered') ||
           (widget.type == 'ride' && newStatus == 'completed' && _status != 'completed');
       setState(() => _status = newStatus);
       final driverId = data['driverId'];
-      if (driverId != null) _listenDriver(driverId);
+      if (driverId != null) {
+        _listenDriver(driverId);
+        _slowAssignTimer?.cancel();
+        if (_showChooseDriverPrompt) setState(() => _showChooseDriverPrompt = false);
+      }
       if (justFinished) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _promptReview());
       }
+    }, onError: (e) {
+      debugPrint('[TRACKING_STREAM_ERROR] $e');
     });
+
+    // Si personne n'a encore accepté après 45s, on propose au client de
+    // choisir lui-même un livreur/chauffeur actif plutôt que de le laisser
+    // bloqué indéfiniment sur "En attente d'assignation" sans rien pouvoir
+    // faire — cause fréquente de frustration signalée.
+    _slowAssignTimer = Timer(const Duration(seconds: 45), () {
+      if (mounted && _driverPosition == null) {
+        setState(() => _showChooseDriverPrompt = true);
+      }
+    });
+  }
+
+  Future<void> _chooseDriverNow() async {
+    final pickup = widget.type == 'order'
+        ? _orderData?['matchPosition']?['geopoint']
+        : _orderData?['pickupLocation']?['geopoint'];
+    if (pickup == null) return;
+    final driverId = await pickDriver(
+      context,
+      lat: (pickup['latitude'] as num).toDouble(),
+      lng: (pickup['longitude'] as num).toDouble(),
+      title: 'Choisir un livreur',
+    );
+    if (driverId == null) return;
+    final collection = widget.type == 'order' ? 'orders' : 'rides';
+    try {
+      await ApiClient.instance.patch('/api/$collection/${widget.id}', data: {'preferredDriverId': driverId});
+      if (mounted) {
+        setState(() => _showChooseDriverPrompt = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Livreur notifié — en attente de sa confirmation.')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
   }
 
   Future<void> _promptReview() async {
@@ -98,6 +145,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   void dispose() {
     _sub?.cancel();
     _driverSub?.cancel();
+    _slowAssignTimer?.cancel();
     super.dispose();
   }
 
@@ -137,6 +185,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
                         CircularProgressIndicator(color: AppColors.gold),
                         SizedBox(height: 12),
                         Text('En attente d\'assignation…', style: TextStyle(color: AppColors.textSecondary)),
+                        if (_showChooseDriverPrompt) ...[
+                          SizedBox(height: 20),
+                          Text(
+                            'Ça prend plus de temps que prévu.',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          ),
+                          SizedBox(height: 10),
+                          ElevatedButton.icon(
+                            onPressed: _chooseDriverNow,
+                            icon: const Icon(Icons.person_search_rounded, size: 18),
+                            label: const Text('Choisir un livreur moi-même'),
+                          ),
+                        ],
                       ],
                     ),
                   )

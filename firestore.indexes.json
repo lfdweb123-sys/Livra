@@ -93,6 +93,20 @@
 
     { "collectionGroup": "products", "queryScope": "COLLECTION_GROUP", "fields": [
       { "fieldPath": "isAvailable", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
+      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
+      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
+      { "fieldPath": "vehicleType", "order": "ASCENDING" },
+      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
     ]}
   ],
   "fieldOverrides": []

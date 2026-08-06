@@ -163,6 +163,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             .where((o) => o['preferredDriverId'] == null || o['preferredDriverId'] == _driverId)
             .toList();
       });
+    }, onError: (e) {
+      // IMPORTANT: sans ce onError, une requête Firestore en échec (index
+      // composite manquant, permissions...) restait TOTALEMENT invisible —
+      // aucune commande ne s'affichait jamais côté livreur, sans la moindre
+      // erreur nulle part. Voir la console/logs si ceci apparaît.
+      debugPrint('[GEO_ORDERS_STREAM_ERROR] $e');
     });
 
     if (_vehicleType == 'moto' || _vehicleType == 'voiture') {
@@ -182,6 +188,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               .where((r) => r['preferredDriverId'] == null || r['preferredDriverId'] == _driverId)
               .toList();
         });
+      }, onError: (e) {
+        debugPrint('[GEO_RIDES_STREAM_ERROR] $e');
       });
     }
   }

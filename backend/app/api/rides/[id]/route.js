@@ -1,6 +1,7 @@
 import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
+import { notifySpecificDriver } from '../../../../lib/matching';
 
 const DRIVER_ALLOWED = ['accepted', 'arriving', 'in_progress', 'completed'];
 
@@ -16,11 +17,32 @@ export async function PATCH(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
 
-  const { status, driverId, paymentMethod } = await req.json();
+  const { status, driverId, paymentMethod, preferredDriverId } = await req.json();
   const ref = db.collection('rides').doc(params.id);
   const snap = await ref.get();
   if (!snap.exists) return jsonError('not_found', 404);
   const ride = snap.data();
+
+  // Le client choisit (ou change) un chauffeur/taxi-moto précis APRÈS la
+  // création de la course — typiquement proposé sur l'écran de suivi si
+  // personne n'a encore accepté après un moment d'attente.
+  if (preferredDriverId && !status && !paymentMethod) {
+    if (ride.clientId !== auth.uid) return jsonError('forbidden', 403);
+    if (ride.driverId) return jsonError('already_assigned', 400);
+    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+    if (!driverSnap.exists || driverSnap.data().status !== 'active' || !driverSnap.data().isOnline) {
+      return jsonError('driver_unavailable', 400);
+    }
+    await ref.update({ preferredDriverId, updatedAt: FieldValue.serverTimestamp() });
+    await notifySpecificDriver({
+      driverId: preferredDriverId,
+      title: 'Nouvelle course disponible',
+      body: `Course ${ride.vehicleType} — ${ride.price} XOF, ${ride.distanceKm} km.`,
+      type: 'new_ride',
+      relatedId: params.id,
+    });
+    return Response.json({ ok: true });
+  }
 
   if (paymentMethod && !status) {
     if (ride.clientId !== auth.uid) return jsonError('forbidden', 403);

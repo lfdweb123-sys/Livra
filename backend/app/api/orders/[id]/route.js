@@ -26,6 +26,30 @@ export async function PATCH(req, { params }) {
   if (!snap.exists) return jsonError('not_found', 404);
   const order = snap.data();
 
+  // Le client choisit (ou change) un livreur précis APRÈS la création du
+  // colis — typiquement proposé sur l'écran de suivi si personne n'a
+  // encore accepté après un moment d'attente. Uniquement pour les colis
+  // (type !== 'nourriture'): pour une commande nourriture, c'est le
+  // vendeur qui choisit le livreur en marquant le plat prêt.
+  if (preferredDriverId && !status && !paymentMethod) {
+    if (order.clientId !== auth.uid) return jsonError('forbidden', 403);
+    if (order.type === 'nourriture') return jsonError('vendor_assigns_driver', 400);
+    if (order.driverId) return jsonError('already_assigned', 400);
+    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+    if (!driverSnap.exists || driverSnap.data().status !== 'active' || !driverSnap.data().isOnline) {
+      return jsonError('driver_unavailable', 400);
+    }
+    await ref.update({ preferredDriverId, updatedAt: FieldValue.serverTimestamp() });
+    await notifySpecificDriver({
+      driverId: preferredDriverId,
+      title: 'Nouvelle livraison disponible',
+      body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+      type: 'new_delivery',
+      relatedId: params.id,
+    });
+    return Response.json({ ok: true });
+  }
+
   // Le client choisit son moyen de paiement (espèces à la livraison, ou
   // portefeuille Livra débité immédiatement) — uniquement avant tout
   // paiement engagé.
