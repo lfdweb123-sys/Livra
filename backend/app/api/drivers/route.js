@@ -48,6 +48,11 @@ export async function GET(req) {
   let query = db.collection('drivers');
   if (status) query = query.where('status', '==', status);
   query = query.orderBy('createdAt', 'desc').limit(50);
-  const snap = await query.get();
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  try {
+    const snap = await query.get();
+    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[DRIVERS_GET_QUERY_ERROR]', { status, message: e.message, code: e.code });
+    return jsonError('drivers_query_failed', 500);
+  }
 }

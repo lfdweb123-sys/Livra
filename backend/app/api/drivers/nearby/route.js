@@ -23,7 +23,13 @@ export async function GET(req) {
 
   let query = db.collection('drivers').where('status', '==', 'active').where('isOnline', '==', true);
   if (vehicleType) query = query.where('vehicleType', '==', vehicleType);
-  const snap = await query.limit(200).get();
+  let snap;
+  try {
+    snap = await query.limit(200).get();
+  } catch (e) {
+    console.error('[DRIVERS_NEARBY_QUERY_ERROR]', { vehicleType, message: e.message, code: e.code });
+    return jsonError('drivers_nearby_query_failed', 500);
+  }
 
   const candidates = [];
   for (const doc of snap.docs) {

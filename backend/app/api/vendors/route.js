@@ -57,6 +57,11 @@ export async function GET(req) {
   let query = db.collection('vendors').where('status', '==', status);
   if (category) query = query.where('category', '==', category);
   query = query.orderBy('createdAt', 'desc').limit(limit);
-  const snap = await query.get();
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  try {
+    const snap = await query.get();
+    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[VENDORS_GET_QUERY_ERROR]', { status, category, message: e.message, code: e.code });
+    return jsonError('vendors_query_failed', 500);
+  }
 }

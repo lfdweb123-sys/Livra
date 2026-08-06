@@ -165,8 +165,20 @@ export async function GET(req) {
     if (cursorDoc.exists) query = query.startAfter(cursorDoc);
   }
 
-  const snap = await query.get();
-  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const nextCursor = items.length === limit ? items[items.length - 1].id : null;
-  return Response.json({ items, nextCursor });
+  // IMPORTANT: une requête Firestore combinant where(...) + orderBy() sur un
+  // champ différent EXIGE un index composite. Sans lui, .get() lève une
+  // exception (FAILED_PRECONDITION) — sans ce try/catch, cette route
+  // plantait silencieusement côté client (l'app affichait juste "aucune
+  // commande" sans aucune erreur visible). Le message d'erreur Firestore
+  // contient normalement un lien direct pour créer l'index en un clic —
+  // voir les logs Vercel si cette erreur apparaît.
+  try {
+    const snap = await query.get();
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const nextCursor = items.length === limit ? items[items.length - 1].id : null;
+    return Response.json({ items, nextCursor });
+  } catch (e) {
+    console.error('[ORDERS_GET_QUERY_ERROR]', { role: auth.role, uid: auth.uid, status, message: e.message, code: e.code });
+    return jsonError('orders_query_failed', 500);
+  }
 }

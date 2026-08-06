@@ -93,6 +93,11 @@ export async function GET(req) {
 
   if (status) query = query.where('status', '==', status);
   query = query.orderBy('createdAt', 'desc').limit(limit);
-  const snap = await query.get();
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  try {
+    const snap = await query.get();
+    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[RIDES_GET_QUERY_ERROR]', { role: auth.role, uid: auth.uid, status, message: e.message, code: e.code });
+    return jsonError('rides_query_failed', 500);
+  }
 }

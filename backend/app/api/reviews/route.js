@@ -89,13 +89,18 @@ export async function GET(req) {
   const targetId = searchParams.get('targetId');
   if (!targetType || !targetId) return jsonError('targetType_and_targetId_required', 400);
 
-  const snap = await db
-    .collection('reviews')
-    .where('targetType', '==', targetType)
-    .where('targetId', '==', targetId)
-    .orderBy('createdAt', 'desc')
-    .limit(50)
-    .get();
+  try {
+    const snap = await db
+      .collection('reviews')
+      .where('targetType', '==', targetType)
+      .where('targetId', '==', targetId)
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get();
 
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[REVIEWS_GET_QUERY_ERROR]', { targetType, targetId, message: e.message, code: e.code });
+    return jsonError('reviews_query_failed', 500);
+  }
 }

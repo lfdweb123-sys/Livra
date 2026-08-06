@@ -27,25 +27,6 @@
       { "fieldPath": "status", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]},
-    { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "createdAt", "order": "DESCENDING" }
-    ]},
-    { "collectionGroup": "orders", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
-      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
-    ]},
-
-    { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "readyForPickup", "order": "ASCENDING" },
-      { "fieldPath": "vehicleType", "order": "ASCENDING" },
-      { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
-    ]},
-
-    { "collectionGroup": "drivers", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "isOnline", "order": "ASCENDING" }
-    ]},
 
     { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "clientId", "order": "ASCENDING" },
@@ -62,10 +43,6 @@
     ]},
     { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "driverId", "order": "ASCENDING" },
-      { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "createdAt", "order": "DESCENDING" }
-    ]},
-    { "collectionGroup": "rides", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "status", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]},
@@ -84,22 +61,22 @@
       { "fieldPath": "status", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]},
-
-    { "collectionGroup": "payments", "queryScope": "COLLECTION", "fields": [
+    { "collectionGroup": "drivers", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "createdAt", "order": "ASCENDING" }
+      { "fieldPath": "isOnline", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "drivers", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "isOnline", "order": "ASCENDING" },
+      { "fieldPath": "vehicleType", "order": "ASCENDING" }
     ]},
 
-    { "collectionGroup": "notifications", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "userId", "order": "ASCENDING" },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "targetType", "order": "ASCENDING" },
+      { "fieldPath": "targetId", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]},
 
-    { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "status", "order": "ASCENDING" },
-      { "fieldPath": "endAt", "order": "ASCENDING" },
-      { "fieldPath": "pricePaid", "order": "DESCENDING" }
-    ]},
     { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
       { "fieldPath": "vendorId", "order": "ASCENDING" },
       { "fieldPath": "createdAt", "order": "DESCENDING" }
@@ -108,10 +85,14 @@
       { "fieldPath": "vendorId", "order": "ASCENDING" },
       { "fieldPath": "status", "order": "ASCENDING" }
     ]},
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION", "fields": [
-      { "fieldPath": "targetType", "order": "ASCENDING" },
-      { "fieldPath": "targetId", "order": "ASCENDING" },
-      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    { "collectionGroup": "ad_campaigns", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "endAt", "order": "ASCENDING" },
+      { "fieldPath": "pricePaid", "order": "DESCENDING" }
+    ]},
+
+    { "collectionGroup": "products", "queryScope": "COLLECTION_GROUP", "fields": [
+      { "fieldPath": "isAvailable", "order": "ASCENDING" }
     ]}
   ],
   "fieldOverrides": []

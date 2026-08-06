@@ -50,6 +50,11 @@ export async function GET(req) {
   const vendorSnap = await db.collection('vendors').doc(vendorId).get();
   if (!vendorSnap.exists || vendorSnap.data().ownerId !== auth.uid) return jsonError('forbidden', 403);
 
-  const snap = await db.collection('ad_campaigns').where('vendorId', '==', vendorId).orderBy('createdAt', 'desc').limit(50).get();
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  try {
+    const snap = await db.collection('ad_campaigns').where('vendorId', '==', vendorId).orderBy('createdAt', 'desc').limit(50).get();
+    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[AD_CAMPAIGNS_GET_QUERY_ERROR]', { vendorId, message: e.message, code: e.code });
+    return jsonError('ad_campaigns_query_failed', 500);
+  }
 }
