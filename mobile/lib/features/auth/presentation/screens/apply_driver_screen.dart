@@ -21,12 +21,37 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   final Map<String, File> _docs = {};
   bool _loading = false;
 
-  static const _requiredDocs = {
-    'cni': "Pièce d'identité (CNI/passeport)",
-    'permis': 'Permis de conduire',
-    'assurance': "Assurance du véhicule",
-    'photoVehicule': 'Photo du véhicule',
+  // Chaque type de véhicule a ses propres documents requis — un permis de
+  // conduire ou une assurance n'a pas de sens pour un taxi-moto ou un
+  // coursier à pied/vélo, et inversement une photo du véhicule doit
+  // montrer la plaque d'immatriculation pour une moto.
+  static const Map<String, Map<String, String>> _docsByVehicle = {
+    'moto': {
+      'cni': "Pièce d'identité (CNI/passeport)",
+      'photoMotoPlaque': 'Photo de la moto avec la plaque bien visible',
+    },
+    'voiture': {
+      'cni': "Pièce d'identité (CNI/passeport)",
+      'permis': 'Permis de conduire',
+      'assurance': "Assurance du véhicule",
+      'photoVehicule': 'Photo du véhicule avec la plaque bien visible',
+    },
+    'coursier': {
+      'cni': "Pièce d'identité (CNI/passeport)",
+      'photoMoyenTransport': 'Photo de votre moyen de transport (vélo, à pied...)',
+    },
   };
+
+  // Documents facultatifs pour le type sélectionné (ex: assurance moto,
+  // pas toujours souscrite) — n'empêchent pas l'envoi s'ils sont absents.
+  static const Map<String, Set<String>> _optionalDocsByVehicle = {
+    'moto': {'assurance'},
+  };
+
+  Map<String, String> get _requiredDocs => _docsByVehicle[_vehicleType]!;
+  Set<String> get _optionalDocs => _optionalDocsByVehicle[_vehicleType] ?? {};
+  Map<String, String> get _mandatoryDocs =>
+      Map.fromEntries(_requiredDocs.entries.where((e) => !_optionalDocs.contains(e.key)));
 
   Future<void> _pickDoc(String key) async {
     final picked = await ImagePicker()
@@ -35,11 +60,12 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   }
 
   Future<void> _submit() async {
-    if (_docs.length < _requiredDocs.length) {
+    final missing = _mandatoryDocs.keys.where((k) => !_docs.containsKey(k));
+    if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
-                "Tous les documents sont requis pour la vérification d'identité.")),
+                "Tous les documents requis pour ce type de véhicule doivent être fournis.")),
       );
       return;
     }
@@ -113,7 +139,10 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                       ? Icon(Icons.check, size: 16, color: Colors.black)
                       : null,
                   selected: selected,
-                  onSelected: (_) => setState(() => _vehicleType = v),
+                  onSelected: (_) => setState(() {
+                    _vehicleType = v;
+                    _docs.clear(); // les documents d'un autre type de véhicule ne sont plus valides
+                  }),
                   selectedColor: AppColors.gold,
                   backgroundColor: AppColors.surface,
                   side: BorderSide(
@@ -139,6 +168,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
             SizedBox(height: 12),
             ..._requiredDocs.entries.map((e) {
               final done = _docs.containsKey(e.key);
+              final optional = _optionalDocs.contains(e.key);
               return Container(
                 margin: EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
@@ -151,6 +181,10 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                       EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text(e.value,
                       style: TextStyle(color: AppColors.textPrimary)),
+                  subtitle: optional
+                      ? Text('Facultatif',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
+                      : null,
                   trailing: Container(
                     width: 40,
                     height: 40,
