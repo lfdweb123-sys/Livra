@@ -11,7 +11,7 @@ export async function POST(req) {
   if (auth.role !== 'client') return jsonError('forbidden', 403);
 
   const body = await req.json();
-  const { vendorId, type, items, deliveryAddress, pickupAddress } = body;
+  const { vendorId, type, items, deliveryAddress, pickupAddress, preferredDriverId } = body;
 
   if (type === 'nourriture' && !vendorId) return jsonError('vendorId_required', 400);
   if (type === 'colis' && !pickupAddress?.geopoint) return jsonError('pickupAddress_required', 400);
@@ -70,10 +70,24 @@ export async function POST(req) {
   // vendeur passé en "picked_up" (plat prêt) — voir PATCH orders/[id].
   const readyForPickup = type === 'colis';
 
+  // Le client peut choisir un livreur actif précis pour un colis (le
+  // choix pour une commande "nourriture" se fait plutôt côté vendeur, au
+  // moment de marquer le plat prêt — voir PATCH orders/[id]). On vérifie
+  // que le livreur existe et est bien actif+en ligne avant d'accepter le
+  // choix, jamais fait confiance au client pour cet id.
+  let validatedPreferredDriverId = null;
+  if (preferredDriverId) {
+    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+    if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
+      validatedPreferredDriverId = preferredDriverId;
+    }
+  }
+
   const orderRef = await db.collection('orders').add({
     clientId: auth.uid,
     vendorId: vendorId || null,
     driverId: null,
+    preferredDriverId: validatedPreferredDriverId,
     type,
     items: items || [],
     priceBreakdown,

@@ -11,6 +11,7 @@ import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
+import '../../../../../core/widgets/driver_picker.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 class RequestRideScreen extends StatefulWidget {
@@ -65,6 +66,19 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
 
   Future<void> _requestRide() async {
     if (_pickup == null || _dropoff == null) return;
+
+    // Propose un chauffeur/taxi-moto actif à proximité — le client peut en
+    // choisir un précis, ou ne rien choisir (passer par son propre
+    // chauffeur hors application, ou laisser l'appli proposer la course à
+    // tous les chauffeurs disponibles comme avant).
+    final preferredDriverId = await pickDriver(
+      context,
+      lat: _pickup!.latitude,
+      lng: _pickup!.longitude,
+      vehicleType: _vehicleType,
+      title: 'Choisir un chauffeur',
+    );
+
     setState(() => _requesting = true);
     try {
       final res = await ApiClient.instance.post(ApiConstants.rides, data: {
@@ -75,6 +89,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
           'geopoint': {'latitude': _dropoff!.latitude, 'longitude': _dropoff!.longitude}
         },
         'vehicleType': _vehicleType,
+        if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
       });
       _rideId = res['id'];
       if (mounted) {

@@ -7,6 +7,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/primary_button.dart';
+import '../../../../../core/widgets/zoomable_image.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
@@ -88,8 +89,10 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
 
   num get _total => _cart.entries.fold(0, (sum, e) => sum + (_catalog[e.key]?.price ?? 0) * e.value);
 
-  /// Détail produit — image en grand + description, avec le même contrôle
-  /// de quantité que dans la liste.
+  /// Détail produit — image zoomable (tap pour agrandir en plein écran) +
+  /// description, prix, frais de livraison du vendeur, résumé des avis
+  /// (les avis sont enregistrés au niveau du vendeur/livreur, pas produit
+  /// par produit — voir POST /api/reviews), et ajout au panier.
   void _showProductDetail(ProductModel p) {
     showAppBottomSheet(
       context,
@@ -100,9 +103,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (p.imageUrl != null)
-              ClipRRect(
+              ZoomableImage(
+                imageUrl: p.imageUrl!,
+                height: 200,
+                width: double.infinity,
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(p.imageUrl!, height: 200, width: double.infinity, fit: BoxFit.cover),
               ),
             const SizedBox(height: 14),
             Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -110,7 +115,35 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
             if (p.description.isNotEmpty)
               Text(p.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5)),
             const SizedBox(height: 10),
-            Text('${p.price} XOF', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 16)),
+            Row(
+              children: [
+                Text('${p.price} XOF', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 16)),
+                if (_vendor?.deliveryFee != null) ...[
+                  const SizedBox(width: 12),
+                  Icon(Icons.delivery_dining_outlined, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 2),
+                  Text('${_vendor!.deliveryFee} XOF livraison', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _showReviews();
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star_rounded, color: AppColors.gold, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${(_vendor?.rating ?? 0).toStringAsFixed(1)} (${_reviews.length} avis) sur ${_vendor?.businessName ?? 'la boutique'}',
+                    style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600, fontSize: 12.5, decoration: TextDecoration.underline),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 18),
             if (qty == 0)
               PrimaryButton(
@@ -228,9 +261,11 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     child: Row(
                       children: [
                         if (p.imageUrl != null) ...[
-                          ClipRRect(
+                          ZoomableImage(
+                            imageUrl: p.imageUrl!,
+                            width: 56,
+                            height: 56,
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.network(p.imageUrl!, width: 56, height: 56, fit: BoxFit.cover),
                           ),
                           const SizedBox(width: 12),
                         ],

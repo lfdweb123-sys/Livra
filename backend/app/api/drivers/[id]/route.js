@@ -7,7 +7,22 @@ import { sendNotification } from '../../../../lib/fcm';
 export async function GET(req, { params }) {
   const snap = await db.collection('drivers').doc(params.id).get();
   if (!snap.exists) return jsonError('not_found', 404);
-  return Response.json({ id: snap.id, ...snap.data() });
+  const driver = snap.data();
+  // Enrichit avec le nom (et photo si absente du doc driver) depuis le
+  // profil utilisateur — nécessaire pour la page détail publique du
+  // livreur/chauffeur (nom, photo, note, avis).
+  let name = null;
+  let userPhotoUrl = null;
+  try {
+    const userSnap = await db.collection('users').doc(driver.ownerId).get();
+    if (userSnap.exists) {
+      name = userSnap.data().name || null;
+      userPhotoUrl = userSnap.data().photoUrl || null;
+    }
+  } catch (e) {
+    console.error('[DRIVER_DETAIL_USER_LOOKUP_ERROR]', e.message);
+  }
+  return Response.json({ id: snap.id, ...driver, name, photoUrl: driver.photoUrl || userPhotoUrl });
 }
 
 export async function PATCH(req, { params }) {

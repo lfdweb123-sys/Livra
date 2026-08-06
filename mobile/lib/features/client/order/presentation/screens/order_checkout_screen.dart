@@ -8,6 +8,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
+import '../../../../../core/widgets/driver_picker.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 /// Étape 1 : confirmation/choix des adresses (livraison, + collecte si colis)
@@ -67,6 +68,23 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
 
   Future<void> _createOrder() async {
     if (_deliveryAddress == null || (_isColis && _pickupAddress == null)) return;
+
+    // Colis uniquement: le client peut choisir un livreur précis au point
+    // de collecte, ou ne rien choisir (livreur hors application, ou
+    // laisser l'appli proposer le colis à tous les livreurs à proximité).
+    // Pour une commande nourriture, c'est le vendeur qui choisira plus
+    // tard, au moment de marquer le plat prêt.
+    String? preferredDriverId;
+    if (_isColis) {
+      preferredDriverId = await pickDriver(
+        context,
+        lat: _pickupAddress!.lat,
+        lng: _pickupAddress!.lng,
+        vehicleType: 'coursier',
+        title: 'Choisir un livreur',
+      );
+    }
+
     setState(() => _creatingOrder = true);
     try {
       final data = widget.initialData ?? {};
@@ -84,6 +102,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                 'label': _pickupAddress!.label,
               }
             : null,
+        if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
       });
       setState(() {
         _orderId = res['id'];

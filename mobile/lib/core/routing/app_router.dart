@@ -15,6 +15,7 @@ import '../../features/auth/presentation/screens/apply_vendor_screen.dart';
 import '../../features/client/home/presentation/screens/client_home_screen.dart';
 import '../../features/client/home/presentation/screens/search_screen.dart';
 import '../../features/client/order/presentation/screens/vendor_detail_screen.dart';
+import '../../features/client/order/presentation/screens/driver_detail_screen.dart';
 import '../../features/client/order/presentation/screens/order_checkout_screen.dart';
 import '../../features/client/ride/presentation/screens/request_ride_screen.dart';
 import '../../features/client/tracking/presentation/screens/tracking_screen.dart';
@@ -117,6 +118,13 @@ class AppRouter {
         },
       ),
       GoRoute(path: '/client/vendor/:id', builder: (c, s) => VendorDetailScreen(vendorId: s.pathParameters['id']!)),
+      GoRoute(
+        path: '/driver/detail/:id',
+        builder: (c, s) => DriverDetailScreen(
+          driverId: s.pathParameters['id']!,
+          selectable: (s.extra as Map?)?['selectable'] == true,
+        ),
+      ),
       GoRoute(
         path: '/client/checkout',
         builder: (c, s) => OrderCheckoutScreen(initialData: s.extra as Map<String, dynamic>?),

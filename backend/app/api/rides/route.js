@@ -2,16 +2,29 @@ import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeRidePrice } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
-import { notifyNearbyDrivers } from '../../../lib/matching';
+import { notifyNearbyDrivers, notifySpecificDriver } from '../../../lib/matching';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
   if (auth.role !== 'client') return jsonError('forbidden', 403);
 
-  const { pickupLocation, dropoffLocation, vehicleType, paymentMethod } = await req.json();
+  const { pickupLocation, dropoffLocation, vehicleType, paymentMethod, preferredDriverId } = await req.json();
   if (!pickupLocation?.geopoint || !dropoffLocation?.geopoint) return jsonError('locations_required', 400);
   if (!['moto', 'voiture'].includes(vehicleType)) return jsonError('invalid_vehicleType', 400);
+
+  // Le client peut choisir un chauffeur/taxi-moto actif précis proposé par
+  // l'appli, ou ne rien choisir (dans ce cas la course est proposée à tous
+  // les chauffeurs à proximité comme avant) — il reste toujours libre de
+  // prendre un chauffeur hors application, ce qui ne concerne alors pas
+  // la plateforme.
+  let validatedPreferredDriverId = null;
+  if (preferredDriverId) {
+    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+    if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
+      validatedPreferredDriverId = preferredDriverId;
+    }
+  }
 
   const { price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes } =
     computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint);
@@ -20,6 +33,7 @@ export async function POST(req) {
   const rideRef = await db.collection('rides').add({
     clientId: auth.uid,
     driverId: null,
+    preferredDriverId: validatedPreferredDriverId,
     pickupLocation,
     dropoffLocation,
     vehicleType,
@@ -38,15 +52,25 @@ export async function POST(req) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  await notifyNearbyDrivers({
-    pickupLat: pickupLocation.geopoint.latitude,
-    pickupLng: pickupLocation.geopoint.longitude,
-    vehicleTypeFilter: [vehicleType],
-    title: 'Nouvelle course disponible',
-    body: `Course ${vehicleType} — ${price} XOF, ${distanceKm} km.`,
-    type: 'new_ride',
-    relatedId: rideRef.id,
-  });
+  if (validatedPreferredDriverId) {
+    await notifySpecificDriver({
+      driverId: validatedPreferredDriverId,
+      title: 'Nouvelle course disponible',
+      body: `Course ${vehicleType} — ${price} XOF, ${distanceKm} km.`,
+      type: 'new_ride',
+      relatedId: rideRef.id,
+    });
+  } else {
+    await notifyNearbyDrivers({
+      pickupLat: pickupLocation.geopoint.latitude,
+      pickupLng: pickupLocation.geopoint.longitude,
+      vehicleTypeFilter: [vehicleType],
+      title: 'Nouvelle course disponible',
+      body: `Course ${vehicleType} — ${price} XOF, ${distanceKm} km.`,
+      type: 'new_ride',
+      relatedId: rideRef.id,
+    });
+  }
 
   return Response.json({ id: rideRef.id, price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes });
 }

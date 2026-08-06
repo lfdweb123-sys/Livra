@@ -2,7 +2,7 @@ import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
 import { sendTransactionalEmail, orderDeliveredEmail } from '../../../../lib/brevo';
-import { notifyNearbyDrivers, notifyOrderPaid } from '../../../../lib/matching';
+import { notifyNearbyDrivers, notifyOrderPaid, notifySpecificDriver } from '../../../../lib/matching';
 
 const VENDOR_ALLOWED = ['accepted', 'preparing', 'picked_up'];
 const DRIVER_ALLOWED = ['picked_up', 'delivering', 'delivered'];
@@ -20,7 +20,7 @@ export async function PATCH(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
 
-  const { status, driverId, paymentMethod } = await req.json();
+  const { status, driverId, paymentMethod, preferredDriverId } = await req.json();
   const ref = db.collection('orders').doc(params.id);
   const snap = await ref.get();
   if (!snap.exists) return jsonError('not_found', 404);
@@ -105,6 +105,17 @@ export async function PATCH(req, { params }) {
   } else if (auth.role === 'vendor' && status === 'picked_up') {
     // le vendeur marque le plat prêt : devient visible pour les livreurs à proximité
     update.readyForPickup = true;
+    // Le vendeur peut choisir un livreur actif précis (proposé par
+    // l'appli) au lieu de laisser n'importe quel livreur à proximité
+    // accepter — ou ne rien choisir et faire appel à son propre livreur
+    // hors application (dans ce cas, rien à faire ici, l'appli continue
+    // normalement de proposer la commande aux livreurs à proximité).
+    if (preferredDriverId) {
+      const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+      if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
+        update.preferredDriverId = preferredDriverId;
+      }
+    }
   }
   // paiement espèces : encaissé par le livreur à la livraison, confirmé automatiquement
   if (status === 'delivered' && order.paymentMethod === 'cash' && order.paymentStatus !== 'paid') {
@@ -114,16 +125,26 @@ export async function PATCH(req, { params }) {
   await ref.update(update);
 
   if (update.readyForPickup === true && auth.role === 'vendor') {
-    const pickup = order.matchPosition?.geopoint;
-    if (pickup) {
-      await notifyNearbyDrivers({
-        pickupLat: pickup.latitude,
-        pickupLng: pickup.longitude,
+    if (update.preferredDriverId) {
+      await notifySpecificDriver({
+        driverId: update.preferredDriverId,
         title: 'Nouvelle livraison disponible',
         body: `Une commande prête à récupérer, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
         type: 'new_delivery',
         relatedId: params.id,
       });
+    } else {
+      const pickup = order.matchPosition?.geopoint;
+      if (pickup) {
+        await notifyNearbyDrivers({
+          pickupLat: pickup.latitude,
+          pickupLng: pickup.longitude,
+          title: 'Nouvelle livraison disponible',
+          body: `Une commande prête à récupérer, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
+          type: 'new_delivery',
+          relatedId: params.id,
+        });
+      }
     }
   }
 

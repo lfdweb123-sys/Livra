@@ -6,6 +6,7 @@ import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
+import '../../../../../core/widgets/driver_picker.dart';
 
 class VendorOrdersScreen extends StatefulWidget {
   VendorOrdersScreen({super.key});
@@ -27,8 +28,28 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
     setState(() => _orders = res['items']);
   }
 
-  Future<void> _advance(String id, String nextStatus) async {
-    await ApiClient.instance.patch('/api/orders/$id', data: {'status': nextStatus});
+  Future<void> _advance(String id, String nextStatus, Map order) async {
+    String? preferredDriverId;
+    if (nextStatus == 'picked_up') {
+      // Le restaurant peut choisir un livreur actif précis pour venir
+      // récupérer la commande, ou ne rien choisir (livreur hors
+      // application, ou laisser l'appli proposer la commande à tous les
+      // livreurs à proximité comme avant).
+      final geopoint = order['matchPosition']?['geopoint'];
+      if (geopoint != null) {
+        preferredDriverId = await pickDriver(
+          context,
+          lat: (geopoint['latitude'] as num).toDouble(),
+          lng: (geopoint['longitude'] as num).toDouble(),
+          vehicleType: 'coursier',
+          title: 'Choisir un livreur',
+        );
+      }
+    }
+    await ApiClient.instance.patch('/api/orders/$id', data: {
+      'status': nextStatus,
+      if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
+    });
     _load();
   }
 
@@ -70,7 +91,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                               Text('${o['priceBreakdown']?['subtotal'] ?? 0} XOF — ${_statusLabelsFr[o['status']] ?? o['status']}', style: TextStyle(color: AppColors.textSecondary)),
                               if (next != null) ...[
                                 SizedBox(height: 8),
-                                ElevatedButton(onPressed: () => _advance(o['id'], next), child: Text('Marquer : ${_statusLabelsFr[next] ?? next}')),
+                                ElevatedButton(onPressed: () => _advance(o['id'], next, o), child: Text('Marquer : ${_statusLabelsFr[next] ?? next}')),
                               ],
                             ],
                           ),

@@ -51,6 +51,33 @@ export async function notifyNearbyDrivers({ pickupLat, pickupLng, vehicleTypeFil
   return notified;
 }
 
+/**
+ * Notifie UN SEUL livreur/chauffeur choisi explicitement par le client ou
+ * le vendeur (au lieu du broadcast à tous les livreurs à proximité) — voir
+ * le champ `preferredDriverId` sur orders/rides.
+ */
+export async function notifySpecificDriver({ driverId, title, body, type, relatedId }) {
+  const snap = await db.collection('drivers').doc(driverId).get();
+  if (!snap.exists) return false;
+  const driver = snap.data();
+  await sendNotification({ userId: driver.ownerId, title, body, type, relatedId });
+  try {
+    const userSnap = await db.collection('users').doc(driver.ownerId).get();
+    const email = userSnap.exists ? userSnap.data().email : null;
+    if (email) {
+      await sendTransactionalEmail({
+        to: email,
+        toName: userSnap.data().name,
+        subject: title,
+        htmlContent: `<p>${body}</p><p>Ouvrez l'application Livra pour l'accepter.</p>`,
+      });
+    }
+  } catch (e) {
+    console.error('[NOTIFY_SPECIFIC_DRIVER_EMAIL_ERROR]', e.message);
+  }
+  return true;
+}
+
 export async function notifyVendor({ vendorOwnerId, title, body, type, relatedId }) {
   await sendNotification({ userId: vendorOwnerId, title, body, type, relatedId });
   try {
@@ -100,14 +127,26 @@ export async function notifyOrderPaid(orderId) {
   } else if (order.type === 'colis') {
     const pickup = order.pickupAddress?.geopoint;
     if (pickup) {
-      await notifyNearbyDrivers({
-        pickupLat: pickup.latitude,
-        pickupLng: pickup.longitude,
-        title: 'Nouvelle livraison disponible',
-        body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
-        type: 'new_delivery',
-        relatedId: orderId,
-      });
+      if (order.preferredDriverId) {
+        // Le client a choisi un livreur précis pour ce colis: on ne
+        // notifie QUE lui, pas de broadcast.
+        await notifySpecificDriver({
+          driverId: order.preferredDriverId,
+          title: 'Nouvelle livraison disponible',
+          body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+          type: 'new_delivery',
+          relatedId: orderId,
+        });
+      } else {
+        await notifyNearbyDrivers({
+          pickupLat: pickup.latitude,
+          pickupLng: pickup.longitude,
+          title: 'Nouvelle livraison disponible',
+          body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+          type: 'new_delivery',
+          relatedId: orderId,
+        });
+      }
     }
   }
 }

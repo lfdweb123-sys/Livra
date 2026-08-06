@@ -155,7 +155,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         .listen((docs) {
       if (!mounted) return;
       setState(() {
-        _incomingOrders = docs.map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)}).toList();
+        // Si le client/vendeur a choisi un livreur précis pour cette
+        // commande (preferredDriverId), elle ne doit être visible QUE pour
+        // lui, pas pour les autres livreurs à proximité.
+        _incomingOrders = docs
+            .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
+            .where((o) => o['preferredDriverId'] == null || o['preferredDriverId'] == _driverId)
+            .toList();
       });
     });
 
@@ -171,7 +177,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           .listen((docs) {
         if (!mounted) return;
         setState(() {
-          _incomingRides = docs.map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)}).toList();
+          _incomingRides = docs
+              .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
+              .where((r) => r['preferredDriverId'] == null || r['preferredDriverId'] == _driverId)
+              .toList();
         });
       });
     }
