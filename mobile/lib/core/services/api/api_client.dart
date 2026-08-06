@@ -69,4 +69,13 @@ class ApiClient {
       throw _extractError(e);
     }
   }
+
+  Future<Map<String, dynamic>> delete(String path, {Map<String, dynamic>? data}) async {
+    try {
+      final res = await _dio.delete(path, data: data);
+      return res.data is Map ? Map<String, dynamic>.from(res.data) : {};
+    } on DioException catch (e) {
+      throw _extractError(e);
+    }
+  }
 }

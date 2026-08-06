@@ -12,6 +12,8 @@ import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/debounced_button.dart';
+import '../../../../../core/widgets/share_button.dart';
 
 const int _maxProductsPerVendor = 50;
 
@@ -54,23 +56,24 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
     }
   }
 
-  Future<void> _addProduct() async {
-    if (_products.length >= _maxProductsPerVendor) {
+  Future<void> _addOrEditProduct({ProductModel? existing}) async {
+    if (existing == null && _products.length >= _maxProductsPerVendor) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Limite de 50 produits atteinte. Retirez-en un pour en ajouter un nouveau.')),
       );
       return;
     }
 
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final priceCtrl = TextEditingController(text: existing?.price != null ? existing!.price.toString() : '');
+    final descCtrl = TextEditingController(text: existing?.description ?? '');
     File? image;
+    String? existingImageUrl = existing?.imageUrl;
     bool compressing = false;
 
     await showAppBottomSheet(
       context,
-      title: 'Nouveau produit',
+      title: existing == null ? 'Nouveau produit' : 'Modifier le produit',
       child: StatefulBuilder(builder: (context, setSheetState) {
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -84,6 +87,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                   final compressed = await ImageCompressionService().compress(File(picked.path));
                   setSheetState(() {
                     image = compressed;
+                    existingImageUrl = null;
                     compressing = false;
                   });
                 }
@@ -94,7 +98,14 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                 child: Center(
                   child: compressing
                       ? CircularProgressIndicator(color: AppColors.gold)
-                      : Icon(image == null ? Icons.add_a_photo_outlined : Icons.check_circle, color: AppColors.gold),
+                      : (image != null || existingImageUrl != null)
+                          ? existingImageUrl != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.network(existingImageUrl!, height: 100, width: double.infinity, fit: BoxFit.cover),
+                                )
+                              : Icon(Icons.check_circle, color: AppColors.gold)
+                          : Icon(Icons.add_a_photo_outlined, color: AppColors.gold),
                 ),
               ),
             ),
@@ -107,30 +118,58 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
             const SizedBox(height: 12),
             TextField(controller: priceCtrl, decoration: const InputDecoration(hintText: 'Prix (XOF)'), keyboardType: TextInputType.number),
             const SizedBox(height: 16),
-            PrimaryButton(
-              label: 'Ajouter',
-              onPressed: compressing
-                  ? null
-                  : () async {
-                      String? imageUrl;
-                      if (image != null) imageUrl = await UploadService().uploadFile(image!, folder: 'products');
-                      try {
-                        await ApiClient.instance.post('/api/vendors/$_vendorId/products', data: {
-                          'name': nameCtrl.text.trim(),
-                          'description': descCtrl.text.trim(),
-                          'price': num.tryParse(priceCtrl.text) ?? 0,
-                          'imageUrl': imageUrl,
-                        });
-                        if (context.mounted) Navigator.pop(context);
-                      } catch (e) {
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                      }
-                    },
+            DebouncedButton(
+              label: existing == null ? 'Ajouter' : 'Enregistrer',
+              onPressed: () async {
+                if (compressing) return;
+                String? imageUrl = existingImageUrl;
+                if (image != null) imageUrl = await UploadService().uploadFile(image!, folder: 'products');
+                try {
+                  final data = {
+                    'name': nameCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                    'price': num.tryParse(priceCtrl.text) ?? 0,
+                    'imageUrl': imageUrl,
+                  };
+                  if (existing == null) {
+                    await ApiClient.instance.post('/api/vendors/$_vendorId/products', data: data);
+                  } else {
+                    await ApiClient.instance.patch('/api/vendors/$_vendorId/products/${existing.id}', data: data);
+                  }
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
             ),
           ],
         );
       }),
     );
+  }
+
+  Future<void> _deleteProduct(ProductModel p) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer ce produit ?'),
+        content: Text('« ${p.name} » sera définitivement retiré de votre catalogue. Cette action est irréversible.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Supprimer', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.instance.delete('/api/vendors/$_vendorId/products/${p.id}');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produit supprimé.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
   }
 
   Future<void> _toggleAvailability(ProductModel p) async {
@@ -157,7 +196,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.gold,
-        onPressed: _addProduct,
+        onPressed: () => _addOrEditProduct(),
         child: const Icon(Icons.add, color: Colors.black),
       ),
       body: RefreshIndicator(
@@ -177,6 +216,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
+                    onTap: () => _addOrEditProduct(existing: p),
                     leading: p.imageUrl != null
                         ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(p.imageUrl!, width: 44, height: 44, fit: BoxFit.cover))
                         : null,
@@ -195,6 +235,17 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                           onPressed: () => _togglePinned(p),
                         ),
                         Switch(value: p.isAvailable, activeColor: AppColors.gold, onChanged: (_) => _toggleAvailability(p)),
+                        PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert, color: AppColors.textSecondary),
+                          onSelected: (v) {
+                            if (v == 'edit') _addOrEditProduct(existing: p);
+                            if (v == 'delete') _deleteProduct(p);
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                            PopupMenuItem(value: 'delete', child: Text('Supprimer', style: TextStyle(color: AppColors.danger))),
+                          ],
+                        ),
                       ],
                     ),
                   ),

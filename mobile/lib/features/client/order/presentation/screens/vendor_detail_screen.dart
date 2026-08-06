@@ -8,6 +8,7 @@ import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/zoomable_image.dart';
+import '../../../../../core/widgets/share_button.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
@@ -110,7 +111,14 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             const SizedBox(height: 14),
-            Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ),
+                ShareButton(productName: p.name, price: p.price, vendorName: _vendor?.businessName),
+              ],
+            ),
             const SizedBox(height: 6),
             if (p.description.isNotEmpty)
               Text(p.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5)),
