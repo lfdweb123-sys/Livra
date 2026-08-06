@@ -12,6 +12,7 @@ import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
+import '../../../../../core/widgets/debounced_button.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 class RequestRideScreen extends StatefulWidget {
@@ -187,7 +188,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
             const SizedBox(height: 12),
             PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             const SizedBox(height: 16),
-            PrimaryButton(
+            DebouncedButton(
               label: 'Payer',
               onPressed: () async {
                 if (phoneCtrl.text.isEmpty) {

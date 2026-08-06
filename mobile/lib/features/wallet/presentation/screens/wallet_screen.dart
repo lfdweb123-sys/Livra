@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../../core/widgets/debounced_button.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/notification_bell_action.dart';
 import '../../../../core/widgets/phone_number_field.dart';
@@ -55,7 +56,7 @@ class _WalletScreenState extends State<WalletScreen> {
           PhoneNumberField(
               initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
           SizedBox(height: 16),
-          PrimaryButton(
+          DebouncedButton(
             label: 'Confirmer le retrait',
             onPressed: () async {
               if (phoneCtrl.text.isEmpty) {
@@ -183,7 +184,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 initialValue: cachedPhone,
                 onChanged: (v) => phoneCtrl.text = v),
             SizedBox(height: 16),
-            PrimaryButton(
+            DebouncedButton(
               label: 'Payer $amount XOF',
               onPressed: () async {
                 if (phoneCtrl.text.isEmpty) {

@@ -9,6 +9,7 @@ import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
+import '../../../../../core/widgets/debounced_button.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 /// Étape 1 : confirmation/choix des adresses (livraison, + collecte si colis)
@@ -265,7 +266,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               TextField(controller: otpCtrl, decoration: InputDecoration(hintText: 'Code OTP (laisser vide au 1er envoi)'), keyboardType: TextInputType.number),
             ],
             SizedBox(height: 16),
-            PrimaryButton(
+            DebouncedButton(
               label: 'Payer',
               onPressed: () async {
                 try {
@@ -324,7 +325,8 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               Divider(color: AppColors.divider, height: 32),
               _row('Total', _priceBreakdown!['total'], bold: true),
               Spacer(),
-              PrimaryButton(label: 'Choisir le paiement', onPressed: _choosePayment),
+              PrimaryButton(
+              label: 'Choisir le paiement', onPressed: _choosePayment),
             ],
           ),
         ),

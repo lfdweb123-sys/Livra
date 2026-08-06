@@ -11,6 +11,7 @@ import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
+import '../../../../../core/widgets/debounced_button.dart';
 
 const int _pricePerDayXof = 500;
 
@@ -225,7 +226,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
             const SizedBox(height: 12),
             PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
             const SizedBox(height: 16),
-            PrimaryButton(
+            DebouncedButton(
               label: 'Payer',
               onPressed: () async {
                 if (phoneCtrl.text.isEmpty) {
