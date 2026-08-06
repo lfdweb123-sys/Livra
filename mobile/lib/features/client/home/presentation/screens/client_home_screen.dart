@@ -194,6 +194,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               .push('/client/checkout', extra: {'type': 'colis', 'items': []})),
       _Service('Nourriture', Icons.restaurant_rounded,
           () => _filterByCategory('resto')),
+      _Service('Boutiques', Icons.storefront_rounded,
+          () => _filterByCategory('shop')),
       _Service('Moto-taxi', Icons.two_wheeler_rounded,
           () => context.push('/client/ride', extra: {'vehicleType': 'moto'})),
       _Service(
@@ -375,7 +377,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   Text(
                     _categoryFilter == 'resto'
                         ? 'Restaurants près de vous'
-                        : 'Restaurants & boutiques près de vous',
+                        : _categoryFilter == 'shop'
+                            ? 'Boutiques près de vous'
+                            : 'Restaurants & boutiques près de vous',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),

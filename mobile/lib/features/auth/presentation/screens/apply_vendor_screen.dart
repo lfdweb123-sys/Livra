@@ -134,10 +134,11 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 10,
-              children: ['resto', 'shop'].map((c) {
+              children: {'resto': 'Restaurant', 'shop': 'Boutique'}.entries.map((entry) {
+                final c = entry.key;
                 final selected = _category == c;
                 return ChoiceChip(
-                  label: Text(c),
+                  label: Text(entry.value),
                   avatar: selected
                       ? Icon(Icons.check, size: 16, color: Colors.black)
                       : null,
@@ -155,6 +156,15 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                   ),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 8),
+            // Message explicite, bien visible: une "Boutique" n'est pas
+            // limitée à une catégorie de produits précise.
+            Text(
+              _category == 'shop'
+                  ? 'Boutique : vendez tout type de produit ou d\'article — vêtements, électronique, cosmétiques, accessoires, et bien plus. Aucune restriction de catégorie.'
+                  : 'Restaurant : vendez vos plats, boissons et menus à la carte.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 28),
             Text(

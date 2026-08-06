@@ -39,6 +39,15 @@ final _slides = [
         "Livreur, chauffeur ou vendeur ? Postulez à tout moment depuis l'onglet Profil.",
     'assets/images/onboarding/slide4.png',
   ),
+  // Ajoutée à la fin (et non insérée au milieu) pour ne pas décaler les
+  // index des diapositives précédentes, utilisés par AppContentService
+  // pour les images personnalisées configurées côté admin.
+  _Slide(
+    'Vendez ce que vous voulez',
+    (_) =>
+        "Nourriture, vêtements, électronique, cosmétiques… vendez tout type de produit ou d'article sur Livra, sans restriction.",
+    'assets/images/onboarding/slide3.png',
+  ),
 ];
 
 class OnboardingScreen extends StatefulWidget {
