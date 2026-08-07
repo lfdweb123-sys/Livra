@@ -5,8 +5,8 @@ import { apiFetch } from '../../../lib/apiClient';
 
 function StatCard({ label, value }) {
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-      <div className="text-neutral-400 text-sm">{label}</div>
+    <div className="bg-livra-surface border border-livra-divider rounded-2xl p-5">
+      <div className="text-livra-textSecondary text-sm">{label}</div>
       <div className="text-3xl font-bold mt-1">{value}</div>
     </div>
   );
@@ -19,7 +19,7 @@ export default function DashboardPage() {
     apiFetch('/api/admin/stats').then(setStats).catch(() => {});
   }, []);
 
-  if (!stats) return <div className="text-neutral-400">Chargement des statistiques…</div>;
+  if (!stats) return <div className="text-livra-textSecondary">Chargement des statistiques…</div>;
 
   return (
     <div>
@@ -31,8 +31,8 @@ export default function DashboardPage() {
         <StatCard label="Chauffeurs en attente" value={stats.driversPendingCount} />
         <StatCard label="Litiges ouverts" value={stats.disputesOpenCount} />
       </div>
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 h-80">
-        <div className="text-neutral-400 text-sm mb-4">Revenus commission par jour (XOF)</div>
+      <div className="bg-livra-surface border border-livra-divider rounded-2xl p-5 h-80">
+        <div className="text-livra-textSecondary text-sm mb-4">Revenus commission par jour (XOF)</div>
         <ResponsiveContainer width="100%" height="90%">
           <LineChart data={stats.revenueByDay}>
             <CartesianGrid strokeDasharray="3 3" stroke="#262626" />

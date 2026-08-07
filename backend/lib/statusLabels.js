@@ -22,6 +22,20 @@ export const RIDE_STATUS_LABELS_FR = {
   cancelled: 'annulée',
 };
 
+// Type de commande — utilisé notamment dans le panneau admin, jamais le
+// mot anglais brut ('colis'/'nourriture' sont déjà français, mais on
+// centralise ici pour cohérence et usage futur).
+export const ORDER_TYPE_LABELS_FR = {
+  nourriture: 'Nourriture',
+  colis: 'Colis',
+};
+
+export const PAYMENT_STATUS_LABELS_FR = {
+  pending: 'en attente',
+  paid: 'payé',
+  failed: 'échoué',
+};
+
 export function orderStatusFr(status) {
   return ORDER_STATUS_LABELS_FR[status] || status;
 }
