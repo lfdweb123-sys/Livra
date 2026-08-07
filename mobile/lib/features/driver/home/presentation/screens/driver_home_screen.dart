@@ -158,10 +158,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   /// en temps réel s'est arrêté silencieusement (erreur transitoire,
   /// reprise après mise en veille...). Appelé par le "tirer pour actualiser",
   /// disponible en permanence, plus seulement quand la liste n'est pas vide.
+  ///
+  /// IMPORTANT: repasse D'ABORD par toggle-online (qui réécrit
+  /// users/{uid}.activeDriverId côté serveur, requis par firestore.rules)
+  /// avant de relancer la requête géo — sans ça, "actualiser" ne réparait
+  /// jamais une erreur de permission causée par un activeDriverId pas
+  /// encore synchronisé, seulement les erreurs réseau transitoires.
   Future<void> _refresh() async {
     if (!_online || _driverId == null) return;
     try {
       final pos = await LocationService().getCurrentPosition();
+      await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
+        'isOnline': true,
+        'lat': pos.latitude,
+        'lng': pos.longitude,
+      });
       _startGeoMatching(pos.latitude, pos.longitude);
       if (mounted) setState(() => _toggleError = null);
     } catch (e) {
