@@ -33,6 +33,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   List<Map<String, dynamic>> _incomingRides = [];
   bool _checkedNoApplication = false;
   bool _popupShown = false;
+  String? _toggleError;
 
   @override
   void initState() {
@@ -110,30 +111,63 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   Future<void> _toggleOnline(bool value) async {
     if (_driverId == null) return;
-    if (value) {
-      final pos = await LocationService().getCurrentPosition();
-      await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
-        'isOnline': true,
-        'lat': pos.latitude,
-        'lng': pos.longitude,
-      });
-      _startGeoMatching(pos.latitude, pos.longitude);
-      _posSub = LocationService().watchPosition().listen((p) {
-        ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
+    setState(() => _toggleError = null);
+    try {
+      if (value) {
+        final pos = await LocationService().getCurrentPosition();
+        await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
           'isOnline': true,
-          'lat': p.latitude,
-          'lng': p.longitude,
+          'lat': pos.latitude,
+          'lng': pos.longitude,
         });
-        _startGeoMatching(p.latitude, p.longitude);
-      });
-    } else {
-      await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {'isOnline': false});
-      _posSub?.cancel();
-      _geoOrdersSub?.cancel();
-      _geoRidesSub?.cancel();
-      setState(() { _incomingOrders = []; _incomingRides = []; });
+        _startGeoMatching(pos.latitude, pos.longitude);
+        _posSub?.cancel();
+        _posSub = LocationService().watchPosition().listen((p) {
+          ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
+            'isOnline': true,
+            'lat': p.latitude,
+            'lng': p.longitude,
+          }).catchError((_) {});
+          _startGeoMatching(p.latitude, p.longitude);
+        }, onError: (e) => debugPrint('[WATCH_POSITION_ERROR] $e'));
+      } else {
+        await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {'isOnline': false});
+        _posSub?.cancel();
+        _geoOrdersSub?.cancel();
+        _geoRidesSub?.cancel();
+        setState(() { _incomingOrders = []; _incomingRides = []; });
+      }
+      if (mounted) setState(() => _online = value);
+    } catch (e) {
+      // IMPORTANT: sans ce try/catch, une permission de localisation
+      // refusée ou un appel API en échec plantait silencieusement — le
+      // livreur restait "hors ligne" sans jamais savoir pourquoi, et sans
+      // rien à sélectionner. On affiche maintenant l'erreur clairement.
+      debugPrint('[TOGGLE_ONLINE_ERROR] $e');
+      if (mounted) {
+        final msg = e.toString().toLowerCase().contains('location') || e.toString().toLowerCase().contains('permission')
+            ? "Impossible d'accéder à votre position. Vérifiez que la localisation est autorisée pour Livra dans les paramètres du téléphone."
+            : 'Erreur : $e';
+        setState(() => _toggleError = msg);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
-    setState(() => _online = value);
+  }
+
+  /// Relance manuellement la position + le matching géo — utile si le flux
+  /// en temps réel s'est arrêté silencieusement (erreur transitoire,
+  /// reprise après mise en veille...). Appelé par le "tirer pour actualiser",
+  /// disponible en permanence, plus seulement quand la liste n'est pas vide.
+  Future<void> _refresh() async {
+    if (!_online || _driverId == null) return;
+    try {
+      final pos = await LocationService().getCurrentPosition();
+      _startGeoMatching(pos.latitude, pos.longitude);
+      if (mounted) setState(() => _toggleError = null);
+    } catch (e) {
+      debugPrint('[REFRESH_ERROR] $e');
+      if (mounted) setState(() => _toggleError = 'Erreur lors de l\'actualisation : $e');
+    }
   }
 
   /// Requêtes géo (geoflutterfire_plus) sur `orders` ET `rides` en parallèle
@@ -169,6 +203,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       // aucune commande ne s'affichait jamais côté livreur, sans la moindre
       // erreur nulle part. Voir la console/logs si ceci apparaît.
       debugPrint('[GEO_ORDERS_STREAM_ERROR] $e');
+      if (mounted) setState(() => _toggleError = 'Erreur de chargement des commandes : $e');
     });
 
     if (_vehicleType == 'moto' || _vehicleType == 'voiture') {
@@ -190,6 +225,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         });
       }, onError: (e) {
         debugPrint('[GEO_RIDES_STREAM_ERROR] $e');
+        if (mounted) setState(() => _toggleError = 'Erreur de chargement des courses : $e');
       });
     }
   }
@@ -302,38 +338,71 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                 ],
               ),
             ),
+            if (_toggleError != null)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: AppColors.danger.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.danger, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_toggleError!, style: TextStyle(color: AppColors.danger, fontSize: 12.5))),
+                    IconButton(
+                      icon: Icon(Icons.close, size: 16, color: AppColors.danger),
+                      onPressed: () => setState(() => _toggleError = null),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
             Expanded(
-              child: !_online
-                  ? EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des courses et commandes.')
-                  : items.isEmpty
-                      ? EmptyState(icon: Icons.inbox_outlined, message: 'Rien de disponible à proximité pour le moment.')
-                      : RefreshIndicator(
-                          onRefresh: () async => Future.delayed(const Duration(milliseconds: 400)),
-                          color: AppColors.gold,
-                          child: ListView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: items.length,
-                          itemBuilder: (context, i) {
-                            final item = items[i];
-                            final isRide = item['_kind'] == 'ride';
-                            final title = isRide ? 'Course ${item['vehicleType']}' : 'Commande ${item['type']}';
-                            final amount = isRide ? item['price'] : (item['priceBreakdown']?['deliveryFee']);
-                            return Card(
-                              margin: EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                leading: Icon(isRide ? Icons.two_wheeler_rounded : Icons.inventory_2_outlined, color: AppColors.gold),
-                                title: Text(title),
-                                subtitle: Text('${amount ?? '-'} XOF'),
-                                trailing: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
-                                  onPressed: () => isRide ? _acceptRide(item['id']) : _acceptOrder(item['id']),
-                                  child: Text('Accepter'),
+              // Le "tirer pour actualiser" est maintenant TOUJOURS disponible
+              // (avant: seulement si des éléments étaient déjà affichés — un
+              // livreur qui ne voyait rien ne pouvait donc jamais rafraîchir).
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                color: AppColors.gold,
+                child: !_online
+                    ? ListView(
+                        children: [
+                          const SizedBox(height: 120),
+                          EmptyState(icon: Icons.wifi_off_rounded, message: 'Passez en ligne pour recevoir des courses et commandes.'),
+                        ],
+                      )
+                    : items.isEmpty
+                        ? ListView(
+                            children: [
+                              const SizedBox(height: 120),
+                              EmptyState(icon: Icons.inbox_outlined, message: 'Rien de disponible à proximité pour le moment. Tirez vers le bas pour actualiser.'),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: items.length,
+                            itemBuilder: (context, i) {
+                              final item = items[i];
+                              final isRide = item['_kind'] == 'ride';
+                              final title = isRide ? 'Course ${item['vehicleType']}' : 'Commande ${item['type']}';
+                              final amount = isRide ? item['price'] : (item['priceBreakdown']?['deliveryFee']);
+                              return Card(
+                                margin: EdgeInsets.only(bottom: 12),
+                                child: ListTile(
+                                  leading: Icon(isRide ? Icons.two_wheeler_rounded : Icons.inventory_2_outlined, color: AppColors.gold),
+                                  title: Text(title),
+                                  subtitle: Text('${amount ?? '-'} XOF'),
+                                  trailing: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
+                                    onPressed: () => isRide ? _acceptRide(item['id']) : _acceptOrder(item['id']),
+                                    child: Text('Accepter'),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                        ),
+                              );
+                            },
+                          ),
+              ),
             ),
           ],
         ),
