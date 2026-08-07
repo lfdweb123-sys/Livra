@@ -58,13 +58,22 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Future<void> _loadAppContent() async {
     final config = await AppContentService().fetch();
     if (!mounted) return;
-    if (config.bannersEnabled && config.banners.isNotEmpty) {
+    // Logique corrigée: avant, le cas "activé mais aucune bannière
+    // personnalisée uploadée" ne correspondait à AUCUNE des deux branches
+    // — les bannières restaient bloquées sur leur dernier état (souvent
+    // vides), donnant l'impression que le toggle "Activé" ne faisait rien.
+    if (!config.bannersEnabled) {
+      setState(() => _bannerImages = []);
+    } else if (config.banners.isNotEmpty) {
       setState(() {
         _bannerImages = config.banners;
         _bannerIsNetwork = true;
       });
-    } else if (!config.bannersEnabled) {
-      setState(() => _bannerImages = []);
+    } else {
+      setState(() {
+        _bannerImages = ['assets/images/banners/banner1.png', 'assets/images/banners/banner2.png'];
+        _bannerIsNetwork = false;
+      });
     }
   }
 
