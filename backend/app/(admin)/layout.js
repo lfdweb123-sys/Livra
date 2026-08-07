@@ -1,23 +1,49 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import Image from 'next/image';
 import { auth, db } from '../../lib/firebaseClient';
 
-const NAV = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/activity', label: "Journal d'activité" },
-  { href: '/content', label: 'Visuels' },
-  { href: '/users', label: 'Utilisateurs' },
-  { href: '/products', label: 'Produits' },
-  { href: '/vendors', label: 'Vendeurs' },
-  { href: '/drivers', label: 'Chauffeurs' },
-  { href: '/orders', label: 'Commandes' },
-  { href: '/rides', label: 'Courses' },
-  { href: '/disputes', label: 'Litiges' },
-  { href: '/off-platform', label: 'Livraisons hors app.' },
-  { href: '/commission', label: 'Commission' },
+const NAV_SECTIONS = [
+  {
+    label: 'Vue d\'ensemble',
+    items: [
+      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/activity', label: "Journal d'activité" },
+    ],
+  },
+  {
+    label: 'Marketplace',
+    items: [
+      { href: '/vendors', label: 'Vendeurs' },
+      { href: '/products', label: 'Produits' },
+      { href: '/orders', label: 'Commandes' },
+    ],
+  },
+  {
+    label: 'Mobilité',
+    items: [
+      { href: '/drivers', label: 'Chauffeurs' },
+      { href: '/rides', label: 'Courses' },
+    ],
+  },
+  {
+    label: 'Confiance & sécurité',
+    items: [
+      { href: '/users', label: 'Utilisateurs' },
+      { href: '/disputes', label: 'Litiges' },
+      { href: '/off-platform', label: 'Livraisons hors app.' },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { href: '/content', label: 'Visuels' },
+      { href: '/commission', label: 'Commission' },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }) {
@@ -38,26 +64,60 @@ export default function AdminLayout({ children }) {
 
   if (pathname === '/login') return children;
   if (status !== 'ok') {
-    return <div className="min-h-screen flex items-center justify-center text-neutral-400">Chargement…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-livra-textSecondary text-sm">
+        Chargement…
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 shrink-0 border-r border-neutral-800 p-5">
-        <div className="text-xl font-bold mb-8" style={{ color: 'var(--livra-gold)' }}>Livra Admin</div>
-        <nav className="flex flex-col gap-1">
-          {NAV.map((n) => (
-            <a
-              key={n.href}
-              href={n.href}
-              className={`px-3 py-2 rounded-lg text-sm ${pathname === n.href ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:bg-neutral-900'}`}
-            >
-              {n.label}
-            </a>
+    <div className="min-h-screen flex bg-livra-bg">
+      <aside className="w-64 shrink-0 border-r border-livra-divider flex flex-col">
+        <div className="flex items-center gap-2 px-5 h-16 border-b border-livra-divider">
+          <Image src="/livra_logo_full.png" alt="Livra" width={28} height={29} />
+          <span className="font-semibold text-livra-textPrimary">Livra Admin</span>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label}>
+              <div className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-livra-textSecondary/70">
+                {section.label}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {section.items.map((n) => {
+                  const active = pathname === n.href;
+                  return (
+                    <a
+                      key={n.href}
+                      href={n.href}
+                      className={
+                        'px-3 py-2 rounded-lg text-sm transition-colors border-l-2 ' +
+                        (active
+                          ? 'bg-livra-gold/10 text-livra-textPrimary border-livra-gold font-medium'
+                          : 'text-livra-textSecondary border-transparent hover:bg-livra-surface hover:text-livra-textPrimary')
+                      }
+                    >
+                      {n.label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </nav>
+
+        <div className="p-3 border-t border-livra-divider">
+          <button
+            onClick={() => signOut(auth)}
+            className="w-full px-3 py-2 rounded-lg text-sm text-livra-textSecondary hover:bg-livra-surface hover:text-livra-danger transition-colors text-left"
+          >
+            Déconnexion
+          </button>
+        </div>
       </aside>
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 p-8 max-w-[1400px]">{children}</main>
     </div>
   );
 }

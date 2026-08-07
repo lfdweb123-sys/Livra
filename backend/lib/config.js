@@ -3,3 +3,13 @@
 // sur Vercel — cette variable doit être la même partout dans le projet
 // (backend ET mobile) pour ne jamais désynchroniser un lien en dur.
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://livras.vercel.app';
+
+// Liens de téléchargement de l'application — tant que Livra n'est pas
+// encore publiée sur le Play Store / App Store (ou qu'un APK n'est pas
+// encore hébergé quelque part), ces variables restent vides et les
+// boutons de la landing page affichent "Bientôt disponible" au lieu d'un
+// lien mort. À définir sur Vercel dès que les liens réels existent :
+// NEXT_PUBLIC_PLAY_STORE_URL, NEXT_PUBLIC_APP_STORE_URL, NEXT_PUBLIC_APK_URL.
+export const PLAY_STORE_URL = process.env.NEXT_PUBLIC_PLAY_STORE_URL || null;
+export const APP_STORE_URL = process.env.NEXT_PUBLIC_APP_STORE_URL || null;
+export const APK_DOWNLOAD_URL = process.env.NEXT_PUBLIC_APK_URL || null;

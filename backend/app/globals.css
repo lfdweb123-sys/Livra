@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --livra-gold: #D4AF37;
+  --livra-gold: #F2660B;
   --livra-black: #0B0B0D;
+}
+
+::selection {
+  background-color: #F2660B;
+  color: #0B0B0D;
 }
