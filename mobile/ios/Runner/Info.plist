@@ -26,6 +26,38 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Permissions iOS — OBLIGATOIRES : sans description, iOS ferme l'app
+	     immédiatement au premier accès à la caméra/position/micro, contrairement
+	     à Android qui est plus tolérant. Toutes en français. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Livra a besoin de l'appareil photo pour prendre en photo vos documents d'identité, votre véhicule et vos produits.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Livra a besoin d'accéder à vos photos pour choisir une image de profil ou de produit.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Livra a besoin de votre position pour vous proposer des livraisons/courses à proximité et vous guider jusqu'à destination.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Livra a besoin de votre position, y compris en arrière-plan, pour continuer à vous guider et vous proposer des courses pendant une livraison en cours.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Livra a besoin du microphone pour les appels vocaux avec les clients, vendeurs et livreurs.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Livra utilise le Bluetooth pour permettre l'utilisation d'un casque ou kit mains libres pendant un appel.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Livra peut accéder à vos contacts pour faciliter le partage et l'invitation de proches.</string>
+	<!-- Modes d'arrière-plan: audio (appels en cours), fetch/notifications
+	     distantes (FCM), position (suivi pendant une livraison/course en
+	     cours). Le mode "voip" pour les appels entrants natifs (PushKit)
+	     nécessite en plus une capacité Xcode dédiée + un fichier
+	     d'habilitations — à activer manuellement dans Xcode sur le Mac
+	     (Signing & Capabilities > + Capability > Background Modes > Voice
+	     over IP), impossible à préconfigurer ici sans risquer un fichier
+	     d'habilitations invalide qui bloquerait la signature du build. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>location</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
