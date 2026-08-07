@@ -16,7 +16,17 @@
     <application
         android:label="Livra"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
+        <!-- allowBackup=false: sans ça, Android sauvegarde automatiquement
+             les données de l'app (SharedPreferences incluses) sur Google
+             Drive et les restaure SILENCIEUSEMENT à la réinstallation —
+             c'est exactement pourquoi l'onboarding ("déjà vu") et la
+             session ("Se souvenir de moi") survivaient à une
+             désinstallation/réinstallation au lieu de repartir à zéro.
+             Ça évite aussi que des données sensibles (session, cache de
+             numéro de téléphone) finissent dans une sauvegarde cloud. -->
         <!-- Twilio Voice : reçoit les notifications d'appel entrant via FCM,
              même app fermée (nécessite la Push Credential Android configurée
              côté Twilio Console — voir backend/lib/twilio.js). -->
