@@ -9,6 +9,7 @@ import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/zoomable_image.dart';
 import '../../../../../core/widgets/share_button.dart';
+import '../../../../../core/widgets/report_sheet.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
@@ -216,7 +217,21 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_vendor?.businessName ?? 'Catalogue')),
+      appBar: AppBar(
+        title: Text(_vendor?.businessName ?? 'Catalogue'),
+        actions: [
+          if (_vendor != null)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Signaler',
+              onPressed: () => showReportSheet(
+                context,
+                againstUid: _vendor!.ownerId,
+                againstName: _vendor!.businessName,
+              ),
+            ),
+        ],
+      ),
       body: _products == null
           ? SkeletonCardList()
           : RefreshIndicator(

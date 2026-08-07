@@ -107,6 +107,11 @@
       { "fieldPath": "readyForPickup", "order": "ASCENDING" },
       { "fieldPath": "vehicleType", "order": "ASCENDING" },
       { "fieldPath": "matchPosition.geohash", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "disputes", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "raisedBy", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]}
   ],
   "fieldOverrides": []

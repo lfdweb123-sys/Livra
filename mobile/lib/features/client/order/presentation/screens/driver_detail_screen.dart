@@ -6,6 +6,7 @@ import '../../../../../core/widgets/skeleton_loader.dart';
 import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/zoomable_image.dart';
+import '../../../../../core/widgets/report_sheet.dart';
 
 const _vehicleLabels = {
   'moto': 'Taxi-moto',
@@ -94,7 +95,21 @@ class _DriverDetailScreenState extends State<DriverDetailScreen> {
   Widget build(BuildContext context) {
     final d = _driver;
     return Scaffold(
-      appBar: AppBar(title: Text(d?['name'] ?? 'Profil livreur')),
+      appBar: AppBar(
+        title: Text(d?['name'] ?? 'Profil livreur'),
+        actions: [
+          if (d != null && d['ownerId'] != null)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Signaler',
+              onPressed: () => showReportSheet(
+                context,
+                againstUid: d['ownerId'],
+                againstName: d['name'] ?? 'ce livreur',
+              ),
+            ),
+        ],
+      ),
       body: d == null
           ? SkeletonCardList()
           : ListView(

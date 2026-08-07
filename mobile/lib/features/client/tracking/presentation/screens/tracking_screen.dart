@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/review_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
+import '../../../../../core/widgets/report_sheet.dart';
 import '../../../../../core/services/api/api_client.dart';
 
 /// Tracking live : le marker interpole entre l'ancienne et la nouvelle
@@ -286,6 +287,34 @@ class _TrackingScreenState extends State<TrackingScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 10),
+                // Sécurité: en cas de non-réception ou de problème avec
+                // cette commande/course, le client peut signaler
+                // directement le livreur/chauffeur concerné. Si aucun
+                // livreur n'est encore assigné, on l'oriente vers le
+                // support (voir page profil).
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      if (_driverUid != null) {
+                        showReportSheet(
+                          context,
+                          againstUid: _driverUid!,
+                          againstName: _driverName ?? 'ce livreur',
+                          relatedOrderId: widget.type == 'order' ? widget.id : null,
+                          relatedRideId: widget.type == 'ride' ? widget.id : null,
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text(
+                                "Aucun livreur assigné pour l'instant. Contactez le support depuis votre profil si besoin.")));
+                      }
+                    },
+                    icon: Icon(Icons.flag_outlined, size: 16, color: AppColors.danger),
+                    label: Text('Signaler un problème', style: TextStyle(color: AppColors.danger)),
+                  ),
+                ),
               ],
             ),
           ),
