@@ -28,3 +28,24 @@ Sans cet en-tête exact, l'appel renvoie 403 forbidden — la route est protég�
 
 
 node scripts/create-admin.js "admin@livra.app" "MotDePasseSolide123" "Admin"
+
+
+iOS préparé à l'avance : permissions système (caméra, position, micro) déclarées en français — sans ça l'app aurait planté au premier accès sur iPhone.
+
+Sur le GoogleService-Info.plist — pourquoi je ne peux pas le faire à ta place
+
+Ce fichier contient de vraies clés générées par Firebase pour ton app iOS précise. Bonne nouvelle en le vérifiant : une app iOS est déjà enregistrée côté Firebase (le code la référence déjà), donc pas besoin d'en recréer une — juste télécharger son fichier :
+
+Va sur https://console.firebase.google.com/project/livra-efb01
+Paramètres du projet (roue dentée) → onglet Général
+Dans "Vos applications", trouve l'app iOS (bundle ID com.example.livra)
+Clique Télécharger GoogleService-Info.plist
+
+Sur le Mac ensuite, une fois flutter pub get lancé :
+
+Ouvre ios/Runner.xcworkspace dans Xcode (jamais le .xcodeproj)
+Glisse le fichier téléchargé dans le groupe Runner (à côté de Info.plist)
+Coche "Copy items if needed" et "Runner" comme target
+flutter build ios (ou lance depuis Xcode)
+
+⚠️ Ne renomme pas le bundle ID (com.example.livra) sans me le dire — il doit rester identique à ce qui est enregistré côté Firebase, sinon rien ne s'authentifiera.
