@@ -296,7 +296,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             _discoveryService.trackClick(item['campaignId']);
                           }
                           if (item['vendorId'] != null)
-                            context.push('/client/vendor/${item['vendorId']}');
+                            // Ouvre directement la fiche détail du produit
+                            // suggéré, au lieu de forcer le client à le
+                            // retrouver sur la page du vendeur.
+                            context.push('/client/vendor/${item['vendorId']}',
+                                extra: {'openProductId': item['id']});
                         },
                         child: Container(
                           width: 130,

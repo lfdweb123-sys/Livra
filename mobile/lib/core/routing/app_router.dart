@@ -117,7 +117,13 @@ class AppRouter {
           );
         },
       ),
-      GoRoute(path: '/client/vendor/:id', builder: (c, s) => VendorDetailScreen(vendorId: s.pathParameters['id']!)),
+      GoRoute(
+        path: '/client/vendor/:id',
+        builder: (c, s) => VendorDetailScreen(
+          vendorId: s.pathParameters['id']!,
+          openProductId: (s.extra as Map?)?['openProductId'] as String?,
+        ),
+      ),
       GoRoute(
         path: '/driver/detail/:id',
         builder: (c, s) => DriverDetailScreen(

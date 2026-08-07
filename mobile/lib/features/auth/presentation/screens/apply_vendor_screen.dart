@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/services/api/api_client.dart';
 import '../../../../core/services/storage/upload_service.dart';
+import '../../../../core/services/storage/image_compression_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -22,6 +23,7 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
   late String _category = widget.initialCategory ?? 'resto';
   final Map<String, File> _docs = {};
   bool _loading = false;
+  String? _compressingKey;
 
   static const _requiredDocs = {
     'cni': "Pièce d'identité (CNI/passeport)",
@@ -34,7 +36,17 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
   Future<void> _pickDoc(String key) async {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (picked != null) setState(() => _docs[key] = File(picked.path));
+    if (picked == null) return;
+    // Compression automatique — évite les envois lents/qui échouent sur
+    // connexion faible (photos caméra brutes souvent 3-8 Mo).
+    setState(() => _compressingKey = key);
+    final compressed = await ImageCompressionService().compress(File(picked.path), targetSizeBytes: 300 * 1024);
+    if (mounted) {
+      setState(() {
+        _docs[key] = compressed;
+        _compressingKey = null;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -180,6 +192,7 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
             const SizedBox(height: 12),
             ..._requiredDocs.entries.map((e) {
               final done = _docs.containsKey(e.key);
+              final compressing = _compressingKey == e.key;
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
@@ -192,6 +205,9 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text(e.value,
                       style: TextStyle(color: AppColors.textPrimary)),
+                  subtitle: compressing
+                      ? Text('Compression en cours…', style: TextStyle(color: AppColors.gold, fontSize: 11))
+                      : null,
                   trailing: Container(
                     width: 40,
                     height: 40,
@@ -201,18 +217,24 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                           ? AppColors.success.withOpacity(0.12)
                           : AppColors.goldSoft,
                     ),
-                    child: Icon(
-                      done ? Icons.check_circle : Icons.camera_alt_outlined,
-                      color: done ? AppColors.success : AppColors.textSecondary,
-                      size: 20,
-                    ),
+                    child: compressing
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                          )
+                        : Icon(
+                            done ? Icons.check_circle : Icons.camera_alt_outlined,
+                            color: done ? AppColors.success : AppColors.textSecondary,
+                            size: 20,
+                          ),
                   ),
-                  onTap: () => _pickDoc(e.key),
+                  onTap: compressing ? null : () => _pickDoc(e.key),
                 ),
               );
             }),
             ..._optionalDocs.entries.map((e) {
               final done = _docs.containsKey(e.key);
+              final compressing = _compressingKey == e.key;
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
@@ -225,9 +247,9 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text(e.value,
                       style: TextStyle(color: AppColors.textPrimary)),
-                  subtitle: Text('Optionnel',
+                  subtitle: Text(compressing ? 'Compression en cours…' : 'Optionnel',
                       style: TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                          fontSize: 11, color: compressing ? AppColors.gold : AppColors.textSecondary)),
                   trailing: Container(
                     width: 40,
                     height: 40,
@@ -237,13 +259,18 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
                           ? AppColors.success.withOpacity(0.12)
                           : AppColors.goldSoft,
                     ),
-                    child: Icon(
-                      done ? Icons.check_circle : Icons.camera_alt_outlined,
-                      color: done ? AppColors.success : AppColors.textSecondary,
-                      size: 20,
-                    ),
+                    child: compressing
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                          )
+                        : Icon(
+                            done ? Icons.check_circle : Icons.camera_alt_outlined,
+                            color: done ? AppColors.success : AppColors.textSecondary,
+                            size: 20,
+                          ),
                   ),
-                  onTap: () => _pickDoc(e.key),
+                  onTap: compressing ? null : () => _pickDoc(e.key),
                 ),
               );
             }),

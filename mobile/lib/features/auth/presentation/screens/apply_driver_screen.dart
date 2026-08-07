@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/services/api/api_client.dart';
 import '../../../../core/services/storage/upload_service.dart';
+import '../../../../core/services/storage/image_compression_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -20,6 +21,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   late String _vehicleType = widget.initialVehicleType ?? 'moto';
   final Map<String, File> _docs = {};
   bool _loading = false;
+  String? _compressingKey;
 
   // Chaque type de véhicule a ses propres documents requis — un permis de
   // conduire ou une assurance n'a pas de sens pour un taxi-moto ou un
@@ -56,7 +58,20 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
   Future<void> _pickDoc(String key) async {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.camera, imageQuality: 80);
-    if (picked != null) setState(() => _docs[key] = File(picked.path));
+    if (picked == null) return;
+    // Compression automatique — les photos caméra brutes (souvent 3-8 Mo)
+    // rendaient l'envoi du formulaire très lent, voire impossible sur une
+    // connexion faible. Cible plus généreuse que pour les produits (~300 Ko
+    // au lieu de 40 Ko) car les documents d'identité doivent rester
+    // lisibles pour la vérification.
+    setState(() => _compressingKey = key);
+    final compressed = await ImageCompressionService().compress(File(picked.path), targetSizeBytes: 300 * 1024);
+    if (mounted) {
+      setState(() {
+        _docs[key] = compressed;
+        _compressingKey = null;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -169,6 +184,7 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
             ..._requiredDocs.entries.map((e) {
               final done = _docs.containsKey(e.key);
               final optional = _optionalDocs.contains(e.key);
+              final compressing = _compressingKey == e.key;
               return Container(
                 margin: EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
@@ -181,10 +197,13 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                       EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text(e.value,
                       style: TextStyle(color: AppColors.textPrimary)),
-                  subtitle: optional
-                      ? Text('Facultatif',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
-                      : null,
+                  subtitle: compressing
+                      ? Text('Compression en cours…',
+                          style: TextStyle(color: AppColors.gold, fontSize: 11))
+                      : optional
+                          ? Text('Facultatif',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
+                          : null,
                   trailing: Container(
                     width: 40,
                     height: 40,
@@ -194,13 +213,18 @@ class _ApplyDriverScreenState extends State<ApplyDriverScreen> {
                           ? AppColors.success.withOpacity(0.12)
                           : AppColors.goldSoft,
                     ),
-                    child: Icon(
-                      done ? Icons.check_circle : Icons.camera_alt_outlined,
-                      color: done ? AppColors.success : AppColors.textSecondary,
-                      size: 20,
-                    ),
+                    child: compressing
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                          )
+                        : Icon(
+                            done ? Icons.check_circle : Icons.camera_alt_outlined,
+                            color: done ? AppColors.success : AppColors.textSecondary,
+                            size: 20,
+                          ),
                   ),
-                  onTap: () => _pickDoc(e.key),
+                  onTap: compressing ? null : () => _pickDoc(e.key),
                 ),
               );
             }),

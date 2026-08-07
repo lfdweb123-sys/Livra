@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/storage/upload_service.dart';
+import '../../../../../core/services/storage/image_compression_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
@@ -52,7 +53,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   Future<void> _pickPhoto() async {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 75);
-    if (picked != null) setState(() => _newPhoto = File(picked.path));
+    if (picked == null) return;
+    final compressed = await ImageCompressionService().compress(File(picked.path));
+    if (mounted) setState(() => _newPhoto = compressed);
   }
 
   Future<void> _save() async {

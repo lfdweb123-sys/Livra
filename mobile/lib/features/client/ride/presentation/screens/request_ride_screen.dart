@@ -332,7 +332,12 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                   children: ['moto', 'voiture'].map((v) {
                     final selected = _vehicleType == v;
                     return ChoiceChip(
-                      label: Text(v),
+                      avatar: Icon(
+                        v == 'moto' ? Icons.two_wheeler_rounded : Icons.directions_car_rounded,
+                        size: 18,
+                        color: selected ? Colors.black : AppColors.textSecondary,
+                      ),
+                      label: Text(v == 'moto' ? 'Taxi-moto' : 'Voiture'),
                       selected: selected,
                       onSelected: (_) => setState(() => _vehicleType = v),
                       selectedColor: AppColors.gold,

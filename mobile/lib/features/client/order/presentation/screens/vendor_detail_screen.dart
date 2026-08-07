@@ -12,7 +12,11 @@ import '../../../../../core/widgets/share_button.dart';
 
 class VendorDetailScreen extends StatefulWidget {
   final String vendorId;
-  VendorDetailScreen({super.key, required this.vendorId});
+  /// Si fourni, ouvre directement la fiche détail de ce produit dès le
+  /// chargement — utilisé quand on arrive depuis un produit suggéré, pour
+  /// éviter d'obliger le client à le retrouver et re-cliquer dessus.
+  final String? openProductId;
+  VendorDetailScreen({super.key, required this.vendorId, this.openProductId});
   @override
   State<VendorDetailScreen> createState() => _VendorDetailScreenState();
 }
@@ -44,6 +48,10 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
       final reviewsRes = await ApiClient.instance.get('/api/reviews', query: {'targetType': 'vendor', 'targetId': widget.vendorId});
       if (mounted) setState(() => _reviews = List<Map<String, dynamic>>.from(reviewsRes['items'] ?? []));
     } catch (_) {}
+    if (widget.openProductId != null && mounted) {
+      final p = _catalog[widget.openProductId];
+      if (p != null) WidgetsBinding.instance.addPostFrameCallback((_) => _showProductDetail(p));
+    }
   }
 
   void _showReviews() {
@@ -161,7 +169,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   setSheetState(() {});
                 },
               )
-            else
+            else ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -182,6 +190,23 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              // Bouton "Commander" directement ici, sans avoir à fermer la
+              // fiche produit et chercher la barre en bas de la page
+              // vendeur — demande explicite: "afficher directement le
+              // bouton commander sur la page de detail".
+              PrimaryButton(
+                label: 'Commander — $_total XOF',
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push('/client/checkout', extra: {
+                    'vendorId': widget.vendorId,
+                    'type': 'nourriture',
+                    'items': _cart.entries.where((e) => e.value > 0).map((e) => {'productId': e.key, 'qty': e.value}).toList(),
+                  });
+                },
+              ),
+            ],
           ],
         );
       }),
