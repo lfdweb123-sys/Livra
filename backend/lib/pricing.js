@@ -15,8 +15,38 @@ export function computeServiceFee(amount) {
   return Math.round((amount * SERVICE_FEE_PERCENT) / 100);
 }
 
-export function computeDeliveryFee(vehicleType, pickup, dropoff) {
+// Suggestion de tarif par défaut (utilisée pour "aider à calculer" côté
+// livreur, et comme calcul automatique tant qu'il n'a rien personnalisé).
+export function suggestDeliveryFee(vehicleType, pickup, dropoff) {
   const km = distanceKm(pickup, dropoff);
+  const fee = (BASE_FEE[vehicleType] || BASE_FEE.coursier) + km * (PER_KM[vehicleType] || PER_KM.coursier);
+  return Math.max(Math.round(fee / 50) * 50, MIN_FEE[vehicleType] || MIN_FEE.coursier);
+}
+
+// Variante sans géopoints — pour afficher des exemples ("à 5 km : XXX XOF")
+// dans l'écran "configurer mes tarifs" du profil livreur, sans dépendre
+// d'une position réelle.
+export function suggestDeliveryFeeForDistance(vehicleType, km) {
+  const fee = (BASE_FEE[vehicleType] || BASE_FEE.coursier) + km * (PER_KM[vehicleType] || PER_KM.coursier);
+  return Math.max(Math.round(fee / 50) * 50, MIN_FEE[vehicleType] || MIN_FEE.coursier);
+}
+
+// Chaque livreur/coursier/chauffeur/taxi-moto peut fixer ses propres frais
+// de livraison selon l'adresse et la distance — soit en laissant le calcul
+// automatique (barème plateforme ci-dessus), soit en configurant son propre
+// tarif (baseFee + perKm + minFee) depuis son profil. Si aucun livreur
+// précis n'est encore choisi pour la commande/course (cas du broadcast à
+// tous les livreurs à proximité), le calcul automatique s'applique — il n'y
+// a pas encore de livreur dont utiliser le tarif personnalisé.
+export function computeDeliveryFee(vehicleType, pickup, dropoff, driverPricingConfig) {
+  const km = distanceKm(pickup, dropoff);
+  if (driverPricingConfig?.mode === 'custom') {
+    const base = Number(driverPricingConfig.baseFee) || 0;
+    const perKm = Number(driverPricingConfig.perKm) || 0;
+    const min = Number(driverPricingConfig.minFee) || 0;
+    const fee = base + km * perKm;
+    return Math.max(Math.round(fee / 50) * 50, min);
+  }
   const fee = (BASE_FEE[vehicleType] || BASE_FEE.coursier) + km * (PER_KM[vehicleType] || PER_KM.coursier);
   return Math.max(Math.round(fee / 50) * 50, MIN_FEE[vehicleType] || MIN_FEE.coursier);
 }
@@ -32,9 +62,9 @@ export function computeOrderBreakdown({ items, vendorCommissionPercent, delivery
   return { subtotal, deliveryFee, commission, serviceFee, serviceFeePercent: SERVICE_FEE_PERCENT, total };
 }
 
-export function computeRidePrice(vehicleType, pickup, dropoff) {
+export function computeRidePrice(vehicleType, pickup, dropoff, driverPricingConfig) {
   const km = distanceKm(pickup, dropoff);
-  const basePrice = computeDeliveryFee(vehicleType, pickup, dropoff);
+  const basePrice = computeDeliveryFee(vehicleType, pickup, dropoff, driverPricingConfig);
   const serviceFee = computeServiceFee(basePrice);
   const price = basePrice + serviceFee; // total réellement facturé au client
   const etaMinutes = Math.max(3, Math.round((km / 25) * 60)); // 25km/h moyenne ville

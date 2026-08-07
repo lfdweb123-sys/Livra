@@ -42,13 +42,30 @@ export async function POST(req) {
     }
   }
 
+  // Le client peut choisir un livreur actif précis pour un colis (le
+  // choix pour une commande "nourriture" se fait plutôt côté vendeur, au
+  // moment de marquer le plat prêt — voir PATCH orders/[id]). On vérifie
+  // que le livreur existe et est bien actif+en ligne avant d'accepter le
+  // choix, jamais fait confiance au client pour cet id.
+  let validatedPreferredDriverId = null;
+  let preferredDriverPricingConfig = null;
+  if (preferredDriverId) {
+    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
+    if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
+      validatedPreferredDriverId = preferredDriverId;
+      preferredDriverPricingConfig = driverSnap.data().pricingConfig || null;
+    }
+  }
+
   // Nourriture : le vendeur peut fixer son propre frais de livraison (voir
   // profil boutique) — sinon on retombe sur le calcul à la distance comme
-  // pour un colis. Un colis, lui, reste TOUJOURS calculé à la distance.
+  // pour un colis. Un colis, lui, reste TOUJOURS calculé à la distance —
+  // mais avec le tarif PERSONNALISÉ du livreur choisi si le client en a
+  // sélectionné un précis (voir "configurer mes tarifs" côté livreur).
   const deliveryFee =
     type === 'nourriture' && typeof vendorDeliveryFee === 'number' && vendorDeliveryFee >= 0
       ? vendorDeliveryFee
-      : computeDeliveryFee('coursier', vendorGeopoint, deliveryAddress.geopoint);
+      : computeDeliveryFee('coursier', vendorGeopoint, deliveryAddress.geopoint, preferredDriverPricingConfig);
   const priceBreakdown =
     type === 'nourriture'
       ? computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee })
@@ -69,19 +86,6 @@ export async function POST(req) {
   // d'étape de préparation) ; une commande nourriture ne l'est qu'une fois le
   // vendeur passé en "picked_up" (plat prêt) — voir PATCH orders/[id].
   const readyForPickup = type === 'colis';
-
-  // Le client peut choisir un livreur actif précis pour un colis (le
-  // choix pour une commande "nourriture" se fait plutôt côté vendeur, au
-  // moment de marquer le plat prêt — voir PATCH orders/[id]). On vérifie
-  // que le livreur existe et est bien actif+en ligne avant d'accepter le
-  // choix, jamais fait confiance au client pour cet id.
-  let validatedPreferredDriverId = null;
-  if (preferredDriverId) {
-    const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
-    if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
-      validatedPreferredDriverId = preferredDriverId;
-    }
-  }
 
   const orderRef = await db.collection('orders').add({
     clientId: auth.uid,

@@ -43,6 +43,27 @@ export async function PATCH(req, { params }) {
     if (body.documentsR2) update.documentsR2 = body.documentsR2;
     if (body.photoUrl !== undefined) update.photoUrl = body.photoUrl;
     if (body.bio !== undefined) update.bio = body.bio;
+    if (body.pricingConfig !== undefined) {
+      // Chaque livreur/coursier/chauffeur/taxi-moto fixe ses propres frais
+      // de livraison selon l'adresse et la distance — soit le calcul
+      // automatique (mode 'auto'), soit son propre tarif (mode 'custom').
+      const pc = body.pricingConfig;
+      if (pc === null) {
+        update.pricingConfig = null;
+      } else if (pc.mode === 'auto') {
+        update.pricingConfig = { mode: 'auto' };
+      } else if (pc.mode === 'custom') {
+        const baseFee = Number(pc.baseFee);
+        const perKm = Number(pc.perKm);
+        const minFee = Number(pc.minFee);
+        if (![baseFee, perKm, minFee].every((n) => Number.isFinite(n) && n >= 0)) {
+          return jsonError('invalid_pricingConfig', 400);
+        }
+        update.pricingConfig = { mode: 'custom', baseFee, perKm, minFee };
+      } else {
+        return jsonError('invalid_pricingConfig', 400);
+      }
+    }
   } else {
     return jsonError('forbidden', 403);
   }

@@ -19,15 +19,17 @@ export async function POST(req) {
   // prendre un chauffeur hors application, ce qui ne concerne alors pas
   // la plateforme.
   let validatedPreferredDriverId = null;
+  let preferredDriverPricingConfig = null;
   if (preferredDriverId) {
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
       validatedPreferredDriverId = preferredDriverId;
+      preferredDriverPricingConfig = driverSnap.data().pricingConfig || null;
     }
   }
 
   const { price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes } =
-    computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint);
+    computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint, preferredDriverPricingConfig);
   const matchPosition = toGeoPoint(pickupLocation.geopoint.latitude, pickupLocation.geopoint.longitude);
 
   const rideRef = await db.collection('rides').add({
