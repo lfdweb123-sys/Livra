@@ -57,8 +57,10 @@ export async function PATCH(req, { params }) {
     await ref.update({ preferredDriverId, updatedAt: FieldValue.serverTimestamp() });
     await notifySpecificDriver({
       driverId: preferredDriverId,
-      title: 'Nouvelle livraison disponible',
-      body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+      title: order.type === 'nourriture' ? 'Livraison réservée pour vous' : 'Nouvelle livraison disponible',
+      body: order.type === 'nourriture'
+        ? `Un client vous a réservé pour sa commande — visible dans "Mes livraisons réservées", en attente que le vendeur la prépare.`
+        : `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
       type: 'new_delivery',
       relatedId: params.id,
     });

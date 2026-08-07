@@ -30,8 +30,20 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   StreamSubscription? _posSub;
   StreamSubscription? _geoOrdersSub;
   StreamSubscription? _geoRidesSub;
+  StreamSubscription? _reservedOrdersSub;
+  StreamSubscription? _reservedRidesSub;
   List<Map<String, dynamic>> _incomingOrders = [];
   List<Map<String, dynamic>> _incomingRides = [];
+  // Commandes/courses où LE CLIENT (ou vendeur) m'a réservé précisément,
+  // AVANT même que le plat soit prêt / que la course soit "readyForPickup".
+  // BUG CORRIGE: la requête géo ci-dessous exige readyForPickup==true, donc
+  // une commande nourriture réservée par un client (le vendeur n'a pas
+  // encore marqué le plat prêt) n'apparaissait JAMAIS ici, même si le
+  // livreur avait bien reçu les notifications push+mail de l'assignation —
+  // les règles Firestore l'autorisaient déjà, seule cette page ne la
+  // demandait jamais. Requête séparée, indépendante de readyForPickup.
+  List<Map<String, dynamic>> _reservedOrders = [];
+  List<Map<String, dynamic>> _reservedRides = [];
   bool _checkedNoApplication = false;
   bool _popupShown = false;
   String? _toggleError;
@@ -64,7 +76,44 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _vehicleType = doc.data()['vehicleType'] ?? 'moto';
         _checkedNoApplication = false;
       });
+      _listenReservedForMe(doc.id);
     });
+  }
+
+  /// Écoute directe (pas géo, pas de dépendance à "en ligne" ni à
+  /// readyForPickup) sur tout ce qui m'a été réservé précisément — un
+  /// client ou un vendeur qui m'a choisi doit toujours m'apparaître ici,
+  /// même avant que la commande soit prête côté vendeur.
+  void _listenReservedForMe(String driverId) {
+    _reservedOrdersSub?.cancel();
+    _reservedRidesSub?.cancel();
+    _reservedOrdersSub = FirebaseFirestore.instance
+        .collection('orders')
+        .where('preferredDriverId', isEqualTo: driverId)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      setState(() {
+        _reservedOrders = snap.docs
+            .map((d) => {'id': d.id, ...d.data()})
+            .where((o) => o['driverId'] == null) // pas déjà réclamée
+            .toList();
+      });
+    }, onError: (e) => debugPrint('[RESERVED_ORDERS_ERROR] $e'));
+
+    _reservedRidesSub = FirebaseFirestore.instance
+        .collection('rides')
+        .where('preferredDriverId', isEqualTo: driverId)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      setState(() {
+        _reservedRides = snap.docs
+            .map((d) => {'id': d.id, ...d.data()})
+            .where((r) => r['driverId'] == null)
+            .toList();
+      });
+    }, onError: (e) => debugPrint('[RESERVED_RIDES_ERROR] $e'));
   }
 
   void _maybeShowIdentityPopup() {
@@ -276,6 +325,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     _posSub?.cancel();
     _geoOrdersSub?.cancel();
     _geoRidesSub?.cancel();
+    _reservedOrdersSub?.cancel();
+    _reservedRidesSub?.cancel();
     super.dispose();
   }
 
@@ -322,9 +373,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       );
     }
 
+    // Fusionne diffusion générale (readyForPickup) + réservations
+    // personnelles (préparation en cours côté vendeur) — sans doublons.
+    final geoIds = {..._incomingOrders.map((o) => o['id']), ..._incomingRides.map((r) => r['id'])};
     final items = <Map<String, dynamic>>[
       ..._incomingOrders.map((o) => {...o, '_kind': 'order'}),
       ..._incomingRides.map((r) => {...r, '_kind': 'ride'}),
+      ..._reservedOrders.where((o) => !geoIds.contains(o['id'])).map((o) => {...o, '_kind': 'order', '_reserved': true}),
+      ..._reservedRides.where((r) => !geoIds.contains(r['id'])).map((r) => {...r, '_kind': 'ride', '_reserved': true}),
     ];
 
     return Scaffold(
@@ -388,7 +444,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               child: RefreshIndicator(
                 onRefresh: _refresh,
                 color: AppColors.gold,
-                child: !_online
+                // IMPORTANT: les réservations personnelles (_reservedOrders/
+                // _reservedRides) restent visibles MÊME hors ligne — un
+                // client/vendeur qui a choisi ce livreur doit toujours le
+                // voir sur son tableau de bord, peu importe son statut "en
+                // ligne" (c'est justement ce qui manquait). Seule la
+                // diffusion générale (items géo) est coupée hors ligne.
+                child: (!_online && items.isEmpty)
                     ? ListView(
                         children: [
                           const SizedBox(height: 120),
@@ -408,6 +470,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             itemBuilder: (context, i) {
                               final item = items[i];
                               final isRide = item['_kind'] == 'ride';
+                              final reserved = item['_reserved'] == true;
                               final title = isRide ? 'Course ${item['vehicleType']}' : 'Commande ${item['type']}';
                               final amount = isRide ? item['price'] : (item['priceBreakdown']?['deliveryFee']);
                               return Card(
@@ -415,12 +478,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                 child: ListTile(
                                   leading: Icon(isRide ? Icons.two_wheeler_rounded : Icons.inventory_2_outlined, color: AppColors.gold),
                                   title: Text(title),
-                                  subtitle: Text('${amount ?? '-'} XOF'),
-                                  trailing: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
-                                    onPressed: () => isRide ? _acceptRide(item['id']) : _acceptOrder(item['id']),
-                                    child: Text('Accepter'),
-                                  ),
+                                  subtitle: Text(reserved
+                                      ? '${amount ?? '-'} XOF — Réservée pour vous, en attente de préparation'
+                                      : '${amount ?? '-'} XOF'),
+                                  // Une commande nourriture réservée mais pas
+                                  // encore marquée "prête" par le vendeur ne
+                                  // peut pas encore être acceptée — juste
+                                  // visible, pour que le livreur sache qu'il
+                                  // est attendu, sans se déplacer trop tôt.
+                                  trailing: (reserved && !isRide && item['readyForPickup'] != true)
+                                      ? Icon(Icons.hourglass_top_rounded, color: AppColors.textSecondary)
+                                      : ElevatedButton(
+                                          style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
+                                          onPressed: () => isRide ? _acceptRide(item['id']) : _acceptOrder(item['id']),
+                                          child: Text('Accepter'),
+                                        ),
                                 ),
                               );
                             },
