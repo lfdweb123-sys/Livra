@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/models/user_model.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/twilio_call_service.dart';
+import 'core/services/notifications/fcm_service.dart';
 import 'core/routing/app_router.dart';
 
 /// Écoute l'auth + le doc users/{uid} pour maintenir AppRouter.currentRole
@@ -45,6 +46,13 @@ class _RoleGateState extends State<RoleGate> {
         }
       });
       _watchActiveVendorOrDriver(user.uid);
+      // IMPORTANT: réenregistré ici (pas seulement une fois au tout
+      // premier lancement dans main.dart) car FirebaseAuth.currentUser
+      // n'est souvent pas encore résolu à ce moment-là — le token FCM
+      // n'était alors jamais sauvegardé (uid == null), ce qui causait
+      // 'no_token' pour de nombreux comptes malgré une session active.
+      // Ici, l'utilisateur est garanti authentifié.
+      FcmService().initAndSaveToken().catchError((_) {});
       // best-effort — ne bloque jamais le flux de connexion si Twilio échoue
       TwilioCallService.instance.registerForIncomingCalls().catchError((_) {});
     });

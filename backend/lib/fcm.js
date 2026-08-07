@@ -23,7 +23,10 @@ export async function sendNotification({ userId, title, body, type, relatedId, d
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  if (!fcmToken) return { pushed: false, reason: 'no_token' };
+  if (!fcmToken) {
+    console.warn('[FCM_NO_TOKEN]', { userId, title });
+    return { pushed: false, reason: 'no_token' };
+  }
 
   try {
     await messaging.send({

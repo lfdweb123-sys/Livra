@@ -5,7 +5,6 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/routing/app_router.dart';
-import 'core/services/notifications/fcm_service.dart';
 import 'app_role_gate.dart';
 
 Future<void> main() async {
@@ -23,13 +22,6 @@ class LivraApp extends StatefulWidget {
 }
 
 class _LivraAppState extends State<LivraApp> {
-  @override
-  void initState() {
-    super.initState();
-    // best-effort — ne bloque jamais le démarrage de l'app si refusé
-    FcmService().initAndSaveToken().catchError((_) {});
-  }
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
