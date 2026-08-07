@@ -16,6 +16,7 @@ class VendorOrdersScreen extends StatefulWidget {
 
 class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   List<dynamic>? _orders;
+  String? _debugError;
 
   @override
   void initState() {
@@ -24,8 +25,24 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   }
 
   Future<void> _load() async {
-    final res = await ApiClient.instance.get(ApiConstants.orders, query: {'limit': 30});
-    setState(() => _orders = res['items']);
+    try {
+      final res = await ApiClient.instance.get(ApiConstants.orders, query: {'limit': 30});
+      setState(() {
+        _orders = res['items'];
+        _debugError = null;
+      });
+    } catch (e) {
+      // IMPORTANT: avant ce correctif, toute erreur ici (réseau, 500,
+      // permissions) était totalement invisible — la page restait juste
+      // vide, sans le moindre indice. On affiche maintenant l'erreur brute
+      // directement dans l'app pour diagnostiquer sans devoir aller
+      // chercher dans les logs Vercel.
+      debugPrint('[VENDOR_ORDERS_LOAD_ERROR] $e');
+      setState(() {
+        _orders = [];
+        _debugError = e.toString();
+      });
+    }
   }
 
   Future<void> _advance(String id, String nextStatus, Map order) async {
@@ -72,9 +89,25 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
         onRefresh: _load,
         child: _orders == null
             ? SkeletonCardList()
-            : _orders!.isEmpty
-                ? EmptyState(icon: Icons.receipt_long_outlined, message: 'Aucune commande pour le moment.')
-                : ListView.builder(
+            : Column(
+                children: [
+                  if (_debugError != null)
+                    Container(
+                      width: double.infinity,
+                      color: Colors.black87,
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'Erreur: $_debugError',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                      ),
+                    ),
+                  Expanded(
+                    child: _orders!.isEmpty
+                        ? ListView(children: [
+                            const SizedBox(height: 80),
+                            EmptyState(icon: Icons.receipt_long_outlined, message: 'Aucune commande pour le moment.'),
+                          ])
+                        : ListView.builder(
                     padding: EdgeInsets.all(16),
                     itemCount: _orders!.length,
                     itemBuilder: (context, i) {
@@ -99,6 +132,9 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                       );
                     },
                   ),
+                  ),
+                ],
+              ),
       ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 1),

@@ -81,7 +81,7 @@ Future<String?> pickDriver(
                     ],
                   ),
                   trailing: TextButton(
-                    onPressed: () => context.pop(d['id']),
+                    onPressed: () => Navigator.of(context).pop(d['id']),
                     child: const Text('Choisir'),
                   ),
                   onTap: () async {
@@ -89,7 +89,7 @@ Future<String?> pickDriver(
                       '/driver/detail/${d['id']}',
                       extra: {'selectable': true},
                     );
-                    if (picked != null && context.mounted) context.pop(picked['id']);
+                    if (picked != null && context.mounted) Navigator.of(context).pop(picked['id']);
                   },
                 );
               },
@@ -104,7 +104,7 @@ Future<String?> pickDriver(
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: () => context.pop(null),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Ne pas choisir (livreur hors application)'),
           ),
         ),

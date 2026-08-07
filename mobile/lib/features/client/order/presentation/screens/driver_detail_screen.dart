@@ -128,23 +128,38 @@ class _DriverDetailScreenState extends State<DriverDetailScreen> {
                 ),
                 const SizedBox(height: 10),
                 Center(
-                  child: InkWell(
-                    onTap: _showReviews,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, color: AppColors.gold, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${(d['rating'] ?? 0).toStringAsFixed(1)} (${_reviews.length} avis)',
-                          style: TextStyle(
-                              color: AppColors.gold,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              decoration: TextDecoration.underline),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 14,
+                    children: [
+                      InkWell(
+                        onTap: _showReviews,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star_rounded, color: AppColors.gold, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${(d['rating'] ?? 0).toStringAsFixed(1)} (${_reviews.length} avis)',
+                              style: TextStyle(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  decoration: TextDecoration.underline),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      if ((d['completedCount'] ?? 0) > 0)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 3),
+                            Text('${d['completedCount']} services', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
                 if (d['bio'] != null && (d['bio'] as String).isNotEmpty) ...[

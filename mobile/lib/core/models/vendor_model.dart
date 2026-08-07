@@ -15,6 +15,7 @@ class VendorModel {
   final num? deliveryFee;
   final double rating;
   final bool isOpen;
+  final num completedCount;
 
   VendorModel({
     required this.id,
@@ -31,6 +32,7 @@ class VendorModel {
     this.deliveryFee,
     this.rating = 0,
     this.isOpen = false,
+    this.completedCount = 0,
   });
 
   factory VendorModel.fromMap(String id, Map<String, dynamic> map) => VendorModel(
@@ -48,5 +50,6 @@ class VendorModel {
         deliveryFee: map['deliveryFee'],
         rating: (map['rating'] ?? 0).toDouble(),
         isOpen: map['isOpen'] ?? false,
+        completedCount: map['completedCount'] ?? 0,
       );
 }

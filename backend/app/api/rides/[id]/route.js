@@ -115,5 +115,10 @@ export async function PATCH(req, { params }) {
       relatedId: params.id,
     });
   }
+  if (status === 'completed' && ride.driverId) {
+    // Compteur de courses effectuées, affiché sur le profil public du
+    // chauffeur/taxi-moto.
+    await db.collection('drivers').doc(ride.driverId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
+  }
   return Response.json({ ok: true });
 }

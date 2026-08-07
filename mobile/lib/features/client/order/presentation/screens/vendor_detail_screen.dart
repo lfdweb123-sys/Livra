@@ -239,19 +239,29 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                           Text(_vendor!.description!, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                         ],
                         const SizedBox(height: 10),
-                        InkWell(
-                          onTap: _showReviews,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star_rounded, color: AppColors.gold, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${(_vendor?.rating ?? 0).toStringAsFixed(1)} (${_reviews.length} avis)',
-                                style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600, fontSize: 13, decoration: TextDecoration.underline),
+                        Row(
+                          children: [
+                            InkWell(
+                              onTap: _showReviews,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.star_rounded, color: AppColors.gold, size: 18),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${(_vendor?.rating ?? 0).toStringAsFixed(1)} (${_reviews.length} avis)',
+                                    style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600, fontSize: 13, decoration: TextDecoration.underline),
+                                  ),
+                                ],
                               ),
+                            ),
+                            if ((_vendor?.completedCount ?? 0) > 0) ...[
+                              const SizedBox(width: 14),
+                              Icon(Icons.check_circle_outline, size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 3),
+                              Text('${_vendor!.completedCount} ventes', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
                             ],
-                          ),
+                          ],
                         ),
                       ],
                     ),

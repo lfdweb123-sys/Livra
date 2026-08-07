@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../phone_number_cache.dart';
 import '../../widgets/app_bottom_sheet.dart';
 import '../../widgets/phone_number_field.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/payment_webview_screen.dart';
 
 /// Flux Verzapay commun à tous les écrans de paiement (dépôt portefeuille,
 /// paiement commande, paiement course, paiement publicité vendeur).
@@ -61,13 +61,15 @@ Future<void> payWithVerzapayFlow(
                       final result = await initiate(phone);
                       await PhoneNumberCache().save(phone);
                       final checkoutUrl = result['checkoutUrl']?.toString();
-                      if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-                        final uri = Uri.tryParse(checkoutUrl);
-                        if (uri != null) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      }
                       if (sheetContext.mounted) Navigator.pop(sheetContext);
+                      if (checkoutUrl != null && checkoutUrl.isNotEmpty && sheetContext.mounted) {
+                        // Ouvre le paiement DANS l'app (WebView), jamais dans
+                        // Chrome — sortir de l'app en plein paiement fait
+                        // fuir les clients.
+                        await Navigator.of(sheetContext).push(MaterialPageRoute(
+                          builder: (_) => PaymentWebviewScreen(url: checkoutUrl, title: 'Paiement Verzapay'),
+                        ));
+                      }
                       onSuccess?.call();
                     } catch (e) {
                       setSheetState(() => submitting = false);

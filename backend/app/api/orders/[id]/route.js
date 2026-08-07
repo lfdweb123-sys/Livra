@@ -33,7 +33,11 @@ export async function PATCH(req, { params }) {
   // vendeur qui choisit le livreur en marquant le plat prêt.
   if (preferredDriverId && !status && !paymentMethod) {
     if (order.clientId !== auth.uid) return jsonError('forbidden', 403);
-    if (order.type === 'nourriture') return jsonError('vendor_assigns_driver', 400);
+    // Le vendeur choisit normalement le livreur pour une commande nourriture
+    // au moment de marquer le plat prêt — mais si personne n'a encore été
+    // notifié (le plat n'est pas encore "readyForPickup"), le client peut
+    // débloquer la situation lui-même plutôt que d'attendre indéfiniment.
+    if (order.type === 'nourriture' && order.readyForPickup) return jsonError('vendor_assigns_driver', 400);
     if (order.driverId) return jsonError('already_assigned', 400);
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (!driverSnap.exists || driverSnap.data().status !== 'active' || !driverSnap.data().isOnline) {
@@ -195,6 +199,14 @@ export async function PATCH(req, { params }) {
     if (clientSnap.exists && clientSnap.data().email) {
       const { subject, htmlContent } = orderDeliveredEmail(params.id, order.priceBreakdown?.total);
       await sendTransactionalEmail({ to: clientSnap.data().email, toName: clientSnap.data().name, subject, htmlContent });
+    }
+    // Compteur de services rendus, affiché sur les profils publics
+    // (vendeur/restaurant/boutique et livreur/chauffeur).
+    if (order.vendorId) {
+      await db.collection('vendors').doc(order.vendorId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
+    }
+    if (order.driverId) {
+      await db.collection('drivers').doc(order.driverId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
     }
   }
 
