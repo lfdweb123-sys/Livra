@@ -69,6 +69,26 @@ export async function PATCH(req, { params }) {
   }
   await ref.update(update);
 
+  if (auth.role === 'admin' && body.status) {
+    // IMPORTANT: le champ users/{uid}.role reste TOUJOURS 'client' (voir
+    // commentaire dans app_role_gate.dart côté mobile — postuler ne le
+    // modifie jamais). Les règles Firestore (firestore.rules) ne peuvent
+    // donc pas savoir "cet utilisateur est un livreur actif" en lisant le
+    // rôle. On maintient ici un champ dédié users/{uid}.activeDriverId,
+    // synchronisé à chaque changement de statut admin — c'est ce que les
+    // règles utilisent pour autoriser un livreur actif à lire les
+    // commandes/courses disponibles à proximité (bug déjà corrigé une
+    // fois avec isDriverRole(), qui ne fonctionnait pas car basé sur
+    // 'role' au lieu de ce nouveau champ).
+    try {
+      await db.collection('users').doc(driver.ownerId).update({
+        activeDriverId: body.status === 'active' ? params.id : null,
+      });
+    } catch (e) {
+      console.error('[DRIVER_STATUS_USER_SYNC_ERROR]', driver.ownerId, e.message);
+    }
+  }
+
   if (auth.role === 'admin' && (body.status === 'active' || body.status === 'rejected')) {
     try {
       const ownerSnap = await db.collection('users').doc(driver.ownerId).get();

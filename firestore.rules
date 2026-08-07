@@ -28,8 +28,17 @@ service cloud.firestore {
       return isSignedIn() && userDoc().isActive == true;
     }
 
-    function isDriverRole() {
-      return isSignedIn() && role() == 'driver';
+    // BUG CORRIGE: la fonction précédente (isDriverRole) se basait sur
+    // users/{uid}.role, qui reste TOUJOURS 'client' pour tout le monde par
+    // conception (voir commentaire dans app_role_gate.dart côté mobile) —
+    // elle ne matchait donc jamais pour un vrai livreur, et la règle de
+    // lecture des commandes/courses disponibles ne servait à rien en
+    // pratique (d'où l'erreur PERMISSION_DENIED persistante malgré le
+    // premier correctif). On vérifie maintenant users/{uid}.activeDriverId,
+    // synchronisé par le backend à chaque changement de statut (voir
+    // api/drivers/[id] PATCH).
+    function isActiveDriver() {
+      return isSignedIn() && userDoc().activeDriverId != null;
     }
 
     // ───────── users ─────────
@@ -87,7 +96,7 @@ service cloud.firestore {
                   // requête, sans la moindre erreur visible — d'où
                   // l'impression de liste toujours vide malgré des
                   // notifications reçues.
-                  || (isDriverRole() && resource.data.driverId == null && resource.data.readyForPickup == true);
+                  || (isActiveDriver() && resource.data.driverId == null && resource.data.readyForPickup == true);
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending'
@@ -115,7 +124,7 @@ service cloud.firestore {
                   || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId))
                   // Même correctif que pour orders — voir le commentaire
                   // détaillé là-bas.
-                  || (isDriverRole() && resource.data.driverId == null && resource.data.readyForPickup == true);
+                  || (isActiveDriver() && resource.data.driverId == null && resource.data.readyForPickup == true);
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending';
