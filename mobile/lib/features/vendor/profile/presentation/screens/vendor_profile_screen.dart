@@ -10,6 +10,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/legal_links_section.dart';
+import '../../../../../core/widgets/boost_profile_sheet.dart';
 
 class VendorProfileScreen extends StatefulWidget {
   const VendorProfileScreen({super.key});
@@ -230,6 +231,13 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           const SizedBox(height: 24),
           PrimaryButton(
               label: 'Enregistrer', onPressed: _save, loading: _saving),
+          const SizedBox(height: 12),
+          if (_vendorId != null)
+            OutlinedButton.icon(
+              onPressed: () => showBoostProfileSheet(context, profileType: 'vendor', profileId: _vendorId!),
+              icon: Icon(Icons.rocket_launch_outlined, color: AppColors.gold),
+              label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
+            ),
           const SizedBox(height: 20),
           const LegalLinksSection(),
         ],

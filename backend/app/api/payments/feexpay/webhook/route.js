@@ -45,6 +45,25 @@ async function finalizePayment(payment) {
     return;
   }
 
+  if (payment.boostId) {
+    const startAt = new Date();
+    const endAt = new Date();
+    const boostRef = db.collection('profile_boosts').doc(payment.boostId);
+    const boostSnap = await boostRef.get();
+    if (boostSnap.exists) {
+      endAt.setTime(startAt.getTime() + boostSnap.data().days * 24 * 60 * 60 * 1000);
+      await boostRef.update({ status: 'active', startAt, endAt });
+      await sendNotification({
+        userId: payment.userId,
+        title: 'Boost de profil actif',
+        body: 'Votre profil apparaît maintenant en priorité.',
+        type: 'boost_activated',
+        relatedId: payment.boostId,
+      });
+    }
+    return;
+  }
+
   if (payment.walletUserId) {
     // Dépôt sur le portefeuille Livra
     const walletRef = db.collection('wallets').doc(payment.walletUserId);

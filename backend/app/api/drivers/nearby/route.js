@@ -40,7 +40,16 @@ export async function GET(req) {
     if (dist > RADIUS_KM) continue;
     candidates.push({ id: doc.id, driver, distance: dist });
   }
-  candidates.sort((a, b) => a.distance - b.distance);
+
+  // Profils boostés (payants) mis en priorité — mais toujours dans le rayon
+  // de recherche, jamais un livreur hors zone. Voir /api/boosts.
+  const boostedIds = await getActiveBoostedIds('driver', candidates.map((c) => c.id));
+  candidates.sort((a, b) => {
+    const aBoosted = boostedIds.has(a.id) ? 0 : 1;
+    const bBoosted = boostedIds.has(b.id) ? 0 : 1;
+    if (aBoosted !== bBoosted) return aBoosted - bBoosted;
+    return a.distance - b.distance;
+  });
   const top = candidates.slice(0, 20);
 
   // Enrichit avec le nom/photo depuis users/{ownerId} — le doc driver seul
@@ -58,9 +67,37 @@ export async function GET(req) {
         ratingCount: driver.ratingCount || 0,
         bio: driver.bio || null,
         distanceKm: Number(distance.toFixed(2)),
+        boosted: boostedIds.has(id),
       };
     })
   );
 
   return Response.json({ items });
+}
+
+// Retourne l'ensemble des profileId ayant un boost actif (status='active'
+// ET endAt dans le futur) parmi la liste donnée. Requête par lots de 30
+// (limite Firestore pour l'opérateur 'in').
+async function getActiveBoostedIds(profileType, ids) {
+  if (ids.length === 0) return new Set();
+  const now = new Date();
+  const boosted = new Set();
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    try {
+      const snap = await db
+        .collection('profile_boosts')
+        .where('profileType', '==', profileType)
+        .where('profileId', 'in', chunk)
+        .where('status', '==', 'active')
+        .get();
+      snap.docs.forEach((d) => {
+        const b = d.data();
+        if (b.endAt && b.endAt.toDate() > now) boosted.add(b.profileId);
+      });
+    } catch (e) {
+      console.error('[BOOSTS_LOOKUP_ERROR]', { profileType, message: e.message, code: e.code });
+    }
+  }
+  return boosted;
 }

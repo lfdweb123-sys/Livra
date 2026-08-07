@@ -10,6 +10,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/legal_links_section.dart';
+import '../../../../../core/widgets/boost_profile_sheet.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   const DriverProfileScreen({super.key});
@@ -161,6 +162,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           const SizedBox(height: 24),
           PrimaryButton(
               label: 'Enregistrer', onPressed: _save, loading: _saving),
+          const SizedBox(height: 12),
+          if (_driverId != null)
+            OutlinedButton.icon(
+              onPressed: () => showBoostProfileSheet(context, profileType: 'driver', profileId: _driverId!),
+              icon: Icon(Icons.rocket_launch_outlined, color: AppColors.gold),
+              label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
+            ),
           const SizedBox(height: 20),
           const LegalLinksSection(),
         ],

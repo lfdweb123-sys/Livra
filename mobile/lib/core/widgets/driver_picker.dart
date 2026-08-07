@@ -70,7 +70,15 @@ Future<String?> pickDriver(
                           backgroundColor: AppColors.surfaceElevated,
                           child: Icon(Icons.person, color: AppColors.textSecondary),
                         ),
-                  title: Text(d['name'] ?? 'Livreur Livra', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  title: Row(
+                    children: [
+                      Flexible(child: Text(d['name'] ?? 'Livreur Livra', style: const TextStyle(fontWeight: FontWeight.w600))),
+                      if (d['boosted'] == true) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.bolt_rounded, size: 14, color: AppColors.gold),
+                      ],
+                    ],
+                  ),
                   subtitle: Row(
                     children: [
                       Icon(Icons.star_rounded, color: AppColors.gold, size: 14),

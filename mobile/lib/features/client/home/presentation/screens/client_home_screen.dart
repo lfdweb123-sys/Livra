@@ -426,7 +426,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                   : '?')
                               : null,
                         ),
-                        title: Text(v.businessName),
+                        title: Row(
+                          children: [
+                            Flexible(child: Text(v.businessName)),
+                            if (v.boosted) ...[
+                              const SizedBox(width: 6),
+                              Icon(Icons.bolt_rounded, size: 14, color: AppColors.gold),
+                            ],
+                          ],
+                        ),
                         subtitle: Text(v.address,
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing:

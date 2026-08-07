@@ -59,9 +59,43 @@ export async function GET(req) {
   query = query.orderBy('createdAt', 'desc').limit(limit);
   try {
     const snap = await query.get();
-    return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+    const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Boutiques/restaurants ayant boosté leur profil affichées en premier
+    // (voir /api/boosts) — l'ordre par date reste inchangé au sein de
+    // chaque groupe (boostés / non boostés).
+    const boostedIds = await getActiveBoostedVendorIds(items.map((v) => v.id));
+    items.sort((a, b) => {
+      const aBoosted = boostedIds.has(a.id) ? 0 : 1;
+      const bBoosted = boostedIds.has(b.id) ? 0 : 1;
+      return aBoosted - bBoosted;
+    });
+    return Response.json({ items: items.map((v) => ({ ...v, boosted: boostedIds.has(v.id) })) });
   } catch (e) {
     console.error('[VENDORS_GET_QUERY_ERROR]', { status, category, message: e.message, code: e.code });
     return jsonError('vendors_query_failed', 500);
   }
+}
+
+async function getActiveBoostedVendorIds(ids) {
+  if (ids.length === 0) return new Set();
+  const now = new Date();
+  const boosted = new Set();
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    try {
+      const snap = await db
+        .collection('profile_boosts')
+        .where('profileType', '==', 'vendor')
+        .where('profileId', 'in', chunk)
+        .where('status', '==', 'active')
+        .get();
+      snap.docs.forEach((d) => {
+        const b = d.data();
+        if (b.endAt && b.endAt.toDate() > now) boosted.add(b.profileId);
+      });
+    } catch (e) {
+      console.error('[BOOSTS_LOOKUP_ERROR]', { profileType: 'vendor', message: e.message, code: e.code });
+    }
+  }
+  return boosted;
 }

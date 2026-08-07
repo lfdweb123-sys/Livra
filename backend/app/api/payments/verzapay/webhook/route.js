@@ -30,6 +30,21 @@ export async function POST(req) {
           relatedId: payment.adCampaignId,
         });
       }
+    } else if (payment.boostId) {
+      const boostRef = db.collection('profile_boosts').doc(payment.boostId);
+      const boostSnap = await boostRef.get();
+      if (boostSnap.exists) {
+        const startAt = new Date();
+        const endAt = new Date(startAt.getTime() + boostSnap.data().days * 24 * 60 * 60 * 1000);
+        await boostRef.update({ status: 'active', startAt, endAt });
+        await sendNotification({
+          userId: payment.userId,
+          title: 'Boost de profil actif',
+          body: 'Votre profil apparaît maintenant en priorité.',
+          type: 'boost_activated',
+          relatedId: payment.boostId,
+        });
+      }
     } else if (payment.walletUserId) {
       const walletRef = db.collection('wallets').doc(payment.walletUserId);
       await walletRef.set(
