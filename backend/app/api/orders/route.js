@@ -85,8 +85,10 @@ export async function POST(req) {
   // readyForPickup = le champ que les livreurs interrogent (avec la géo-requête)
   // pour voir les commandes disponibles. Un colis est prêt immédiatement (pas
   // d'étape de préparation) ; une commande nourriture ne l'est qu'une fois le
-  // vendeur passé en "picked_up" (plat prêt) — voir PATCH orders/[id].
-  const readyForPickup = type === 'colis';
+  // vendeur passé en "picked_up" (plat prêt) — voir PATCH orders/[id]. Un
+  // colis confié à un livreur HORS application ne doit jamais être proposé
+  // aux livreurs Livra.
+  const readyForPickup = type === 'colis' && !offPlatformDriverPhone;
 
   const orderRef = await db.collection('orders').add({
     clientId: auth.uid,

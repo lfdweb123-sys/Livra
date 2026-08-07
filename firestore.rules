@@ -28,6 +28,10 @@ service cloud.firestore {
       return isSignedIn() && userDoc().isActive == true;
     }
 
+    function isDriverRole() {
+      return isSignedIn() && role() == 'driver';
+    }
+
     // ───────── users ─────────
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -73,7 +77,17 @@ service cloud.firestore {
       allow read: if isAdmin()
                   || isOwner(resource.data.clientId)
                   || (resource.data.vendorId != null && isOwner(get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerId))
-                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId));
+                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId))
+                  // BUG CORRIGE: sans cette clause, AUCUN livreur ne pouvait
+                  // jamais lire une commande pas encore réclamée (driverId
+                  // encore vide) — ni en diffusion générale (recherche géo
+                  // des commandes à proximité), ni même quand elle lui était
+                  // spécifiquement confiée (preferredDriverId). Firestore
+                  // exclut silencieusement les documents refusés d'une
+                  // requête, sans la moindre erreur visible — d'où
+                  // l'impression de liste toujours vide malgré des
+                  // notifications reçues.
+                  || (isDriverRole() && resource.data.driverId == null && resource.data.readyForPickup == true);
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending'
@@ -98,7 +112,10 @@ service cloud.firestore {
     match /rides/{rideId} {
       allow read: if isAdmin()
                   || isOwner(resource.data.clientId)
-                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId));
+                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId))
+                  // Même correctif que pour orders — voir le commentaire
+                  // détaillé là-bas.
+                  || (isDriverRole() && resource.data.driverId == null && resource.data.readyForPickup == true);
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending';
