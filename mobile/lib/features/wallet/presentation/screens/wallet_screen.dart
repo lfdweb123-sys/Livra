@@ -13,6 +13,7 @@ import '../../../../core/widgets/notification_bell_action.dart';
 import '../../../../core/widgets/phone_number_field.dart';
 import '../../../../core/services/phone_number_cache.dart';
 import '../../../../core/services/payment/verzapay_checkout_flow.dart';
+import '../../../../core/constants/wallet_reason_labels.dart';
 
 class WalletScreen extends StatefulWidget {
   WalletScreen({super.key});
@@ -509,20 +510,28 @@ class _WalletScreenState extends State<WalletScreen> {
                       )
                     else
                       ...List<Widget>.from(
-                          (_wallet!['transactions'] as List).map((t) => Card(
-                                margin: EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: Icon(
-                                      t['type'] == 'credit'
-                                          ? Icons.arrow_downward
-                                          : Icons.arrow_upward,
-                                      color: t['type'] == 'credit'
-                                          ? AppColors.success
-                                          : AppColors.danger),
-                                  title: Text(t['reason'] ?? ''),
-                                  trailing: Text('${t['amount']} XOF'),
-                                ),
-                              ))),
+                          (_wallet!['transactions'] as List).map((t) {
+                        final isCredit = t['type'] == 'credit';
+                        final isPending = t['matured'] == false;
+                        return Card(
+                          margin: EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: Icon(
+                                isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                                color: isCredit ? AppColors.success : AppColors.danger),
+                            // BUG CORRIGE: affichait le code brut du backend
+                            // (ex: "delivery_earnings") au lieu d'un vrai texte.
+                            title: Text(walletReasonLabelFr(t['reason'])),
+                            subtitle: isPending
+                                ? Text('En attente (3 jours)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12))
+                                : null,
+                            trailing: Text(
+                              '${isCredit ? '+' : '-'}${t['amount']} XOF',
+                              style: TextStyle(fontWeight: FontWeight.w600, color: isCredit ? AppColors.success : AppColors.textPrimary),
+                            ),
+                          ),
+                        );
+                      })),
                   ],
                 ),
               ),
