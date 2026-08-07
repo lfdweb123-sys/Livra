@@ -11,6 +11,7 @@ import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/legal_links_section.dart';
 import '../../../../../core/widgets/boost_profile_sheet.dart';
+import 'driver_pricing_screen.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   const DriverProfileScreen({super.key});
@@ -20,6 +21,7 @@ class DriverProfileScreen extends StatefulWidget {
 
 class _DriverProfileScreenState extends State<DriverProfileScreen> {
   String? _driverId;
+  String _vehicleType = 'coursier';
   final _bioCtrl = TextEditingController();
   String? _photoUrl;
   File? _newPhoto;
@@ -46,6 +48,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     final data = snap.docs.first.data();
     setState(() {
       _driverId = snap.docs.first.id;
+      _vehicleType = data['vehicleType'] ?? 'coursier';
       _bioCtrl.text = data['bio'] ?? '';
       _photoUrl = data['photoUrl'];
       _loading = false;
@@ -168,6 +171,18 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               onPressed: () => showBoostProfileSheet(context, profileType: 'driver', profileId: _driverId!),
               icon: Icon(Icons.rocket_launch_outlined, color: AppColors.gold),
               label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
+            ),
+          const SizedBox(height: 12),
+          if (_driverId != null)
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DriverPricingScreen(driverId: _driverId!, vehicleType: _vehicleType),
+                ),
+              ),
+              icon: Icon(Icons.calculate_outlined, color: AppColors.gold),
+              label: Text('Mes tarifs de livraison', style: TextStyle(color: AppColors.gold)),
             ),
           const SizedBox(height: 20),
           const LegalLinksSection(),

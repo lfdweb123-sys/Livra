@@ -37,13 +37,43 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _withdraw() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await showAppBottomSheet(
+      context,
+      title: 'Retirer vers Mobile Money',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: Icon(Icons.phone_android, color: AppColors.gold),
+            title: const Text('Feexpay'),
+            subtitle: const Text('Bénin, CI, Togo, Sénégal, Congo, Burkina, Mali', style: TextStyle(fontSize: 11)),
+            onTap: () {
+              Navigator.pop(context);
+              _withdrawFeexpay(uid);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.credit_card, color: AppColors.gold),
+            title: const Text('Verzapay'),
+            onTap: () {
+              Navigator.pop(context);
+              _withdrawVerzapay(uid);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _withdrawVerzapay(String uid) async {
     final amountCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final cachedPhone = await PhoneNumberCache().load();
     if (cachedPhone != null) phoneCtrl.text = cachedPhone;
     await showAppBottomSheet(
       context,
-      title: 'Retirer vers Mobile Money',
+      title: 'Retirer vers Mobile Money — Verzapay',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,15 +99,18 @@ class _WalletScreenState extends State<WalletScreen> {
                     .post('/api/wallet/$uid/withdraw', data: {
                   'amount': num.tryParse(amountCtrl.text) ?? 0,
                   'phoneNumber': phoneCtrl.text.trim(),
+                  'provider': 'verzapay',
                 });
                 await PhoneNumberCache().save(phoneCtrl.text.trim());
                 if (mounted) {
                   Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Retrait en cours de confirmation.')));
                   _load();
                 }
               } catch (e) {
                 final msg = e.toString().contains('insufficient_balance')
-                    ? 'Solde insuffisant sur votre portefeuille.'
+                    ? 'Solde disponible insuffisant (les gains récents peuvent encore être bloqués 3 jours).'
                     : 'Erreur lors du retrait. Réessayez dans un instant.';
                 if (mounted)
                   ScaffoldMessenger.of(context)
@@ -87,6 +120,107 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _withdrawFeexpay(String uid) async {
+    final amountCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final otpCtrl = TextEditingController();
+    String network = 'mtn';
+    final cachedPhone = await PhoneNumberCache().load();
+    if (cachedPhone != null) phoneCtrl.text = cachedPhone;
+    const networks = {
+      'mtn': 'MTN (Bénin)', 'moov': 'Moov (Bénin)', 'celtiis_bj': 'Celtiis (Bénin)',
+      'mtn_ci': 'MTN CI', 'orange_ci': 'Orange CI', 'moov_ci': 'Moov CI', 'wave_ci': 'Wave CI',
+      'togocom_tg': 'Togocom TG', 'moov_tg': 'Moov TG',
+      'orange_sn': 'Orange SN', 'free_sn': 'Free SN', 'wave_sn': 'Wave SN',
+      'mtn_cg': 'MTN Congo',
+      'moov_bf': 'Moov BF', 'orange_bf': 'Orange BF (OTP requis)', 'wave_bf': 'Wave BF (OTP requis)',
+      'orange_ml': 'Orange Mali', 'mobicash_ml': 'Mobicash Mali',
+    };
+    const otpNetworks = {'orange_bf', 'wave_bf'};
+
+    await showAppBottomSheet(
+      context,
+      title: 'Retirer vers Mobile Money — Feexpay',
+      child: StatefulBuilder(builder: (context, setSheetState) {
+        final requiresOtp = otpNetworks.contains(network);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Réseau', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 8),
+            DropdownButton<String>(
+              value: network,
+              isExpanded: true,
+              items: networks.entries
+                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                  .toList(),
+              onChanged: (v) => setSheetState(() => network = v!),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+                controller: amountCtrl,
+                decoration: InputDecoration(hintText: 'Montant (XOF)'),
+                keyboardType: TextInputType.number),
+            SizedBox(height: 12),
+            PhoneNumberField(
+                initialValue: cachedPhone, onChanged: (v) => phoneCtrl.text = v),
+            if (requiresOtp) ...[
+              const SizedBox(height: 12),
+              Text(
+                network == 'orange_bf'
+                    ? 'Composez #144*4*6*montant# sur le téléphone Orange BF du bénéficiaire pour obtenir le code OTP.'
+                    : 'Générez le code OTP via l\'application Wave ou par USSD.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5),
+              ),
+              const SizedBox(height: 8),
+              TextField(controller: otpCtrl, decoration: const InputDecoration(hintText: 'Code OTP'), keyboardType: TextInputType.number),
+            ],
+            SizedBox(height: 16),
+            DebouncedButton(
+              label: 'Confirmer le retrait',
+              onPressed: () async {
+                if (phoneCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Renseignez votre numéro Mobile Money.')));
+                  return;
+                }
+                if (requiresOtp && otpCtrl.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Le code OTP est requis pour ce réseau.')));
+                  return;
+                }
+                try {
+                  await ApiClient.instance.post('/api/wallet/$uid/withdraw', data: {
+                    'amount': num.tryParse(amountCtrl.text) ?? 0,
+                    'phoneNumber': phoneCtrl.text.trim(),
+                    'provider': 'feexpay',
+                    'network': network,
+                    if (requiresOtp) 'otp': otpCtrl.text.trim(),
+                  });
+                  await PhoneNumberCache().save(phoneCtrl.text.trim());
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Retrait en cours de confirmation.')));
+                    _load();
+                  }
+                } catch (e) {
+                  final msg = e.toString().contains('insufficient_balance')
+                      ? 'Solde disponible insuffisant (les gains récents peuvent encore être bloqués 3 jours).'
+                      : 'Erreur lors du retrait. Réessayez dans un instant.';
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -276,11 +410,24 @@ class _WalletScreenState extends State<WalletScreen> {
                           Text('Solde disponible',
                               style: TextStyle(color: AppColors.textSecondary)),
                           SizedBox(height: 6),
-                          Text('${_wallet!['balance']} XOF',
+                          Text('${_wallet!['balance'] ?? 0} XOF',
                               style: TextStyle(
                                   fontSize: 30,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.gold)),
+                          if ((_wallet!['pendingBalance'] ?? 0) > 0) ...[
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.lock_clock_outlined, size: 14, color: AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${_wallet!['pendingBalance']} XOF en attente (disponible sous 3 jours)',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
                           SizedBox(height: 16),
                           Row(
                             children: [
