@@ -3,6 +3,7 @@ import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
 import { sendTransactionalEmail, orderDeliveredEmail } from '../../../../lib/brevo';
 import { notifyNearbyDrivers, notifyOrderPaid, notifySpecificDriver } from '../../../../lib/matching';
+import { creditPendingEarnings, EARNINGS_HOLD_DAYS } from '../../../../lib/wallet';
 
 const VENDOR_ALLOWED = ['accepted', 'preparing', 'picked_up'];
 const DRIVER_ALLOWED = ['picked_up', 'delivering', 'delivered'];
@@ -207,6 +208,46 @@ export async function PATCH(req, { params }) {
     }
     if (order.driverId) {
       await db.collection('drivers').doc(order.driverId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
+    }
+
+    // Versement des gains — bloqué EARNINGS_HOLD_DAYS jours avant d'être
+    // retirable (voir lib/wallet.js), le temps qu'une éventuelle
+    // réclamation client puisse être traitée. Le vendeur touche le
+    // sous-total moins sa commission (déjà configurée par l'admin), le
+    // livreur touche le frais de livraison EN ENTIER (c'est lui qui
+    // fixe ce montant — voir configuration tarifaire livreur).
+    if (order.vendorId && order.priceBreakdown?.subtotal) {
+      const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+      if (vendorSnap.exists) {
+        const commissionPercent = vendorSnap.data().commission || 0;
+        const vendorDue = Math.round(order.priceBreakdown.subtotal * (1 - commissionPercent / 100));
+        if (vendorDue > 0) {
+          await creditPendingEarnings({
+            userId: vendorSnap.data().ownerId,
+            amount: vendorDue,
+            reason: 'order_earnings',
+            relatedOrderId: params.id,
+          });
+        }
+      }
+    }
+    if (order.driverId && order.priceBreakdown?.deliveryFee) {
+      const driverSnap = await db.collection('drivers').doc(order.driverId).get();
+      if (driverSnap.exists) {
+        await creditPendingEarnings({
+          userId: driverSnap.data().ownerId,
+          amount: order.priceBreakdown.deliveryFee,
+          reason: 'delivery_earnings',
+          relatedOrderId: params.id,
+        });
+        await sendNotification({
+          userId: driverSnap.data().ownerId,
+          title: 'Gain crédité',
+          body: `${order.priceBreakdown.deliveryFee} XOF ajoutés à votre portefeuille — disponibles dans ${EARNINGS_HOLD_DAYS} jours.`,
+          type: 'earnings_credited',
+          relatedId: params.id,
+        });
+      }
     }
   }
 

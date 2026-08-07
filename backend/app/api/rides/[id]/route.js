@@ -2,6 +2,7 @@ import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
 import { notifySpecificDriver } from '../../../../lib/matching';
+import { creditPendingEarnings, EARNINGS_HOLD_DAYS } from '../../../../lib/wallet';
 
 const DRIVER_ALLOWED = ['accepted', 'arriving', 'in_progress', 'completed'];
 
@@ -119,6 +120,27 @@ export async function PATCH(req, { params }) {
     // Compteur de courses effectuées, affiché sur le profil public du
     // chauffeur/taxi-moto.
     await db.collection('drivers').doc(ride.driverId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
+
+    // Versement du gain — bloqué EARNINGS_HOLD_DAYS jours (voir
+    // lib/wallet.js). Le chauffeur/taxi-moto touche basePrice EN ENTIER
+    // (le prix qu'il a fixé lui-même, hors frais de service de 5% qui
+    // reste le revenu de la plateforme).
+    const driverSnap = await db.collection('drivers').doc(ride.driverId).get();
+    if (driverSnap.exists && ride.basePrice) {
+      await creditPendingEarnings({
+        userId: driverSnap.data().ownerId,
+        amount: ride.basePrice,
+        reason: 'ride_earnings',
+        relatedRideId: params.id,
+      });
+      await sendNotification({
+        userId: driverSnap.data().ownerId,
+        title: 'Gain crédité',
+        body: `${ride.basePrice} XOF ajoutés à votre portefeuille — disponibles dans ${EARNINGS_HOLD_DAYS} jours.`,
+        type: 'earnings_credited',
+        relatedId: params.id,
+      });
+    }
   }
   return Response.json({ ok: true });
 }

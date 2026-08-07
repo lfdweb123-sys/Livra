@@ -7,6 +7,43 @@ import { notifyOrderPaid } from '../../../../../lib/matching';
 export async function POST(req) {
   const event = await req.json();
 
+  // Payouts (retraits): BUG CORRIGÉ — ce branchement cherchait auparavant
+  // dans "payments", collection où AUCUN retrait n'a jamais été écrit (les
+  // retraits vivent dans wallets/{uid}/transactions + désormais dans la
+  // collection dédiée "payouts"). Le webhook payout.completed/payout.failed
+  // ne pouvait donc jamais rien mettre à jour — mort silencieusement.
+  if (event.type === 'payout.completed' || event.type === 'payout.failed') {
+    const payoutSnap = await db.collection('payouts').where('providerReference', '==', event.id).limit(1).get();
+    if (payoutSnap.empty) return Response.json({ received: true });
+    const payoutDoc = payoutSnap.docs[0];
+    const payout = payoutDoc.data();
+    const success = event.type === 'payout.completed';
+    await payoutDoc.ref.update({ status: success ? 'successful' : 'failed', updatedAt: FieldValue.serverTimestamp() });
+    if (!success) {
+      // échec confirmé après coup: on recrédite le wallet (le montant avait
+      // été débité immédiatement à la demande de retrait)
+      const walletRef = db.collection('wallets').doc(payout.userId);
+      await walletRef.update({ balance: FieldValue.increment(payout.amount), updatedAt: FieldValue.serverTimestamp() });
+      await walletRef.collection('transactions').add({
+        type: 'credit',
+        amount: payout.amount,
+        reason: 'withdrawal_failed_refund',
+        relatedPayoutId: payoutDoc.id,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+    await sendNotification({
+      userId: payout.userId,
+      title: success ? 'Retrait effectué' : 'Retrait échoué',
+      body: success
+        ? `${payout.amount} XOF ont été envoyés vers votre Mobile Money.`
+        : `Votre retrait de ${payout.amount} XOF a échoué — le montant a été recrédité sur votre portefeuille.`,
+      type: success ? 'withdrawal_successful' : 'withdrawal_failed',
+      relatedId: payoutDoc.id,
+    });
+    return Response.json({ received: true });
+  }
+
   const paymentSnap = await db.collection('payments').where('providerReference', '==', event.id).limit(1).get();
   if (paymentSnap.empty) return Response.json({ received: true });
   const paymentDoc = paymentSnap.docs[0];
@@ -90,12 +127,6 @@ export async function POST(req) {
     }
   } else if (event.type === 'payment.failed') {
     await paymentDoc.ref.update({ status: 'failed', updatedAt: FieldValue.serverTimestamp() });
-  } else if (event.type === 'payout.completed' || event.type === 'payout.failed') {
-    // décaissements retrait wallet — voir /api/wallet/[userId]/withdraw
-    await paymentDoc.ref.update({
-      status: event.type === 'payout.completed' ? 'successful' : 'failed',
-      updatedAt: FieldValue.serverTimestamp(),
-    });
   }
 
   return Response.json({ received: true });
