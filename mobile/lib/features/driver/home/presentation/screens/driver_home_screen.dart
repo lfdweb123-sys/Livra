@@ -123,12 +123,23 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         });
         _startGeoMatching(pos.latitude, pos.longitude);
         _posSub?.cancel();
-        _posSub = LocationService().watchPosition().listen((p) {
-          ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
-            'isOnline': true,
-            'lat': p.latitude,
-            'lng': p.longitude,
-          }).catchError((_) {});
+        _posSub = LocationService().watchPosition().listen((p) async {
+          // BUG CORRIGE: cet appel n'était PAS attendu avant de relancer
+          // _startGeoMatching() — exactement la même course de vitesse que
+          // celle déjà corrigée côté serveur (toggle-online), mais laissée
+          // intacte ici. Comme watchPosition() se déclenche à CHAQUE
+          // mouvement du livreur (très fréquent), ce point redéclenchait
+          // le bug en permanence: la requête géo repartait avant que
+          // users/{uid}.activeDriverId ait fini de se réécrire côté
+          // serveur, provoquant un permission-denied à répétition — pas
+          // une fois au premier toggle, mais à chaque déplacement.
+          try {
+            await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
+              'isOnline': true,
+              'lat': p.latitude,
+              'lng': p.longitude,
+            });
+          } catch (_) {}
           _startGeoMatching(p.latitude, p.longitude);
         }, onError: (e) => debugPrint('[WATCH_POSITION_ERROR] $e'));
       } else {
