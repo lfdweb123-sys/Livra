@@ -10,6 +10,7 @@ import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
 import '../../../../../core/widgets/debounced_button.dart';
+import '../../../../../core/widgets/cash_service_fee_sheet.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 /// Étape 1 : confirmation/choix des adresses (livraison, + collecte si colis)
@@ -169,12 +170,15 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
 
   Future<void> _payCash() async {
     Navigator.pop(context);
-    try {
-      await ApiClient.instance.patch('/api/orders/$_orderId', data: {'paymentMethod': 'cash'});
-      if (mounted) context.go('/client/tracking/order/$_orderId');
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-    }
+    final serviceFee = _priceBreakdown?['serviceFee'] ?? 0;
+    await showCashServiceFeeSheet(
+      context,
+      payServiceFeeEndpoint: '/api/orders/$_orderId/pay-service-fee',
+      serviceFee: serviceFee,
+      onSuccess: () {
+        if (mounted) context.go('/client/tracking/order/$_orderId');
+      },
+    );
   }
 
   static const Map<String, List<String>> _feexpayCountries = {

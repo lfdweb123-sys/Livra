@@ -13,6 +13,7 @@ import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../../core/widgets/address_picker_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
 import '../../../../../core/widgets/debounced_button.dart';
+import '../../../../../core/widgets/cash_service_fee_sheet.dart';
 import '../../../../../core/services/payment/verzapay_checkout_flow.dart';
 
 class RequestRideScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   late String _vehicleType;
   bool _requesting = false;
   String? _rideId;
+  num _serviceFee = 0;
 
   @override
   void initState() {
@@ -94,6 +96,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         if (pickResult.offPlatformPhone != null) 'offPlatformDriverPhone': pickResult.offPlatformPhone,
       });
       _rideId = res['id'];
+      _serviceFee = res['serviceFee'] ?? 0;
       if (mounted) {
         await showAppBottomSheet(
           context,
@@ -243,12 +246,14 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
 
   Future<void> _payCash() async {
     Navigator.pop(context);
-    try {
-      await ApiClient.instance.patch('/api/rides/$_rideId', data: {'paymentMethod': 'cash'});
-      if (mounted) context.go('/client/tracking/ride/$_rideId');
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-    }
+    await showCashServiceFeeSheet(
+      context,
+      payServiceFeeEndpoint: '/api/rides/$_rideId/pay-service-fee',
+      serviceFee: _serviceFee,
+      onSuccess: () {
+        if (mounted) context.go('/client/tracking/ride/$_rideId');
+      },
+    );
   }
 
   @override
