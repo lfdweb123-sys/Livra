@@ -10,6 +10,10 @@ CRON JOB :
 
 https://livras.vercel.app/api/cron/reconcile-payments
 
+https://livras.vercel.app/api/cron/reconcile-payouts
+
+https://livras.vercel.app/api/cron/mature-wallet-holds
+
 Elle réconcilie les paiements bloqués en "pending" depuis plus de 20 minutes (les marque "failed" si aucun webhook n'est jamais arrivé).
 
 Configuration requise sur cron-job.org :
@@ -19,3 +23,8 @@ Fréquence : toutes les 5 minutes
 En-tête HTTP obligatoire : x-cron-secret: <valeur de INTERNAL_API_SECRET>
 
 Sans cet en-tête exact, l'appel renvoie 403 forbidden — la route est protégée pour que n'importe qui ne puisse pas la déclencher. Assure-toi que INTERNAL_API_SECRET est bien défini sur Vercel (actuellement change_me dans .env.example, donc à générer une vraie valeur secrète si ce n'est pas déjà fait) et que tu mets exactement la même valeur dans la configuration cron-job.org.
+
+
+
+
+node scripts/create-admin.js "admin@livra.app" "MotDePasseSolide123" "Admin"
