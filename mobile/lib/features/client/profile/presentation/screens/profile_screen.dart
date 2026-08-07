@@ -10,6 +10,7 @@ import '../../../../../core/theme/theme_controller.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/services/app_content_service.dart';
+import '../../../../../core/widgets/legal_links_section.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -417,6 +418,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+            const LegalLinksSection(),
             const SizedBox(height: 20),
             Container(
               decoration: BoxDecoration(

@@ -9,6 +9,7 @@ import '../../../../../core/services/storage/image_compression_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
+import '../../../../../core/widgets/legal_links_section.dart';
 
 class VendorProfileScreen extends StatefulWidget {
   const VendorProfileScreen({super.key});
@@ -229,6 +230,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           const SizedBox(height: 24),
           PrimaryButton(
               label: 'Enregistrer', onPressed: _save, loading: _saving),
+          const SizedBox(height: 20),
+          const LegalLinksSection(),
         ],
       ),
     );

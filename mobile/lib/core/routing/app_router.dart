@@ -16,6 +16,8 @@ import '../../features/client/home/presentation/screens/client_home_screen.dart'
 import '../../features/client/home/presentation/screens/search_screen.dart';
 import '../../features/client/order/presentation/screens/vendor_detail_screen.dart';
 import '../../features/client/order/presentation/screens/driver_detail_screen.dart';
+import '../widgets/in_app_browser_screen.dart';
+import '../constants/api_constants.dart';
 import '../../features/client/order/presentation/screens/order_checkout_screen.dart';
 import '../../features/client/ride/presentation/screens/request_ride_screen.dart';
 import '../../features/client/tracking/presentation/screens/tracking_screen.dart';
@@ -99,6 +101,14 @@ class AppRouter {
       GoRoute(
         path: '/apply-vendor',
         builder: (c, s) => ApplyVendorScreen(initialCategory: (s.extra as Map<String, dynamic>?)?['category']),
+      ),
+
+      GoRoute(
+        path: '/browser',
+        builder: (c, s) {
+          final extra = s.extra as Map<String, dynamic>? ?? {};
+          return InAppBrowserScreen(url: extra['url'] ?? ApiConstants.siteUrl, title: extra['title'] ?? '');
+        },
       ),
 
       // Espace Client
