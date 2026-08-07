@@ -100,6 +100,32 @@ export async function POST(req) {
         body: `${payment.amount} XOF ont été ajoutés à votre portefeuille Livra.`,
         type: 'wallet_deposit',
       });
+    } else if (payment.serviceFeeForOrderId || payment.serviceFeeForRideId) {
+      // Frais de service payés séparément pour une commande/course en
+      // espèces — voir orders|rides/[id]/pay-service-fee. Sans ce
+      // branchement, Livra ne perçoit jamais rien sur les commandes cash.
+      const targetCollection = payment.serviceFeeForOrderId ? 'orders' : 'rides';
+      const targetId = payment.serviceFeeForOrderId || payment.serviceFeeForRideId;
+      await db.collection(targetCollection).doc(targetId).update({
+        serviceFeePaid: true,
+        serviceFeePaidAt: FieldValue.serverTimestamp(),
+        paymentMethod: 'cash',
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      await sendNotification({
+        userId: payment.userId,
+        title: 'Frais de service réglés',
+        body: 'Vous pouvez maintenant payer le reste en espèces à la livraison.',
+        type: 'service_fee_paid',
+        relatedId: targetId,
+      });
+      if (payment.serviceFeeForOrderId) {
+        try {
+          await notifyOrderPaid(targetId);
+        } catch (e) {
+          console.error('[NOTIFY_ORDER_PAID_ERROR]', targetId, e.message);
+        }
+      }
     } else {
       const targetCollection = payment.orderId ? 'orders' : 'rides';
       const targetId = payment.orderId || payment.rideId;

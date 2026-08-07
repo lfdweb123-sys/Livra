@@ -108,18 +108,17 @@ export async function PATCH(req, { params }) {
       return Response.json({ ok: true });
     }
 
-    await ref.update({ paymentMethod, updatedAt: FieldValue.serverTimestamp() });
     if (paymentMethod === 'cash') {
-      // Espèces à la livraison : il n'y aura pas d'autre événement de
-      // "paiement confirmé" avant la livraison elle-même, donc c'est ici
-      // qu'on informe le vendeur/les livreurs pour ne pas les faire
-      // attendre indéfiniment un paiement qui n'arrivera qu'à la fin.
-      try {
-        await notifyOrderPaid(params.id);
-      } catch (e) {
-        console.error('[NOTIFY_ORDER_PAID_ERROR]', params.id, e.message);
-      }
+      // Les frais de service de 5% doivent être payés AVANT d'accepter les
+      // espèces — sinon Livra ne perçoit jamais rien sur ces commandes
+      // (le client paie le livreur/vendeur directement en main propre).
+      // Voir POST /api/orders/[id]/pay-service-fee, qui fixe lui-même
+      // paymentMethod='cash' une fois les frais réglés — ce PATCH ne doit
+      // donc plus jamais recevoir paymentMethod='cash' directement.
+      return jsonError('service_fee_required', 400);
     }
+
+    await ref.update({ paymentMethod, updatedAt: FieldValue.serverTimestamp() });
     return Response.json({ ok: true });
   }
 

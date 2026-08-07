@@ -95,6 +95,13 @@ export async function PATCH(req, { params }) {
       return Response.json({ ok: true });
     }
 
+    if (paymentMethod === 'cash') {
+      // Même règle que pour les commandes : les frais de service doivent
+      // être payés AVANT d'accepter les espèces, sinon Livra ne perçoit
+      // jamais rien sur ces courses. Voir POST /api/rides/[id]/pay-service-fee.
+      return jsonError('service_fee_required', 400);
+    }
+
     await ref.update({ paymentMethod, updatedAt: FieldValue.serverTimestamp() });
     return Response.json({ ok: true });
   }
