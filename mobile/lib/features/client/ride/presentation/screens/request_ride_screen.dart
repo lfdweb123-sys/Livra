@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/services/payment/payment_service.dart';
 import '../../../../../core/constants/api_constants.dart';
@@ -130,7 +131,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) setState(() => _requesting = false);
     }
@@ -216,7 +217,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
                     context.go('/client/tracking/ride/$_rideId');
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               },
             ),
@@ -245,7 +246,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     } catch (e) {
       final msg = e.toString().contains('insufficient_balance')
           ? 'Solde insuffisant sur votre portefeuille Livra. Déposez des fonds ou choisissez un autre moyen de paiement.'
-          : 'Erreur: $e';
+          : friendlyError(e);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }

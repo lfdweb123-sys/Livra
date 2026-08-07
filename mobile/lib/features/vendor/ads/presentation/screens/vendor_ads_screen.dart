@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/models/product_model.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
@@ -132,7 +133,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
       final campaignId = res['id'];
       await _choosePayment(campaignId);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -173,7 +174,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
           _loadCampaigns();
         }
       } catch (e) {
-        final msg = e.toString().contains('insufficient_balance') ? 'Solde portefeuille insuffisant.' : 'Erreur: $e';
+        final msg = e.toString().contains('insufficient_balance') ? 'Solde portefeuille insuffisant.' : friendlyError(e);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
       return;
@@ -245,7 +246,7 @@ class _VendorAdsScreenState extends State<VendorAdsScreen> {
                     _loadCampaigns();
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               },
             ),

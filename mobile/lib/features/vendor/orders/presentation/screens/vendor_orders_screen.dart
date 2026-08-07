@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
@@ -106,7 +107,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
       }
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 

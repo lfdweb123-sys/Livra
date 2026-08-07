@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/widgets/review_sheet.dart';
 import '../../../../../core/widgets/driver_picker.dart';
 import '../../../../../core/widgets/report_sheet.dart';
@@ -101,7 +102,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 : 'Livreur hors application enregistré.')));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/storage/upload_service.dart';
 import '../../../../../core/services/storage/image_compression_service.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -97,7 +98,7 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+            .showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

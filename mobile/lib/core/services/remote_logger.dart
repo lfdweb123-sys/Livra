@@ -40,7 +40,9 @@ class RemoteLogger {
   }
 
   /// Traduit une FirebaseAuthException en message lisible pour l'utilisateur,
-  /// sans jamais afficher un message générique qui masque la vraie cause.
+  /// sans jamais afficher un message générique qui masque la vraie cause —
+  /// et sans jamais laisser passer le message brut anglais de Firebase
+  /// (error.message), qui n'est jamais traduit côté SDK.
   static String readableAuthError(Object error) {
     if (error is FirebaseAuthException) {
       switch (error.code) {
@@ -54,6 +56,12 @@ class RemoteLogger {
         case 'wrong-password':
         case 'invalid-credential':
           return 'Email ou mot de passe incorrect.';
+        case 'user-disabled':
+          return 'Ce compte a été désactivé. Contactez le support.';
+        case 'operation-not-allowed':
+          return "Cette méthode de connexion n'est pas activée. Contactez le support.";
+        case 'requires-recent-login':
+          return 'Veuillez vous reconnecter pour effectuer cette action.';
         case 'network-request-failed':
           return 'Pas de connexion réseau. Vérifiez votre connexion internet.';
         case 'too-many-requests':
@@ -62,7 +70,11 @@ class RemoteLogger {
         case 'invalid-api-key':
           return 'Configuration Firebase invalide (clé API). Contactez le support.';
         default:
-          return error.message ?? 'Erreur (${error.code}). Réessayez.';
+          // IMPORTANT: ne JAMAIS renvoyer error.message ici — c'est le texte
+          // brut anglais de Firebase, jamais traduit côté SDK, exactement
+          // le genre de fuite anglaise à éliminer. Le code est affiché pour
+          // que le support puisse identifier la cause exacte au besoin.
+          return 'Une erreur est survenue (code : ${error.code}). Réessayez ou contactez le support.';
       }
     }
     // Erreur Firestore (permission-denied = rules pas déployées, etc.)
@@ -70,6 +82,9 @@ class RemoteLogger {
     if (msg.contains('permission-denied')) {
       return "Accès refusé par le serveur (règles de sécurité). Contactez le support.";
     }
-    return 'Erreur inattendue : $msg';
+    if (msg.contains('network')) {
+      return 'Pas de connexion réseau. Vérifiez votre connexion internet.';
+    }
+    return "Une erreur inattendue est survenue. Réessayez dans un instant.";
   }
 }

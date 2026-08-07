@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/storage/upload_service.dart';
 import '../../../../../core/services/storage/image_compression_service.dart';
 import '../../../../../core/models/product_model.dart';
@@ -138,7 +139,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                   }
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
-                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               },
             ),
@@ -168,7 +169,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
       await ApiClient.instance.delete('/api/vendors/$_vendorId/products/${p.id}');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produit supprimé.')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 

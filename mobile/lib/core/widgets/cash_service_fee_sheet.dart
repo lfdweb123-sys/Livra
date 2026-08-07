@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api/api_client.dart';
+import '../services/friendly_error.dart';
 import '../theme/app_colors.dart';
 import 'app_bottom_sheet.dart';
 import 'debounced_button.dart';
@@ -69,7 +70,7 @@ Future<void> showCashServiceFeeSheet(
             } catch (e) {
               final msg = e.toString().contains('insufficient_balance')
                   ? 'Solde portefeuille insuffisant pour régler les frais de service.'
-                  : 'Erreur: $e';
+                  : friendlyError(e);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
               }
@@ -131,7 +132,7 @@ void _payFeexpay(BuildContext context, String endpoint, num serviceFee, VoidCall
                 onSuccess();
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               }
             },

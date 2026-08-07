@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api/api_client.dart';
+import '../services/friendly_error.dart';
 import '../theme/app_colors.dart';
 import 'app_bottom_sheet.dart';
 import 'primary_button.dart';
@@ -75,7 +76,7 @@ Future<void> showReportSheet(
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                      .showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               }
             },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api/api_client.dart';
+import '../services/friendly_error.dart';
 import '../theme/app_colors.dart';
 import 'app_bottom_sheet.dart';
 import 'primary_button.dart';
@@ -68,7 +69,7 @@ Future<void> showBoostProfileSheet(
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               }
             },
@@ -125,7 +126,7 @@ Future<void> _showBoostPaymentSheet(BuildContext context, {required String boost
             } catch (e) {
               final msg = e.toString().contains('insufficient_balance')
                   ? 'Solde portefeuille insuffisant.'
-                  : 'Erreur: $e';
+                  : friendlyError(e);
               if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
             }
           },
@@ -184,7 +185,7 @@ void _payFeexpay(BuildContext context, String boostId, num price) {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               }
             },

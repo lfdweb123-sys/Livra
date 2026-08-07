@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../../core/services/api/api_client.dart';
+import '../../../../core/services/friendly_error.dart';
 import '../../../../core/services/storage/upload_service.dart';
 import '../../../../core/services/storage/image_compression_service.dart';
 import '../../../../core/services/location_service.dart';
@@ -90,7 +91,7 @@ class _ApplyVendorScreenState extends State<ApplyVendorScreen> {
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+            .showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

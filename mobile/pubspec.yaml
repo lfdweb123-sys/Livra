@@ -7,6 +7,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # SDK Flutter dédié aux traductions natives (barre Copier/Couper/Coller,
+  # sélecteurs de date, etc.) — sans ça, ces éléments système restent
+  # toujours en anglais quelle que soit la langue de l'app.
+  flutter_localizations:
+    sdk: flutter
   # --- Firebase ---
   firebase_core: any
   firebase_auth: any

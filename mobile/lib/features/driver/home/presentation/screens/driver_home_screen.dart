@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
@@ -147,7 +148,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       if (mounted) {
         final msg = e.toString().toLowerCase().contains('location') || e.toString().toLowerCase().contains('permission')
             ? "Impossible d'accéder à votre position. Vérifiez que la localisation est autorisée pour Livra dans les paramètres du téléphone."
-            : 'Erreur : $e';
+            : friendlyError(e);
         setState(() => _toggleError = msg);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }

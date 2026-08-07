@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/services/payment/payment_service.dart';
 import '../../../../../core/constants/api_constants.dart';
@@ -115,7 +116,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
         _priceBreakdown = Map<String, dynamic>.from(res['priceBreakdown']);
       });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) setState(() => _creatingOrder = false);
     }
@@ -163,7 +164,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     } catch (e) {
       final msg = e.toString().contains('insufficient_balance')
           ? 'Solde insuffisant sur votre portefeuille Livra. Déposez des fonds ou choisissez un autre moyen de paiement.'
-          : 'Erreur: $e';
+          : friendlyError(e);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
@@ -295,7 +296,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                     }
                   }
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               },
             ),

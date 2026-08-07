@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/api/api_client.dart';
+import '../../../../core/services/friendly_error.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
@@ -347,7 +348,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 } catch (e) {
                   if (mounted)
                     ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                        .showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               },
             ),

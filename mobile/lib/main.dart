@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
@@ -35,6 +36,17 @@ class _LivraAppState extends State<LivraApp> {
             darkTheme: AppTheme.current,
             themeMode: mode,
             routerConfig: AppRouter.router,
+            // Français forcé partout — sans ça, les composants systèmes
+            // (barre Copier/Couper/Coller, sélecteurs de date...)
+            // restaient en anglais par défaut, quelle que soit la langue
+            // du téléphone.
+            locale: const Locale('fr'),
+            supportedLocales: const [Locale('fr')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
           ),
         );
       },

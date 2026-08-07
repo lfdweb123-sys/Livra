@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/debounced_button.dart';
 
@@ -71,7 +72,7 @@ class _DriverPricingScreenState extends State<DriverPricingScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
