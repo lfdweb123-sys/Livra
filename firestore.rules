@@ -86,17 +86,19 @@ service cloud.firestore {
       allow read: if isAdmin()
                   || isOwner(resource.data.clientId)
                   || (resource.data.vendorId != null && isOwner(get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerId))
-                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId))
-                  // BUG CORRIGE: sans cette clause, AUCUN livreur ne pouvait
-                  // jamais lire une commande pas encore réclamée (driverId
-                  // encore vide) — ni en diffusion générale (recherche géo
-                  // des commandes à proximité), ni même quand elle lui était
-                  // spécifiquement confiée (preferredDriverId). Firestore
-                  // exclut silencieusement les documents refusés d'une
-                  // requête, sans la moindre erreur visible — d'où
-                  // l'impression de liste toujours vide malgré des
-                  // notifications reçues.
-                  || (isActiveDriver() && resource.data.driverId == null && resource.data.readyForPickup == true);
+                  || (
+                      isActiveDriver() &&
+                      (
+                        // Toutes les commandes disponibles (diffusion générale)
+                        (resource.data.driverId == null && resource.data.readyForPickup == true)
+                        // Celles réservées à ce livreur précisément (preferredDriverId)
+                        || resource.data.preferredDriverId == userDoc().activeDriverId
+                        // Celles déjà attribuées à ce livreur, à TOUT statut — y compris
+                        // son historique de livraisons déjà terminées (le livreur doit
+                        // toujours pouvoir revoir ce qu'il a déjà livré).
+                        || resource.data.driverId == userDoc().activeDriverId
+                      )
+                  );
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending'
@@ -121,10 +123,14 @@ service cloud.firestore {
     match /rides/{rideId} {
       allow read: if isAdmin()
                   || isOwner(resource.data.clientId)
-                  || (resource.data.driverId != null && isOwner(get(/databases/$(database)/documents/drivers/$(resource.data.driverId)).data.ownerId))
-                  // Même correctif que pour orders — voir le commentaire
-                  // détaillé là-bas.
-                  || (isActiveDriver() && resource.data.driverId == null && resource.data.readyForPickup == true);
+                  || (
+                      isActiveDriver() &&
+                      (
+                        (resource.data.driverId == null && resource.data.readyForPickup == true)
+                        || resource.data.preferredDriverId == userDoc().activeDriverId
+                        || resource.data.driverId == userDoc().activeDriverId
+                      )
+                  );
 
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid
                     && request.resource.data.status == 'pending';
