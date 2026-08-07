@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import '../../../../../core/services/api/api_client.dart';
-import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/skeleton_loader.dart';
@@ -14,6 +13,13 @@ import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 
 const double _matchRadiusKm = 6;
+
+// Statuts "en cours" — tant qu'une commande/course de ce livreur est dans
+// l'un de ces statuts, elle reste accessible en un tap depuis l'accueil
+// (voir bandeau "Livraison en cours") : un livreur qui quitte l'écran de
+// navigation par erreur doit toujours pouvoir y retourner.
+const _activeOrderStatuses = ['picked_up', 'delivering'];
+const _activeRideStatuses = ['accepted', 'arriving', 'in_progress'];
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -32,21 +38,23 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   StreamSubscription? _geoRidesSub;
   StreamSubscription? _reservedOrdersSub;
   StreamSubscription? _reservedRidesSub;
+  StreamSubscription? _activeOrdersSub;
+  StreamSubscription? _activeRidesSub;
   List<Map<String, dynamic>> _incomingOrders = [];
   List<Map<String, dynamic>> _incomingRides = [];
   // Commandes/courses où LE CLIENT (ou vendeur) m'a réservé précisément,
   // AVANT même que le plat soit prêt / que la course soit "readyForPickup".
-  // BUG CORRIGE: la requête géo ci-dessous exige readyForPickup==true, donc
-  // une commande nourriture réservée par un client (le vendeur n'a pas
-  // encore marqué le plat prêt) n'apparaissait JAMAIS ici, même si le
-  // livreur avait bien reçu les notifications push+mail de l'assignation —
-  // les règles Firestore l'autorisaient déjà, seule cette page ne la
-  // demandait jamais. Requête séparée, indépendante de readyForPickup.
   List<Map<String, dynamic>> _reservedOrders = [];
   List<Map<String, dynamic>> _reservedRides = [];
+  // Livraisons/courses DÉJÀ acceptées par moi et en cours — permet de
+  // revenir sur l'écran de navigation même après être reparti par erreur
+  // sur l'accueil, pour ce livreur ET tout autre type (coursier, chauffeur,
+  // taxi-moto...), même principe pour tous.
+  Map<String, dynamic>? _activeOrder;
+  Map<String, dynamic>? _activeRide;
   bool _checkedNoApplication = false;
   bool _popupShown = false;
-  String? _toggleError;
+  int _geoRetryCount = 0;
 
   @override
   void initState() {
@@ -77,6 +85,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _checkedNoApplication = false;
       });
       _listenReservedForMe(doc.id);
+      _listenActiveForMe(doc.id);
     });
   }
 
@@ -114,6 +123,41 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             .toList();
       });
     }, onError: (e) => debugPrint('[RESERVED_RIDES_ERROR] $e'));
+  }
+
+  /// Livraison/course DÉJÀ acceptée par moi et toujours en cours — permet
+  /// de revenir dessus (bandeau "Continuer" en haut de l'accueil) même
+  /// après être reparti par erreur, sans perdre le fil. Ne dépend ni du
+  /// statut en ligne ni de readyForPickup — l'app se souvient toujours de
+  /// ce qui est en cours, jusqu'à ce que ce soit terminé.
+  void _listenActiveForMe(String driverId) {
+    _activeOrdersSub?.cancel();
+    _activeRidesSub?.cancel();
+    _activeOrdersSub = FirebaseFirestore.instance
+        .collection('orders')
+        .where('driverId', isEqualTo: driverId)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final active = snap.docs
+          .map((d) => {'id': d.id, ...d.data()})
+          .where((o) => _activeOrderStatuses.contains(o['status']))
+          .toList();
+      setState(() => _activeOrder = active.isNotEmpty ? active.first : null);
+    }, onError: (e) => debugPrint('[ACTIVE_ORDERS_ERROR] $e'));
+
+    _activeRidesSub = FirebaseFirestore.instance
+        .collection('rides')
+        .where('driverId', isEqualTo: driverId)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final active = snap.docs
+          .map((d) => {'id': d.id, ...d.data()})
+          .where((r) => _activeRideStatuses.contains(r['status']))
+          .toList();
+      setState(() => _activeRide = active.isNotEmpty ? active.first : null);
+    }, onError: (e) => debugPrint('[ACTIVE_RIDES_ERROR] $e'));
   }
 
   void _maybeShowIdentityPopup() {
@@ -161,7 +205,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   Future<void> _toggleOnline(bool value) async {
     if (_driverId == null) return;
-    setState(() => _toggleError = null);
     try {
       if (value) {
         final pos = await LocationService().getCurrentPosition();
@@ -173,15 +216,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _startGeoMatching(pos.latitude, pos.longitude);
         _posSub?.cancel();
         _posSub = LocationService().watchPosition().listen((p) async {
-          // BUG CORRIGE: cet appel n'était PAS attendu avant de relancer
-          // _startGeoMatching() — exactement la même course de vitesse que
-          // celle déjà corrigée côté serveur (toggle-online), mais laissée
-          // intacte ici. Comme watchPosition() se déclenche à CHAQUE
-          // mouvement du livreur (très fréquent), ce point redéclenchait
-          // le bug en permanence: la requête géo repartait avant que
-          // users/{uid}.activeDriverId ait fini de se réécrire côté
-          // serveur, provoquant un permission-denied à répétition — pas
-          // une fois au premier toggle, mais à chaque déplacement.
           try {
             await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
               'isOnline': true,
@@ -200,31 +234,25 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       }
       if (mounted) setState(() => _online = value);
     } catch (e) {
-      // IMPORTANT: sans ce try/catch, une permission de localisation
-      // refusée ou un appel API en échec plantait silencieusement — le
-      // livreur restait "hors ligne" sans jamais savoir pourquoi, et sans
-      // rien à sélectionner. On affiche maintenant l'erreur clairement.
+      // Seule erreur encore montrée à l'utilisateur: la localisation, car
+      // c'est la SEULE chose qu'il peut lui-même corriger (autoriser la
+      // position dans les paramètres du téléphone). Tout le reste
+      // (synchronisation serveur, permissions Firestore) se répare tout
+      // seul en silence — voir _startGeoMatching ci-dessous — un livreur
+      // ne doit jamais voir de message technique sur son tableau de bord.
       debugPrint('[TOGGLE_ONLINE_ERROR] $e');
-      if (mounted) {
-        final msg = e.toString().toLowerCase().contains('location') || e.toString().toLowerCase().contains('permission')
-            ? "Impossible d'accéder à votre position. Vérifiez que la localisation est autorisée pour Livra dans les paramètres du téléphone."
-            : friendlyError(e);
-        setState(() => _toggleError = msg);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      final isLocation = e.toString().toLowerCase().contains('location') || e.toString().toLowerCase().contains('permission');
+      if (mounted && isLocation) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Impossible d'accéder à votre position. Vérifiez que la localisation est autorisée pour Livra dans les paramètres du téléphone."),
+        ));
       }
     }
   }
 
   /// Relance manuellement la position + le matching géo — utile si le flux
-  /// en temps réel s'est arrêté silencieusement (erreur transitoire,
-  /// reprise après mise en veille...). Appelé par le "tirer pour actualiser",
-  /// disponible en permanence, plus seulement quand la liste n'est pas vide.
-  ///
-  /// IMPORTANT: repasse D'ABORD par toggle-online (qui réécrit
-  /// users/{uid}.activeDriverId côté serveur, requis par firestore.rules)
-  /// avant de relancer la requête géo — sans ça, "actualiser" ne réparait
-  /// jamais une erreur de permission causée par un activeDriverId pas
-  /// encore synchronisé, seulement les erreurs réseau transitoires.
+  /// en temps réel s'est arrêté (mise en veille prolongée...). Disponible
+  /// en permanence via le "tirer pour actualiser".
   Future<void> _refresh() async {
     if (!_online || _driverId == null) return;
     try {
@@ -234,17 +262,24 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         'lat': pos.latitude,
         'lng': pos.longitude,
       });
+      _geoRetryCount = 0;
       _startGeoMatching(pos.latitude, pos.longitude);
-      if (mounted) setState(() => _toggleError = null);
     } catch (e) {
       debugPrint('[REFRESH_ERROR] $e');
-      if (mounted) setState(() => _toggleError = 'Erreur lors de l\'actualisation : $e');
     }
   }
 
   /// Requêtes géo (geoflutterfire_plus) sur `orders` ET `rides` en parallèle
   /// — un livreur "coursier" voit les colis, un chauffeur "moto"/"voiture"
   /// voit aussi les courses correspondant à son type de véhicule.
+  ///
+  /// IMPORTANT: plus AUCUNE erreur n'est jamais affichée à l'écran ici —
+  /// demande explicite ("aucune erreur ne sera dans l'application"). En
+  /// cas d'échec (ex: synchronisation serveur pas encore terminée), l'app
+  /// se répare TOUTE SEULE en silence: elle réessaie de se resynchroniser
+  /// puis relance la requête, jusqu'à 3 fois avec un court délai, sans
+  /// jamais rien montrer à l'utilisateur. Seuls les logs de debug (invisibles
+  /// en usage normal) tracent ce qui se passe, pour le support technique.
   void _startGeoMatching(double lat, double lng) {
     _geoOrdersSub?.cancel();
     _geoRidesSub?.cancel();
@@ -260,22 +295,16 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         )
         .listen((docs) {
       if (!mounted) return;
+      _geoRetryCount = 0;
       setState(() {
-        // Si le client/vendeur a choisi un livreur précis pour cette
-        // commande (preferredDriverId), elle ne doit être visible QUE pour
-        // lui, pas pour les autres livreurs à proximité.
         _incomingOrders = docs
             .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
             .where((o) => o['preferredDriverId'] == null || o['preferredDriverId'] == _driverId)
             .toList();
       });
     }, onError: (e) {
-      // IMPORTANT: sans ce onError, une requête Firestore en échec (index
-      // composite manquant, permissions...) restait TOTALEMENT invisible —
-      // aucune commande ne s'affichait jamais côté livreur, sans la moindre
-      // erreur nulle part. Voir la console/logs si ceci apparaît.
       debugPrint('[GEO_ORDERS_STREAM_ERROR] $e');
-      if (mounted) setState(() => _toggleError = 'Erreur de chargement des commandes : $e');
+      _selfHealGeoMatching(lat, lng);
     });
 
     if (_vehicleType == 'moto' || _vehicleType == 'voiture') {
@@ -289,6 +318,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           )
           .listen((docs) {
         if (!mounted) return;
+        _geoRetryCount = 0;
         setState(() {
           _incomingRides = docs
               .map((d) => {'id': d.id, ...(d.data() as Map<String, dynamic>)})
@@ -297,9 +327,32 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         });
       }, onError: (e) {
         debugPrint('[GEO_RIDES_STREAM_ERROR] $e');
-        if (mounted) setState(() => _toggleError = 'Erreur de chargement des courses : $e');
+        _selfHealGeoMatching(lat, lng);
       });
     }
+  }
+
+  /// Auto-réparation silencieuse: resynchronise activeDriverId côté
+  /// serveur puis relance la requête géo, jusqu'à 3 tentatives avec un
+  /// court délai croissant. Ne montre jamais rien à l'utilisateur.
+  void _selfHealGeoMatching(double lat, double lng) {
+    if (!mounted || !_online || _driverId == null) return;
+    if (_geoRetryCount >= 3) {
+      debugPrint('[GEO_SELF_HEAL] abandon après 3 tentatives');
+      return;
+    }
+    _geoRetryCount++;
+    Future.delayed(Duration(seconds: _geoRetryCount * 2), () async {
+      if (!mounted || !_online) return;
+      try {
+        await ApiClient.instance.post('/api/drivers/$_driverId/toggle-online', data: {
+          'isOnline': true,
+          'lat': lat,
+          'lng': lng,
+        });
+      } catch (_) {}
+      if (mounted && _online) _startGeoMatching(lat, lng);
+    });
   }
 
   GeoPoint _geopointFrom(Map<String, dynamic> data) {
@@ -327,6 +380,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     _geoRidesSub?.cancel();
     _reservedOrdersSub?.cancel();
     _reservedRidesSub?.cancel();
+    _activeOrdersSub?.cancel();
+    _activeRidesSub?.cancel();
     super.dispose();
   }
 
@@ -387,6 +442,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       appBar: AppBar(
         title: Text('Espace livreur'),
         actions: [
+          IconButton(icon: Icon(Icons.history_rounded), tooltip: 'Historique', onPressed: () => context.push('/driver/history')),
           IconButton(icon: Icon(Icons.account_balance_wallet_outlined), onPressed: () => context.push('/wallet')),
           IconButton(icon: Icon(Icons.bar_chart_rounded), onPressed: () => context.push('/driver/earnings')),
           IconButton(icon: Icon(Icons.person_outline_rounded), onPressed: () => context.push('/driver/profile')),
@@ -417,22 +473,28 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                 ],
               ),
             ),
-            if (_toggleError != null)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppColors.danger.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                child: Row(
+            // Bandeau "Livraison en cours" — permet de revenir sur l'écran
+            // de navigation même après en être reparti par erreur (ça
+            // arrive). Toujours visible, indépendamment du statut en ligne,
+            // tant qu'une commande/course confiée à ce livreur n'est pas
+            // terminée.
+            if (_activeOrder != null || _activeRide != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
                   children: [
-                    Icon(Icons.error_outline, color: AppColors.danger, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_toggleError!, style: TextStyle(color: AppColors.danger, fontSize: 12.5))),
-                    IconButton(
-                      icon: Icon(Icons.close, size: 16, color: AppColors.danger),
-                      onPressed: () => setState(() => _toggleError = null),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
+                    if (_activeOrder != null)
+                      _ActiveJobBanner(
+                        icon: Icons.inventory_2_outlined,
+                        label: 'Livraison en cours — ${_activeOrder!['type'] ?? ''}',
+                        onTap: () => context.push('/driver/navigation/order/${_activeOrder!['id']}'),
+                      ),
+                    if (_activeRide != null)
+                      _ActiveJobBanner(
+                        icon: Icons.two_wheeler_rounded,
+                        label: 'Course en cours — ${_activeRide!['vehicleType'] ?? ''}',
+                        onTap: () => context.push('/driver/navigation/ride/${_activeRide!['id']}'),
+                      ),
                   ],
                 ),
               ),
@@ -503,6 +565,42 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
+    );
+  }
+}
+
+/// Bandeau "en cours" — permet de revenir sur une livraison/course déjà
+/// acceptée sans perdre le fil si le livreur est reparti par erreur sur
+/// l'accueil.
+class _ActiveJobBanner extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _ActiveJobBanner({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.gold.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.gold),
+                const SizedBox(width: 12),
+                Expanded(child: Text(label, style: TextStyle(fontWeight: FontWeight.w600))),
+                Icon(Icons.chevron_right_rounded, color: AppColors.gold),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

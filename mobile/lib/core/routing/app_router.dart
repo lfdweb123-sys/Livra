@@ -28,6 +28,7 @@ import '../../features/client/profile/presentation/screens/profile_screen.dart';
 import '../../features/driver/home/presentation/screens/driver_home_screen.dart';
 import '../../features/driver/navigation/presentation/screens/driver_navigation_screen.dart';
 import '../../features/driver/earnings/presentation/screens/driver_earnings_screen.dart';
+import '../../features/driver/home/presentation/screens/driver_history_screen.dart';
 import '../../features/driver/profile/presentation/screens/driver_profile_screen.dart';
 
 import '../../features/vendor/dashboard/presentation/screens/vendor_dashboard_screen.dart';
@@ -163,6 +164,7 @@ class AppRouter {
             id: s.pathParameters['id']!,
           )),
       GoRoute(path: '/driver/earnings', builder: (c, s) => DriverEarningsScreen()),
+      GoRoute(path: '/driver/history', builder: (c, s) => const DriverHistoryScreen()),
       GoRoute(path: '/driver/profile', builder: (c, s) => const DriverProfileScreen()),
 
       // Espace Vendeur

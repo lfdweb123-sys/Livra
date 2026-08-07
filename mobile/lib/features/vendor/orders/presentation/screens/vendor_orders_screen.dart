@@ -25,23 +25,30 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
     _load();
   }
 
+  int _retryCount = 0;
+
   Future<void> _load() async {
     try {
       final res = await ApiClient.instance.get(ApiConstants.orders, query: {'limit': 30});
       setState(() {
         _orders = res['items'];
         _debugError = null;
+        _retryCount = 0;
       });
     } catch (e) {
-      // IMPORTANT: avant ce correctif, toute erreur ici (réseau, 500,
-      // permissions) était totalement invisible — la page restait juste
-      // vide, sans le moindre indice. On affiche maintenant l'erreur brute
-      // directement dans l'app pour diagnostiquer sans devoir aller
-      // chercher dans les logs Vercel.
+      // Ne montre plus jamais l'erreur technique brute (permission-denied,
+      // codes Firestore...) — l'app se réessaie automatiquement une fois en
+      // silence, et n'affiche un message que s'il persiste, jamais le texte
+      // technique d'origine.
       debugPrint('[VENDOR_ORDERS_LOAD_ERROR] $e');
+      if (_retryCount == 0) {
+        _retryCount++;
+        Future.delayed(const Duration(seconds: 2), _load);
+        return;
+      }
       setState(() {
         _orders = [];
-        _debugError = e.toString();
+        _debugError = 'Impossible de charger vos commandes pour le moment. Tirez vers le bas pour réessayer.';
       });
     }
   }
@@ -135,11 +142,15 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                   if (_debugError != null)
                     Container(
                       width: double.infinity,
-                      color: Colors.black87,
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'Erreur: $_debugError',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(_debugError!, style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5))),
+                        ],
                       ),
                     ),
                   Expanded(
