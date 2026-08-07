@@ -5,6 +5,7 @@ import { sendTransactionalEmail, orderDeliveredEmail } from '../../../../lib/bre
 import { notifyNearbyDrivers, notifyOrderPaid, notifySpecificDriver } from '../../../../lib/matching';
 import { creditPendingEarnings, EARNINGS_HOLD_DAYS } from '../../../../lib/wallet';
 import { logOffPlatformDelivery } from '../../../../lib/offPlatform';
+import { orderStatusFr } from '../../../../lib/statusLabels';
 
 const VENDOR_ALLOWED = ['accepted', 'preparing', 'picked_up'];
 const DRIVER_ALLOWED = ['picked_up', 'delivering', 'delivered'];
@@ -171,11 +172,18 @@ export async function PATCH(req, { params }) {
   }
 
   if (update.readyForPickup === true && auth.role === 'vendor') {
+    // L'adresse de collecte est incluse dès cette étape (utile pour
+    // décider d'accepter) — PAS les numéros de téléphone: les révéler à
+    // tous les livreurs à proximité avant qu'un seul n'accepte poserait
+    // un problème de confidentialité pour le vendeur/client. Les contacts
+    // arrivent dans la notification "assignation confirmée" ci-dessous,
+    // une fois qu'UN SEUL livreur a réellement accepté.
+    const pickupLabel = order.pickupAddress?.label ? ` — ${order.pickupAddress.label}` : '';
     if (update.preferredDriverId) {
       await notifySpecificDriver({
         driverId: update.preferredDriverId,
         title: 'Nouvelle livraison disponible',
-        body: `Une commande prête à récupérer, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
+        body: `Une commande prête à récupérer${pickupLabel}, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
         type: 'new_delivery',
         relatedId: params.id,
       });
@@ -186,7 +194,7 @@ export async function PATCH(req, { params }) {
           pickupLat: pickup.latitude,
           pickupLng: pickup.longitude,
           title: 'Nouvelle livraison disponible',
-          body: `Une commande prête à récupérer, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
+          body: `Une commande prête à récupérer${pickupLabel}, ${order.priceBreakdown?.deliveryFee ?? ''} XOF de frais.`,
           type: 'new_delivery',
           relatedId: params.id,
         });
@@ -194,10 +202,58 @@ export async function PATCH(req, { params }) {
     }
   }
 
+  if (driverClaiming) {
+    // Notification "assignation confirmée" — LE livreur qui vient
+    // d'accepter reçoit maintenant TOUT ce qu'il lui faut pour exécuter la
+    // livraison de bout en bout: adresse de collecte, contact du vendeur
+    // (commande nourriture), adresse de livraison et contact du client.
+    // Demande explicite: par push ET par email, pas seulement visible en
+    // ouvrant l'écran de navigation.
+    try {
+      const driverSnap = await db.collection('drivers').doc(driverId).get();
+      const clientSnap = await db.collection('users').doc(order.clientId).get();
+      let vendorLine = '';
+      if (order.vendorId) {
+        const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+        if (vendorSnap.exists) {
+          const vendorOwnerSnap = await db.collection('users').doc(vendorSnap.data().ownerId).get();
+          const vendorPhone = vendorOwnerSnap.exists ? vendorOwnerSnap.data().phone : null;
+          vendorLine = `Vendeur : ${vendorSnap.data().businessName || ''}${vendorPhone ? ' — ' + vendorPhone : ''}. `;
+        }
+      }
+      const pickupLine = order.pickupAddress?.label ? `Collecte : ${order.pickupAddress.label}. ` : '';
+      const deliveryLine = order.deliveryAddress?.label ? `Livraison : ${order.deliveryAddress.label}. ` : '';
+      const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
+      const clientLine = `Client : ${clientSnap.exists ? clientSnap.data().name : ''}${clientPhone ? ' — ' + clientPhone : ''}.`;
+      const fullBody = `${vendorLine}${pickupLine}${deliveryLine}${clientLine}`;
+
+      if (driverSnap.exists) {
+        await sendNotification({
+          userId: driverSnap.data().ownerId,
+          title: 'Livraison confirmée — vos infos de collecte et livraison',
+          body: fullBody,
+          type: 'delivery_assigned',
+          relatedId: params.id,
+        });
+        const driverOwnerSnap = await db.collection('users').doc(driverSnap.data().ownerId).get();
+        if (driverOwnerSnap.exists && driverOwnerSnap.data().email) {
+          await sendTransactionalEmail({
+            to: driverOwnerSnap.data().email,
+            toName: driverOwnerSnap.data().name,
+            subject: 'Livraison confirmée — vos infos de collecte et livraison',
+            htmlContent: `<p>${fullBody}</p><p>Ouvrez l'application Livra pour démarrer la navigation.</p>`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[DRIVER_ASSIGNED_NOTIFICATION_ERROR]', params.id, e.message);
+    }
+  }
+
   await sendNotification({
     userId: order.clientId,
     title: 'Commande mise à jour',
-    body: `Votre commande est maintenant: ${status}`,
+    body: `Votre commande est maintenant : ${orderStatusFr(status)}.`,
     type: 'order_update',
     relatedId: params.id,
   });

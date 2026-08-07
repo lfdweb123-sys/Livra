@@ -21,9 +21,10 @@ export async function POST(req) {
   let vendorCommissionPercent = 0;
   let vendorGeopoint = pickupAddress?.geopoint;
   let vendorDeliveryFee = null;
+  let vendorSnap = null;
 
   if (type === 'nourriture') {
-    const vendorSnap = await db.collection('vendors').doc(vendorId).get();
+    vendorSnap = await db.collection('vendors').doc(vendorId).get();
     if (!vendorSnap.exists || vendorSnap.data().status !== 'active') {
       return jsonError('vendor_unavailable', 400);
     }
@@ -82,6 +83,16 @@ export async function POST(req) {
   // pour proposer les commandes à proximité, sans avoir à lire chaque doc vendor/order.
   const matchPosition = toGeoPoint(vendorGeopoint.latitude, vendorGeopoint.longitude);
 
+  // BUG CORRIGE: pour une commande nourriture, pickupAddress restait TOUJOURS
+  // null (le client n'en envoie pas, seul le colis en a un) — le livreur
+  // n'avait alors AUCUNE adresse de collecte ni itinéraire tracé jusqu'au
+  // vendeur (driver_navigation_screen.dart s'appuie sur ce champ). On le
+  // construit maintenant depuis la fiche vendeur elle-même.
+  const finalPickupAddress =
+    type === 'nourriture'
+      ? { geopoint: vendorGeopoint, label: vendorSnap?.data()?.address || vendorSnap?.data()?.businessName || 'Adresse du vendeur' }
+      : pickupAddress || null;
+
   // readyForPickup = le champ que les livreurs interrogent (avec la géo-requête)
   // pour voir les commandes disponibles. Un colis est prêt immédiatement (pas
   // d'étape de préparation) ; une commande nourriture ne l'est qu'une fois le
@@ -107,7 +118,7 @@ export async function POST(req) {
     paymentMethod: body.paymentMethod || null,
     paymentStatus: 'pending',
     deliveryAddress,
-    pickupAddress: pickupAddress || null,
+    pickupAddress: finalPickupAddress,
     matchPosition,
     statusHistory: [{ status: 'pending', at: new Date().toISOString(), by: auth.uid }],
     createdAt: FieldValue.serverTimestamp(),

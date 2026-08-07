@@ -127,13 +127,17 @@ export async function notifyOrderPaid(orderId) {
   } else if (order.type === 'colis') {
     const pickup = order.pickupAddress?.geopoint;
     if (pickup) {
+      // Adresse de collecte incluse dès la diffusion (utile pour décider
+      // d'accepter) — pas les numéros de téléphone à ce stade, voir
+      // commentaire détaillé dans orders/[id]/route.js.
+      const pickupLabel = order.pickupAddress?.label ? ` — ${order.pickupAddress.label}` : '';
       if (order.preferredDriverId) {
         // Le client a choisi un livreur précis pour ce colis: on ne
         // notifie QUE lui, pas de broadcast.
         await notifySpecificDriver({
           driverId: order.preferredDriverId,
           title: 'Nouvelle livraison disponible',
-          body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+          body: `Colis à récupérer${pickupLabel}, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
           type: 'new_delivery',
           relatedId: orderId,
         });
@@ -142,7 +146,7 @@ export async function notifyOrderPaid(orderId) {
           pickupLat: pickup.latitude,
           pickupLng: pickup.longitude,
           title: 'Nouvelle livraison disponible',
-          body: `Colis à récupérer, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
+          body: `Colis à récupérer${pickupLabel}, ${order.priceBreakdown?.deliveryFee ?? 0} XOF de frais.`,
           type: 'new_delivery',
           relatedId: orderId,
         });

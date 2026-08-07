@@ -37,6 +37,11 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   String? _clientName;
   String? _clientPhone;
   String? _clientUid;
+  String? _vendorName;
+  String? _vendorPhone;
+  String? _vendorUid;
+  String? _pickupLabel;
+  String? _deliveryLabel;
 
   @override
   void initState() {
@@ -50,7 +55,17 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     _targetSub = FirebaseFirestore.instance.collection(collection).doc(widget.id).snapshots().listen((snap) async {
       if (!snap.exists) return;
       final wasNull = _target == null;
-      setState(() => _target = snap.data());
+      setState(() {
+        _target = snap.data();
+        // Adresses lisibles en texte, indispensables pour un coursier — la
+        // carte seule ne suffit pas pour savoir "chez qui" aller.
+        _pickupLabel = widget.type == 'order'
+            ? _target?['pickupAddress']?['label']
+            : _target?['pickupLocation']?['label'];
+        _deliveryLabel = widget.type == 'order'
+            ? _target?['deliveryAddress']?['label']
+            : _target?['dropoffLocation']?['label'];
+      });
       if (wasNull) {
         _loadDirections();
         final clientId = snap.data()?['clientId'];
@@ -62,6 +77,25 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
               _clientPhone = userSnap.data()?['phone'];
               _clientUid = clientId;
             });
+          }
+        }
+        // Contact du vendeur — indispensable pour un livreur qui doit
+        // savoir exactement chez qui récupérer une commande nourriture.
+        final vendorId = snap.data()?['vendorId'];
+        if (widget.type == 'order' && vendorId != null) {
+          final vendorSnap = await FirebaseFirestore.instance.collection('vendors').doc(vendorId).get();
+          if (vendorSnap.exists && mounted) {
+            final ownerId = vendorSnap.data()?['ownerId'];
+            setState(() => _vendorName = vendorSnap.data()?['businessName'] ?? 'Vendeur');
+            if (ownerId != null) {
+              final ownerSnap = await FirebaseFirestore.instance.collection('users').doc(ownerId).get();
+              if (ownerSnap.exists && mounted) {
+                setState(() {
+                  _vendorPhone = ownerSnap.data()?['phone'];
+                  _vendorUid = ownerId;
+                });
+              }
+            }
           }
         }
       }
@@ -211,7 +245,32 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Statut actuel : ${_statusLabelsFr[status] ?? status}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                // Adresses lisibles en texte — indispensable pour un
+                // coursier: la carte seule ne dit pas "chez qui" aller.
+                if (_pickupLabel != null)
+                  _AddressRow(icon: Icons.trip_origin_rounded, color: AppColors.success, label: 'Collecte', address: _pickupLabel!),
+                if (_deliveryLabel != null) ...[
+                  const SizedBox(height: 6),
+                  _AddressRow(icon: Icons.location_on_rounded, color: AppColors.danger, label: 'Livraison', address: _deliveryLabel!),
+                ],
+                const SizedBox(height: 14),
+                if (_vendorPhone != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/contact', extra: {
+                        'name': _vendorName ?? 'Vendeur',
+                        'phoneNumber': _vendorPhone,
+                        'role': 'Vendeur Livra',
+                        'calleeUid': _vendorUid,
+                      }),
+                      icon: const Icon(Icons.storefront_outlined, size: 18),
+                      label: Text('Contacter ${_vendorName ?? "le vendeur"}'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 if (_clientPhone != null) ...[
                   SizedBox(
                     width: double.infinity,
@@ -235,6 +294,36 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AddressRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String address;
+  const _AddressRow({required this.icon, required this.color, required this.label, required this.address});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              children: [
+                TextSpan(text: '$label : ', style: TextStyle(color: AppColors.textSecondary)),
+                TextSpan(text: address),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

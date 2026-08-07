@@ -1,9 +1,11 @@
 import { db, FieldValue } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { sendNotification } from '../../../../lib/fcm';
+import { sendTransactionalEmail } from '../../../../lib/brevo';
 import { notifySpecificDriver } from '../../../../lib/matching';
 import { creditPendingEarnings, EARNINGS_HOLD_DAYS } from '../../../../lib/wallet';
 import { logOffPlatformDelivery } from '../../../../lib/offPlatform';
+import { rideStatusFr } from '../../../../lib/statusLabels';
 
 const DRIVER_ALLOWED = ['accepted', 'arriving', 'in_progress', 'completed'];
 
@@ -112,7 +114,8 @@ export async function PATCH(req, { params }) {
   if (!(isClientCancel || isDriverMove || isAdmin)) return jsonError('forbidden', 403);
 
   const update = { status, updatedAt: FieldValue.serverTimestamp() };
-  if (status === 'accepted' && !ride.driverId && driverId) {
+  const driverClaiming = status === 'accepted' && !ride.driverId && driverId;
+  if (driverClaiming) {
     update.driverId = driverId;
     update.readyForPickup = false;
   }
@@ -124,7 +127,7 @@ export async function PATCH(req, { params }) {
   await sendNotification({
     userId: ride.clientId,
     title: 'Course mise à jour',
-    body: `Votre course est maintenant: ${status}`,
+    body: `Votre course est maintenant : ${rideStatusFr(status)}.`,
     type: 'ride_update',
     relatedId: params.id,
   });
@@ -136,6 +139,43 @@ export async function PATCH(req, { params }) {
       type: 'payment_confirmed',
       relatedId: params.id,
     });
+  }
+
+  if (driverClaiming) {
+    // Notification "course confirmée" — le chauffeur reçoit maintenant
+    // l'adresse de départ, l'adresse de destination et le contact du
+    // client, par push ET par email — même principe que pour une
+    // commande (voir orders/[id]/route.js).
+    try {
+      const driverSnap = await db.collection('drivers').doc(driverId).get();
+      const clientSnap = await db.collection('users').doc(ride.clientId).get();
+      const pickupLine = ride.pickupLocation?.label ? `Départ : ${ride.pickupLocation.label}. ` : '';
+      const dropoffLine = ride.dropoffLocation?.label ? `Destination : ${ride.dropoffLocation.label}. ` : '';
+      const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
+      const clientLine = `Client : ${clientSnap.exists ? clientSnap.data().name : ''}${clientPhone ? ' — ' + clientPhone : ''}.`;
+      const fullBody = `${pickupLine}${dropoffLine}${clientLine}`;
+
+      if (driverSnap.exists) {
+        await sendNotification({
+          userId: driverSnap.data().ownerId,
+          title: 'Course confirmée — vos infos de trajet',
+          body: fullBody,
+          type: 'ride_assigned',
+          relatedId: params.id,
+        });
+        const driverOwnerSnap = await db.collection('users').doc(driverSnap.data().ownerId).get();
+        if (driverOwnerSnap.exists && driverOwnerSnap.data().email) {
+          await sendTransactionalEmail({
+            to: driverOwnerSnap.data().email,
+            toName: driverOwnerSnap.data().name,
+            subject: 'Course confirmée — vos infos de trajet',
+            htmlContent: `<p>${fullBody}</p><p>Ouvrez l'application Livra pour démarrer la navigation.</p>`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[DRIVER_ASSIGNED_NOTIFICATION_ERROR]', params.id, e.message);
+    }
   }
   if (status === 'completed' && ride.driverId) {
     // Compteur de courses effectuées, affiché sur le profil public du

@@ -29,6 +29,7 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   ll.LatLng? _pickup;
   String _pickupLabel = 'Ma position actuelle';
   ll.LatLng? _dropoff;
+  String? _dropoffLabel;
   late String _vehicleType;
   bool _requesting = false;
   String? _rideId;
@@ -62,7 +63,10 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
   Future<void> _pickDropoffAddress() async {
     final result = await showAddressPicker(context, title: 'Destination');
     if (result != null) {
-      setState(() => _dropoff = ll.LatLng(result.lat, result.lng));
+      setState(() {
+        _dropoff = ll.LatLng(result.lat, result.lng);
+        _dropoffLabel = result.label;
+      });
       _mapController.move(_dropoff!, 15);
     }
   }
@@ -86,10 +90,12 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     try {
       final res = await ApiClient.instance.post(ApiConstants.rides, data: {
         'pickupLocation': {
-          'geopoint': {'latitude': _pickup!.latitude, 'longitude': _pickup!.longitude}
+          'geopoint': {'latitude': _pickup!.latitude, 'longitude': _pickup!.longitude},
+          'label': _pickupLabel,
         },
         'dropoffLocation': {
-          'geopoint': {'latitude': _dropoff!.latitude, 'longitude': _dropoff!.longitude}
+          'geopoint': {'latitude': _dropoff!.latitude, 'longitude': _dropoff!.longitude},
+          'label': _dropoffLabel,
         },
         'vehicleType': _vehicleType,
         if (pickResult.driverId != null) 'preferredDriverId': pickResult.driverId,
