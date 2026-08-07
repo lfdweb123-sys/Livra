@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +26,24 @@ class RoleGate extends StatefulWidget {
 class _RoleGateState extends State<RoleGate> {
   final _authService = AuthService();
   UserRole? _baseRole;
+  bool _hasActiveVendor = false;
+  bool _hasActiveDriver = false;
+
+  // IMPORTANT (bug corrigé): ces abonnements Firestore n'étaient auparavant
+  // JAMAIS annulés — à chaque connexion, de nouveaux listeners étaient
+  // créés sans jamais fermer ceux du compte précédent. Si un utilisateur
+  // se déconnectait puis se reconnectait avec un AUTRE compte dans la même
+  // session d'app (ex: testé "Livreur" puis "Client"), les anciens
+  // listeners du compte précédent continuaient de tourner et pouvaient
+  // écraser AppRouter.currentRole avec les données PÉRIMÉES de l'ancien
+  // compte à tout moment — c'est exactement pourquoi un client "simple"
+  // pouvait se retrouver avec "vérification d'identité requise" (état
+  // d'un ancien compte livreur/vendeur testé sur le même appareil), et
+  // pourquoi vider le cache de l'app "réglait" le problème (ça tuait les
+  // listeners fantômes).
+  StreamSubscription? _userDocSub;
+  StreamSubscription? _vendorSub;
+  StreamSubscription? _driverSub;
 
   @override
   void initState() {
@@ -34,12 +53,22 @@ class _RoleGateState extends State<RoleGate> {
     // authStateChanges() router l'utilisateur vers son tableau de bord.
     _authService.enforceSessionExpiry();
     FirebaseAuth.instance.authStateChanges().listen((user) {
+      // Ferme SYSTÉMATIQUEMENT tous les abonnements du compte précédent
+      // avant d'en ouvrir de nouveaux (ou de repartir à zéro si
+      // déconnecté) — plus aucun listener fantôme possible.
+      _userDocSub?.cancel();
+      _vendorSub?.cancel();
+      _driverSub?.cancel();
+      _baseRole = null;
+      _hasActiveVendor = false;
+      _hasActiveDriver = false;
+
       if (user == null) {
         AppRouter.currentRole = null;
         AppRouter.refresh();
         return;
       }
-      _authService.watchUserDoc(user.uid).listen((snap) {
+      _userDocSub = _authService.watchUserDoc(user.uid).listen((snap) {
         if (snap.exists) {
           _baseRole = roleFromString(snap.data()?['role']);
           _applyEffectiveRole();
@@ -58,11 +87,8 @@ class _RoleGateState extends State<RoleGate> {
     });
   }
 
-  bool _hasActiveVendor = false;
-  bool _hasActiveDriver = false;
-
   void _watchActiveVendorOrDriver(String uid) {
-    FirebaseFirestore.instance
+    _vendorSub = FirebaseFirestore.instance
         .collection('vendors')
         .where('ownerId', isEqualTo: uid)
         .where('status', isEqualTo: 'active')
@@ -71,7 +97,7 @@ class _RoleGateState extends State<RoleGate> {
       _hasActiveVendor = snap.docs.isNotEmpty;
       _applyEffectiveRole();
     });
-    FirebaseFirestore.instance
+    _driverSub = FirebaseFirestore.instance
         .collection('drivers')
         .where('ownerId', isEqualTo: uid)
         .where('status', isEqualTo: 'active')
@@ -94,6 +120,14 @@ class _RoleGateState extends State<RoleGate> {
       AppRouter.currentRole = _baseRole;
     }
     if (mounted) AppRouter.refresh();
+  }
+
+  @override
+  void dispose() {
+    _userDocSub?.cancel();
+    _vendorSub?.cancel();
+    _driverSub?.cancel();
+    super.dispose();
   }
 
   @override

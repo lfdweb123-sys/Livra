@@ -4,6 +4,7 @@ import { sendNotification } from '../../../../lib/fcm';
 import { sendTransactionalEmail, orderDeliveredEmail } from '../../../../lib/brevo';
 import { notifyNearbyDrivers, notifyOrderPaid, notifySpecificDriver } from '../../../../lib/matching';
 import { creditPendingEarnings, EARNINGS_HOLD_DAYS } from '../../../../lib/wallet';
+import { logOffPlatformDelivery } from '../../../../lib/offPlatform';
 
 const VENDOR_ALLOWED = ['accepted', 'preparing', 'picked_up'];
 const DRIVER_ALLOWED = ['picked_up', 'delivering', 'delivered'];
@@ -21,18 +22,19 @@ export async function PATCH(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
 
-  const { status, driverId, paymentMethod, preferredDriverId } = await req.json();
+  const { status, driverId, paymentMethod, preferredDriverId, offPlatformDriverPhone } = await req.json();
   const ref = db.collection('orders').doc(params.id);
   const snap = await ref.get();
   if (!snap.exists) return jsonError('not_found', 404);
   const order = snap.data();
 
-  // Le client choisit (ou change) un livreur précis APRÈS la création du
-  // colis — typiquement proposé sur l'écran de suivi si personne n'a
-  // encore accepté après un moment d'attente. Uniquement pour les colis
-  // (type !== 'nourriture'): pour une commande nourriture, c'est le
-  // vendeur qui choisit le livreur en marquant le plat prêt.
-  if (preferredDriverId && !status && !paymentMethod) {
+  // Le client choisit (ou change) un livreur précis, OU un livreur HORS
+  // application (numéro transmis à l'admin) APRÈS la création du colis —
+  // typiquement proposé sur l'écran de suivi si personne n'a encore
+  // accepté après un moment d'attente. Uniquement pour les colis (type
+  // !== 'nourriture'): pour une commande nourriture, c'est le vendeur qui
+  // choisit le livreur en marquant le plat prêt.
+  if ((preferredDriverId || offPlatformDriverPhone) && !status && !paymentMethod) {
     if (order.clientId !== auth.uid) return jsonError('forbidden', 403);
     // Le vendeur choisit normalement le livreur pour une commande nourriture
     // au moment de marquer le plat prêt — mais si personne n'a encore été
@@ -40,6 +42,13 @@ export async function PATCH(req, { params }) {
     // débloquer la situation lui-même plutôt que d'attendre indéfiniment.
     if (order.type === 'nourriture' && order.readyForPickup) return jsonError('vendor_assigns_driver', 400);
     if (order.driverId) return jsonError('already_assigned', 400);
+
+    if (offPlatformDriverPhone) {
+      await ref.update({ offPlatformDriverPhone, preferredDriverId: null, updatedAt: FieldValue.serverTimestamp() });
+      await logOffPlatformDelivery({ phone: offPlatformDriverPhone, declaredBy: auth.uid, role: 'client', orderId: params.id });
+      return Response.json({ ok: true });
+    }
+
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (!driverSnap.exists || driverSnap.data().status !== 'active' || !driverSnap.data().isOnline) {
       return jsonError('driver_unavailable', 400);
@@ -135,11 +144,17 @@ export async function PATCH(req, { params }) {
     // le vendeur marque le plat prêt : devient visible pour les livreurs à proximité
     update.readyForPickup = true;
     // Le vendeur peut choisir un livreur actif précis (proposé par
-    // l'appli) au lieu de laisser n'importe quel livreur à proximité
-    // accepter — ou ne rien choisir et faire appel à son propre livreur
-    // hors application (dans ce cas, rien à faire ici, l'appli continue
-    // normalement de proposer la commande aux livreurs à proximité).
-    if (preferredDriverId) {
+    // l'appli), un livreur HORS application (numéro transmis à l'admin),
+    // ou ne rien préciser et laisser l'appli proposer la commande à tous
+    // les livreurs à proximité.
+    if (offPlatformDriverPhone) {
+      // Livreur hors application choisi : n'apparaît plus dans les
+      // commandes disponibles pour les livreurs Livra, il est déjà pris
+      // en charge en dehors de la plateforme.
+      update.readyForPickup = false;
+      update.offPlatformDriverPhone = offPlatformDriverPhone;
+      update.preferredDriverId = null;
+    } else if (preferredDriverId) {
       const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
       if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
         update.preferredDriverId = preferredDriverId;
@@ -152,6 +167,9 @@ export async function PATCH(req, { params }) {
   }
 
   await ref.update(update);
+  if (update.offPlatformDriverPhone) {
+    await logOffPlatformDelivery({ phone: update.offPlatformDriverPhone, declaredBy: auth.uid, role: 'vendor', orderId: params.id });
+  }
 
   if (update.readyForPickup === true && auth.role === 'vendor') {
     if (update.preferredDriverId) {

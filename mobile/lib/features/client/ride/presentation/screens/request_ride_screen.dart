@@ -69,10 +69,10 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
     if (_pickup == null || _dropoff == null) return;
 
     // Propose un chauffeur/taxi-moto actif à proximité — le client peut en
-    // choisir un précis, ou ne rien choisir (passer par son propre
-    // chauffeur hors application, ou laisser l'appli proposer la course à
+    // choisir un précis, un chauffeur hors application (numéro transmis à
+    // l'admin), ou ne rien préciser (laisser l'appli proposer la course à
     // tous les chauffeurs disponibles comme avant).
-    final preferredDriverId = await pickDriver(
+    final pickResult = await pickDriver(
       context,
       lat: _pickup!.latitude,
       lng: _pickup!.longitude,
@@ -90,7 +90,8 @@ class _RequestRideScreenState extends State<RequestRideScreen> {
           'geopoint': {'latitude': _dropoff!.latitude, 'longitude': _dropoff!.longitude}
         },
         'vehicleType': _vehicleType,
-        if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
+        if (pickResult.driverId != null) 'preferredDriverId': pickResult.driverId,
+        if (pickResult.offPlatformPhone != null) 'offPlatformDriverPhone': pickResult.offPlatformPhone,
       });
       _rideId = res['id'];
       if (mounted) {

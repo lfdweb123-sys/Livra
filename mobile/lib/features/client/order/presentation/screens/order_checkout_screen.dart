@@ -71,19 +71,22 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     if (_deliveryAddress == null || (_isColis && _pickupAddress == null)) return;
 
     // Colis uniquement: le client peut choisir un livreur précis au point
-    // de collecte, ou ne rien choisir (livreur hors application, ou
-    // laisser l'appli proposer le colis à tous les livreurs à proximité).
-    // Pour une commande nourriture, c'est le vendeur qui choisira plus
-    // tard, au moment de marquer le plat prêt.
+    // de collecte, un livreur hors application (numéro transmis à
+    // l'admin), ou ne rien préciser (laisser l'appli proposer le colis à
+    // tous les livreurs à proximité). Pour une commande nourriture, c'est
+    // le vendeur qui choisira plus tard, au moment de marquer le plat prêt.
     String? preferredDriverId;
+    String? offPlatformDriverPhone;
     if (_isColis) {
-      preferredDriverId = await pickDriver(
+      final result = await pickDriver(
         context,
         lat: _pickupAddress!.lat,
         lng: _pickupAddress!.lng,
         vehicleType: 'coursier',
         title: 'Choisir un livreur',
       );
+      preferredDriverId = result.driverId;
+      offPlatformDriverPhone = result.offPlatformPhone;
     }
 
     setState(() => _creatingOrder = true);
@@ -104,6 +107,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               }
             : null,
         if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
+        if (offPlatformDriverPhone != null) 'offPlatformDriverPhone': offPlatformDriverPhone,
       });
       setState(() {
         _orderId = res['id'];

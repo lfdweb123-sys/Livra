@@ -3,6 +3,7 @@ import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeOrderBreakdown, computeDeliveryFee, computeServiceFee, SERVICE_FEE_PERCENT } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
 import { logActivity } from '../../../lib/activityLog';
+import { logOffPlatformDelivery } from '../../../lib/offPlatform';
 
 // POST /api/orders — crée une commande, prix toujours recalculé serveur
 export async function POST(req) {
@@ -11,7 +12,7 @@ export async function POST(req) {
   if (auth.role !== 'client') return jsonError('forbidden', 403);
 
   const body = await req.json();
-  const { vendorId, type, items, deliveryAddress, pickupAddress, preferredDriverId } = body;
+  const { vendorId, type, items, deliveryAddress, pickupAddress, preferredDriverId, offPlatformDriverPhone } = body;
 
   if (type === 'nourriture' && !vendorId) return jsonError('vendorId_required', 400);
   if (type === 'colis' && !pickupAddress?.geopoint) return jsonError('pickupAddress_required', 400);
@@ -92,6 +93,10 @@ export async function POST(req) {
     vendorId: vendorId || null,
     driverId: null,
     preferredDriverId: validatedPreferredDriverId,
+    // Numéro d'un livreur HORS application, saisi par le client — transmis
+    // à l'admin pour suivi (voir page admin dédiée). N'engage jamais la
+    // responsabilité de Livra (voir CGU).
+    offPlatformDriverPhone: offPlatformDriverPhone || null,
     type,
     items: items || [],
     priceBreakdown,
@@ -113,6 +118,9 @@ export async function POST(req) {
   // ne jamais faire préparer/livrer une commande jamais réellement payée.
 
   await logActivity('order_created', `Commande ${type} créée — ${priceBreakdown.total} XOF`, { orderId: orderRef.id, clientId: auth.uid });
+  if (offPlatformDriverPhone) {
+    await logOffPlatformDelivery({ phone: offPlatformDriverPhone, declaredBy: auth.uid, role: 'client', orderId: orderRef.id });
+  }
 
   // Conversion pub : si un des produits commandés est sous campagne active,
   // ça compte comme conversion — best-effort, ne doit jamais faire échouer

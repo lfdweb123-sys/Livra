@@ -16,6 +16,7 @@ const NAV = [
   { href: '/orders', label: 'Commandes' },
   { href: '/rides', label: 'Courses' },
   { href: '/disputes', label: 'Litiges' },
+  { href: '/off-platform', label: 'Livraisons hors app.' },
   { href: '/commission', label: 'Commission' },
 ];
 

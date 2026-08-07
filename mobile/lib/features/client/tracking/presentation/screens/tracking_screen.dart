@@ -80,20 +80,25 @@ class _TrackingScreenState extends State<TrackingScreen> {
         ? _orderData?['matchPosition']?['geopoint']
         : _orderData?['pickupLocation']?['geopoint'];
     if (pickup == null) return;
-    final driverId = await pickDriver(
+    final result = await pickDriver(
       context,
       lat: (pickup['latitude'] as num).toDouble(),
       lng: (pickup['longitude'] as num).toDouble(),
       title: 'Choisir un livreur',
     );
-    if (driverId == null) return;
+    if (result.isEmpty) return;
     final collection = widget.type == 'order' ? 'orders' : 'rides';
     try {
-      await ApiClient.instance.patch('/api/$collection/${widget.id}', data: {'preferredDriverId': driverId});
+      await ApiClient.instance.patch('/api/$collection/${widget.id}', data: {
+        if (result.driverId != null) 'preferredDriverId': result.driverId,
+        if (result.offPlatformPhone != null) 'offPlatformDriverPhone': result.offPlatformPhone,
+      });
       if (mounted) {
         setState(() => _showChooseDriverPrompt = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Livreur notifié — en attente de sa confirmation.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+            result.driverId != null
+                ? 'Livreur notifié — en attente de sa confirmation.'
+                : 'Livreur hors application enregistré.')));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));

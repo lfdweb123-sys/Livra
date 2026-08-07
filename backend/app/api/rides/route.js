@@ -3,24 +3,23 @@ import { requireAuth, jsonError } from '../../../lib/auth';
 import { computeRidePrice } from '../../../lib/pricing';
 import { toGeoPoint } from '../../../lib/geo';
 import { notifyNearbyDrivers, notifySpecificDriver } from '../../../lib/matching';
+import { logOffPlatformDelivery } from '../../../lib/offPlatform';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
   if (auth.role !== 'client') return jsonError('forbidden', 403);
 
-  const { pickupLocation, dropoffLocation, vehicleType, paymentMethod, preferredDriverId } = await req.json();
+  const { pickupLocation, dropoffLocation, vehicleType, paymentMethod, preferredDriverId, offPlatformDriverPhone } = await req.json();
   if (!pickupLocation?.geopoint || !dropoffLocation?.geopoint) return jsonError('locations_required', 400);
   if (!['moto', 'voiture'].includes(vehicleType)) return jsonError('invalid_vehicleType', 400);
 
   // Le client peut choisir un chauffeur/taxi-moto actif précis proposé par
-  // l'appli, ou ne rien choisir (dans ce cas la course est proposée à tous
-  // les chauffeurs à proximité comme avant) — il reste toujours libre de
-  // prendre un chauffeur hors application, ce qui ne concerne alors pas
-  // la plateforme.
+  // l'appli, un chauffeur HORS application (numéro transmis à l'admin), ou
+  // ne rien préciser (course proposée à tous les chauffeurs à proximité).
   let validatedPreferredDriverId = null;
   let preferredDriverPricingConfig = null;
-  if (preferredDriverId) {
+  if (preferredDriverId && !offPlatformDriverPhone) {
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
       validatedPreferredDriverId = preferredDriverId;
@@ -36,11 +35,14 @@ export async function POST(req) {
     clientId: auth.uid,
     driverId: null,
     preferredDriverId: validatedPreferredDriverId,
+    offPlatformDriverPhone: offPlatformDriverPhone || null,
     pickupLocation,
     dropoffLocation,
     vehicleType,
     status: 'pending',
-    readyForPickup: true, // une course est disponible immédiatement, pas d'étape de préparation
+    // Un chauffeur hors application ne doit jamais apparaître dans les
+    // courses disponibles pour les chauffeurs Livra.
+    readyForPickup: !offPlatformDriverPhone,
     matchPosition,
     price, // total facturé au client (basePrice + serviceFee)
     basePrice,
@@ -54,7 +56,9 @@ export async function POST(req) {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  if (validatedPreferredDriverId) {
+  if (offPlatformDriverPhone) {
+    await logOffPlatformDelivery({ phone: offPlatformDriverPhone, declaredBy: auth.uid, role: 'client', rideId: rideRef.id });
+  } else if (validatedPreferredDriverId) {
     await notifySpecificDriver({
       driverId: validatedPreferredDriverId,
       title: 'Nouvelle course disponible',

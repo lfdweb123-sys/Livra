@@ -4,6 +4,8 @@ import '../services/api/api_client.dart';
 import '../theme/app_colors.dart';
 import '../constants/off_platform_notice.dart';
 import 'app_bottom_sheet.dart';
+import 'phone_number_field.dart';
+import 'primary_button.dart';
 import 'zoomable_image.dart';
 
 const _vehicleLabels = {
@@ -12,11 +14,22 @@ const _vehicleLabels = {
   'coursier': 'Livreur / Coursier',
 };
 
+/// Résultat du choix de livreur : soit un livreur de l'application
+/// ([driverId]), soit un livreur hors application dont on a précisé le
+/// numéro ([offPlatformPhone] — transmis à l'admin pour suivi), soit rien
+/// du tout (les deux à null).
+class DriverPickResult {
+  final String? driverId;
+  final String? offPlatformPhone;
+  const DriverPickResult({this.driverId, this.offPlatformPhone});
+  bool get isEmpty => driverId == null && offPlatformPhone == null;
+}
+
 /// Ouvre la liste des livreurs/chauffeurs actifs à proximité et laisse
-/// l'utilisateur (client ou vendeur) choisir librement — ou ne choisir
-/// personne pour passer par son propre livreur hors application. Retourne
-/// l'id du livreur choisi, ou `null` si aucun choix n'a été fait.
-Future<String?> pickDriver(
+/// l'utilisateur (client ou vendeur) choisir librement : un livreur de
+/// l'application, un livreur hors application (en précisant son numéro,
+/// transmis à l'admin pour suivi), ou ne rien préciser du tout.
+Future<DriverPickResult> pickDriver(
   BuildContext context, {
   required double lat,
   required double lng,
@@ -34,7 +47,7 @@ Future<String?> pickDriver(
     drivers = [];
   }
 
-  return showAppBottomSheet<String?>(
+  final result = await showAppBottomSheet<DriverPickResult>(
     context,
     title: title,
     child: Column(
@@ -89,7 +102,7 @@ Future<String?> pickDriver(
                     ],
                   ),
                   trailing: TextButton(
-                    onPressed: () => Navigator.of(context).pop(d['id']),
+                    onPressed: () => Navigator.of(context).pop(DriverPickResult(driverId: d['id'])),
                     child: const Text('Choisir'),
                   ),
                   onTap: () async {
@@ -97,7 +110,9 @@ Future<String?> pickDriver(
                       '/driver/detail/${d['id']}',
                       extra: {'selectable': true},
                     );
-                    if (picked != null && context.mounted) Navigator.of(context).pop(picked['id']);
+                    if (picked != null && context.mounted) {
+                      Navigator.of(context).pop(DriverPickResult(driverId: picked['id']));
+                    }
                   },
                 );
               },
@@ -111,10 +126,59 @@ Future<String?> pickDriver(
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Ne pas choisir (livreur hors application)'),
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              final phone = await _promptOffPlatformPhone(context);
+              if (phone != null && context.mounted) {
+                Navigator.of(context).pop(DriverPickResult(offPlatformPhone: phone));
+              }
+            },
+            icon: const Icon(Icons.person_outline, size: 18),
+            label: const Text('Livreur hors application (préciser son numéro)'),
           ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(const DriverPickResult()),
+            child: const Text('Ne rien préciser pour l\'instant'),
+          ),
+        ),
+      ],
+    ),
+  );
+  return result ?? const DriverPickResult();
+}
+
+Future<String?> _promptOffPlatformPhone(BuildContext context) async {
+  final phoneCtrl = TextEditingController();
+  return showAppBottomSheet<String?>(
+    context,
+    title: 'Livreur hors application',
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Renseignez le numéro du livreur que vous utilisez en dehors de Livra — '
+          'transmis à notre équipe pour le suivi. Rappel : ce trajet ne relève pas de '
+          'la responsabilité de Livra (voir conditions d\'utilisation).',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
+        const SizedBox(height: 16),
+        PrimaryButton(
+          label: 'Confirmer',
+          onPressed: () {
+            if (phoneCtrl.text.trim().length < 6) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Renseignez un numéro valide.')));
+              return;
+            }
+            Navigator.of(context).pop(phoneCtrl.text.trim());
+          },
         ),
       ],
     ),

@@ -136,6 +136,10 @@
     { "collectionGroup": "transactions", "queryScope": "COLLECTION_GROUP", "fields": [
       { "fieldPath": "matured", "order": "ASCENDING" },
       { "fieldPath": "availableAt", "order": "ASCENDING" }
+    ]},
+
+    { "collectionGroup": "off_platform_deliveries", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
     ]}
   ],
   "fieldOverrides": []
