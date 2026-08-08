@@ -420,12 +420,15 @@ class _WalletScreenState extends State<WalletScreen> {
                           if ((_wallet!['pendingBalance'] ?? 0) > 0) ...[
                             SizedBox(height: 8),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(Icons.lock_clock_outlined, size: 14, color: AppColors.textSecondary),
                                 const SizedBox(width: 6),
-                                Text(
-                                  '${_wallet!['pendingBalance']} XOF en attente (disponible sous 3 jours)',
-                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                Expanded(
+                                  child: Text(
+                                    '${_wallet!['pendingBalance']} XOF en attente (disponible sous 3 jours)',
+                                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                  ),
                                 ),
                               ],
                             ),

@@ -50,8 +50,8 @@ function SidebarContent({ pathname, onNavigate }) {
   return (
     <>
       <div className="flex items-center gap-2 px-5 h-16 border-b border-livra-divider shrink-0">
-        <Image src="/livra_logo_full.png" alt="Livra" width={28} height={29} />
-        <span className="font-semibold text-livra-textPrimary">Livra Admin</span>
+        <Image src="/livra_icon_full.png" alt="Livra" width={36} height={36} />
+        <span className="font-semibold text-livra-textPrimary">Admin</span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6">
@@ -132,34 +132,35 @@ export default function AdminLayout({ children }) {
         <SidebarContent pathname={pathname} onNavigate={() => {}} />
       </aside>
 
-      {/* Sidebar mobile — panneau coulissant plein écran, ouvert via le hamburger */}
+      {/* Sidebar mobile — panneau coulissant plein écran depuis la DROITE,
+          ouvert via le hamburger (lui-même placé à droite de la barre) */}
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-72 max-w-[80vw] bg-livra-surface flex flex-col border-r border-livra-divider">
-            <SidebarContent pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
-          </div>
           <button
             aria-label="Fermer le menu"
             className="flex-1 bg-black/40"
             onClick={() => setMobileNavOpen(false)}
           />
+          <div className="w-72 max-w-[80vw] bg-livra-surface flex flex-col border-l border-livra-divider">
+            <SidebarContent pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
+          </div>
         </div>
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Barre supérieure mobile uniquement — bouton hamburger */}
+        {/* Barre supérieure mobile uniquement — bouton hamburger à DROITE */}
         <div className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-livra-divider bg-livra-surface shrink-0">
+          <Image src="/livra_icon_full.png" alt="Livra" width={30} height={30} />
+          <span className="font-semibold text-livra-textPrimary text-sm flex-1">Admin</span>
           <button
             aria-label="Ouvrir le menu"
             onClick={() => setMobileNavOpen(true)}
-            className="p-2 -ml-2 rounded-lg hover:bg-livra-surfaceElevated"
+            className="p-2 -mr-2 rounded-lg hover:bg-livra-surfaceElevated"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <Image src="/livra_logo_full.png" alt="Livra" width={24} height={25} />
-          <span className="font-semibold text-livra-textPrimary text-sm">Livra Admin</span>
         </div>
 
         <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 max-w-[1400px] overflow-x-hidden">{children}</main>

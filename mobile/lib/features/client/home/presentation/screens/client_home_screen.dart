@@ -246,9 +246,13 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       Icon(Icons.search_rounded,
                           color: AppColors.textSecondary),
                       const SizedBox(width: 10),
-                      Text('Rechercher restaurants, boutiques...',
-                          style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 14)),
+                      Expanded(
+                        child: Text('Rechercher restaurants, boutiques',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                                color: AppColors.textSecondary, fontSize: 14)),
+                      ),
                     ],
                   ),
                 ),

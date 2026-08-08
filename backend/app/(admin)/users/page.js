@@ -35,12 +35,14 @@ export default function UsersPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full text-white ${u.isActive !== false ? 'bg-livra-success' : 'bg-livra-danger'}`}>
                 {u.isActive !== false ? 'Actif' : 'Désactivé'}
               </span>
-              <button
-                onClick={() => toggleActive(u.id, u.isActive === false)}
-                className={`px-3 py-1 rounded-lg text-sm text-white ${u.isActive !== false ? 'bg-livra-warning' : 'bg-livra-success'}`}
-              >
-                {u.isActive !== false ? 'Désactiver' : 'Réactiver'}
-              </button>
+              {u.role !== 'admin' && (
+                <button
+                  onClick={() => toggleActive(u.id, u.isActive === false)}
+                  className={`px-3 py-1 rounded-lg text-sm text-white ${u.isActive !== false ? 'bg-livra-warning' : 'bg-livra-success'}`}
+                >
+                  {u.isActive !== false ? 'Désactiver' : 'Réactiver'}
+                </button>
+              )}
             </div>
           </div>
         ))}

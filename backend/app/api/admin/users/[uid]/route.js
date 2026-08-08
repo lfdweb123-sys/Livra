@@ -10,6 +10,16 @@ export async function PATCH(req, { params }) {
   if (auth.error) return jsonError(auth.error, auth.status);
   if (auth.role !== 'admin') return jsonError('forbidden', 403);
 
+  // Personne ne peut désactiver un compte admin depuis le tableau de bord —
+  // ni un autre admin, ni soi-même par erreur. Une désactivation d'admin,
+  // si vraiment nécessaire, doit passer par un accès direct à la base
+  // (hors de ce tableau de bord), jamais un simple clic accidentel ou
+  // malveillant.
+  const targetSnap = await db.collection('users').doc(params.uid).get();
+  if (targetSnap.exists && targetSnap.data().role === 'admin') {
+    return jsonError('cannot_deactivate_admin', 403);
+  }
+
   const { isActive } = await req.json();
   await db.collection('users').doc(params.uid).update({ isActive, updatedAt: FieldValue.serverTimestamp() });
   await logActivity(

@@ -37,8 +37,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-livra-bg px-6">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-livra-surface p-8 rounded-2xl border border-livra-divider">
         <div className="flex items-center gap-2.5 mb-8">
-          <Image src="/livra_logo_full.png" alt="Livra" width={32} height={33} />
-          <span className="text-xl font-semibold">Livra Admin</span>
+          <Image src="/livra_icon_full.png" alt="Livra" width={40} height={40} />
+          <span className="text-xl font-semibold">Admin</span>
         </div>
         <label className="block text-xs text-livra-textSecondary mb-1.5">Email</label>
         <input

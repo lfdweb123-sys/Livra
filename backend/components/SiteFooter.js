@@ -7,8 +7,7 @@ export default function SiteFooter() {
       <div className="max-w-6xl mx-auto px-6 py-14 grid gap-10 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Image src="/livra_logo_full.png" alt="Livra" width={32} height={33} />
-            <span className="text-lg font-semibold">Livra</span>
+            <Image src="/livra_icon_full.png" alt="Livra" width={36} height={36} />
           </div>
           <p className="text-sm text-livra-textSecondary leading-relaxed">
             Livraison, courses et boutiques en ligne, partout en Afrique de l'Ouest.

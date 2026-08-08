@@ -60,6 +60,7 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
                       if (pendingBalance > 0) ...[
                         SizedBox(height: 10),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(Icons.lock_clock_outlined, size: 15, color: AppColors.textSecondary),
                             const SizedBox(width: 6),

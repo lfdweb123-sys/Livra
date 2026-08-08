@@ -6,8 +6,7 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-livra-divider/60 bg-livra-bg/80 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Image src="/livra_logo_full.png" alt="Livra" width={36} height={37} priority />
-          <span className="text-lg font-semibold tracking-tight">Livra</span>
+          <Image src="/livra_icon_full.png" alt="Livra" width={40} height={40} priority />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 text-sm text-livra-textSecondary">
