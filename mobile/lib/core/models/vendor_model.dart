@@ -17,6 +17,7 @@ class VendorModel {
   final bool isOpen;
   final num completedCount;
   final bool boosted;
+  final String? boostTier;
 
   VendorModel({
     required this.id,
@@ -35,6 +36,7 @@ class VendorModel {
     this.isOpen = false,
     this.completedCount = 0,
     this.boosted = false,
+    this.boostTier,
   });
 
   factory VendorModel.fromMap(String id, Map<String, dynamic> map) => VendorModel(
@@ -54,5 +56,6 @@ class VendorModel {
         isOpen: map['isOpen'] ?? false,
         completedCount: map['completedCount'] ?? 0,
         boosted: map['boosted'] ?? false,
+        boostTier: map['boostTier'],
       );
 }

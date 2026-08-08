@@ -1,6 +1,7 @@
 import { db } from '../../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../../lib/auth';
 import { distanceKm } from '../../../../lib/geo';
+import { boostTierFor, boostTierWeight } from '../../../../lib/boostTiers';
 
 const RADIUS_KM = 8;
 
@@ -46,13 +47,16 @@ export async function GET(req) {
     candidates.push({ id: doc.id, driver, distance: dist });
   }
 
-  // Profils boostés (payants) mis en priorité — mais toujours dans le rayon
-  // de recherche, jamais un livreur hors zone. Voir /api/boosts.
-  const boostedIds = await getActiveBoostedIds('driver', candidates.map((c) => c.id));
+  // Profils boostés (payants) mis en priorité selon le PALIER atteint par
+  // leur budget dépensé (Or > Argent > Bronze), pas juste un booléen
+  // "boosté ou non" — un profil ayant payé davantage passe devant un
+  // profil ayant boosté au tarif minimum. Toujours dans le rayon de
+  // recherche, jamais un livreur hors zone. Voir /api/boosts.
+  const boostedPrices = await getActiveBoostedPrices('driver', candidates.map((c) => c.id));
   candidates.sort((a, b) => {
-    const aBoosted = boostedIds.has(a.id) ? 0 : 1;
-    const bBoosted = boostedIds.has(b.id) ? 0 : 1;
-    if (aBoosted !== bBoosted) return aBoosted - bBoosted;
+    const aWeight = boostedPrices.has(a.id) ? boostTierWeight(boostedPrices.get(a.id)) : 0;
+    const bWeight = boostedPrices.has(b.id) ? boostTierWeight(boostedPrices.get(b.id)) : 0;
+    if (aWeight !== bWeight) return bWeight - aWeight;
     return a.distance - b.distance;
   });
   const top = candidates.slice(0, 20);
@@ -63,6 +67,7 @@ export async function GET(req) {
     top.map(async ({ id, driver, distance }) => {
       const userSnap = await db.collection('users').doc(driver.ownerId).get();
       const user = userSnap.exists ? userSnap.data() : {};
+      const boosted = boostedPrices.has(id);
       return {
         id,
         name: user.name || 'Livreur Livra',
@@ -72,7 +77,8 @@ export async function GET(req) {
         ratingCount: driver.ratingCount || 0,
         bio: driver.bio || null,
         distanceKm: Number(distance.toFixed(2)),
-        boosted: boostedIds.has(id),
+        boosted,
+        boostTier: boosted ? boostTierFor(boostedPrices.get(id)) : null,
       };
     })
   );
@@ -80,13 +86,13 @@ export async function GET(req) {
   return Response.json({ items });
 }
 
-// Retourne l'ensemble des profileId ayant un boost actif (status='active'
-// ET endAt dans le futur) parmi la liste donnée. Requête par lots de 30
-// (limite Firestore pour l'opérateur 'in').
-async function getActiveBoostedIds(profileType, ids) {
-  if (ids.length === 0) return new Set();
+// Retourne le budget total dépensé (pricePaid) par profileId ayant un
+// boost actif (status='active' ET endAt dans le futur) parmi la liste
+// donnée. Requête par lots de 30 (limite Firestore pour l'opérateur 'in').
+async function getActiveBoostedPrices(profileType, ids) {
+  if (ids.length === 0) return new Map();
   const now = new Date();
-  const boosted = new Set();
+  const boosted = new Map();
   for (let i = 0; i < ids.length; i += 30) {
     const chunk = ids.slice(i, i + 30);
     try {
@@ -98,7 +104,12 @@ async function getActiveBoostedIds(profileType, ids) {
         .get();
       snap.docs.forEach((d) => {
         const b = d.data();
-        if (b.endAt && b.endAt.toDate() > now) boosted.add(b.profileId);
+        if (b.endAt && b.endAt.toDate() > now) {
+          // Si plusieurs boosts actifs pour le même profil, garde le plus
+          // gros budget dépensé pour déterminer le palier.
+          const current = boosted.get(b.profileId) || 0;
+          boosted.set(b.profileId, Math.max(current, b.pricePaid || 0));
+        }
       });
     } catch (e) {
       console.error('[BOOSTS_LOOKUP_ERROR]', { profileType, message: e.message, code: e.code });

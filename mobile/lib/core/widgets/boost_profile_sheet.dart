@@ -7,8 +7,17 @@ import 'primary_button.dart';
 import 'debounced_button.dart';
 import 'phone_number_field.dart';
 import '../services/payment/verzapay_checkout_flow.dart';
+import '../constants/boost_tier_colors.dart';
 
 const int _boostPricePerDayXof = 500;
+
+// Miroir des seuils de backend/lib/boostTiers.js — pour informer le
+// vendeur/livreur du palier qu'il atteint AVANT de payer.
+String _boostTierFor(num pricePaid) {
+  if (pricePaid >= 5000) return 'gold';
+  if (pricePaid >= 2000) return 'silver';
+  return 'bronze';
+}
 
 /// Ouvre le flux d'achat d'un boost de profil — le profil apparaît en
 /// priorité dans les résultats (drivers/nearby pour livreur/chauffeur/
@@ -53,6 +62,17 @@ Future<void> showBoostProfileSheet(
           ),
           const SizedBox(height: 16),
           Text('$price XOF', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 20)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.bolt_rounded, size: 14, color: boostTierColor(_boostTierFor(price))),
+              const SizedBox(width: 6),
+              Text(
+                'Palier ${kBoostTierLabelsFr[_boostTierFor(price)]} — plus le budget est élevé, plus vous apparaissez en premier.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           PrimaryButton(
             label: 'Continuer',

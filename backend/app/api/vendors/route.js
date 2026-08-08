@@ -3,6 +3,7 @@ import { requireAuth, jsonError } from '../../../lib/auth';
 import { toGeoPoint } from '../../../lib/geo';
 import { logActivity } from '../../../lib/activityLog';
 import { notifyAdminByEmail } from '../../../lib/adminNotify';
+import { boostTierFor, boostTierWeight } from '../../../lib/boostTiers';
 
 // POST — un client candidate comme vendeur : statut "pending" jusqu'à
 // vérification d'identité par l'admin (voir dashboard admin > Vendeurs).
@@ -85,25 +86,32 @@ export async function GET(req) {
     }
 
     // Boutiques/restaurants ayant boosté leur profil affichées en premier
-    // (voir /api/boosts) — l'ordre par date reste inchangé au sein de
-    // chaque groupe (boostés / non boostés).
-    const boostedIds = await getActiveBoostedVendorIds(items.map((v) => v.id));
+    // selon le PALIER atteint par leur budget dépensé (Or > Argent >
+    // Bronze), pas juste un booléen "boosté ou non" — l'ordre par date
+    // reste inchangé au sein d'un même palier. Voir /api/boosts.
+    const boostedPrices = await getActiveBoostedVendorPrices(items.map((v) => v.id));
     items.sort((a, b) => {
-      const aBoosted = boostedIds.has(a.id) ? 0 : 1;
-      const bBoosted = boostedIds.has(b.id) ? 0 : 1;
-      return aBoosted - bBoosted;
+      const aWeight = boostedPrices.has(a.id) ? boostTierWeight(boostedPrices.get(a.id)) : 0;
+      const bWeight = boostedPrices.has(b.id) ? boostTierWeight(boostedPrices.get(b.id)) : 0;
+      return bWeight - aWeight;
     });
-    return Response.json({ items: items.map((v) => ({ ...v, boosted: boostedIds.has(v.id) })) });
+    return Response.json({
+      items: items.map((v) => ({
+        ...v,
+        boosted: boostedPrices.has(v.id),
+        boostTier: boostedPrices.has(v.id) ? boostTierFor(boostedPrices.get(v.id)) : null,
+      })),
+    });
   } catch (e) {
     console.error('[VENDORS_GET_QUERY_ERROR]', { status, category, message: e.message, code: e.code });
     return jsonError('vendors_query_failed', 500);
   }
 }
 
-async function getActiveBoostedVendorIds(ids) {
-  if (ids.length === 0) return new Set();
+async function getActiveBoostedVendorPrices(ids) {
+  if (ids.length === 0) return new Map();
   const now = new Date();
-  const boosted = new Set();
+  const boosted = new Map();
   for (let i = 0; i < ids.length; i += 30) {
     const chunk = ids.slice(i, i + 30);
     try {
@@ -115,7 +123,10 @@ async function getActiveBoostedVendorIds(ids) {
         .get();
       snap.docs.forEach((d) => {
         const b = d.data();
-        if (b.endAt && b.endAt.toDate() > now) boosted.add(b.profileId);
+        if (b.endAt && b.endAt.toDate() > now) {
+          const current = boosted.get(b.profileId) || 0;
+          boosted.set(b.profileId, Math.max(current, b.pricePaid || 0));
+        }
       });
     } catch (e) {
       console.error('[BOOSTS_LOOKUP_ERROR]', { profileType: 'vendor', message: e.message, code: e.code });

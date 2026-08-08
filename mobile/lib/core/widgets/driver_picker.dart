@@ -7,6 +7,7 @@ import 'app_bottom_sheet.dart';
 import 'phone_number_field.dart';
 import 'primary_button.dart';
 import 'zoomable_image.dart';
+import '../constants/boost_tier_colors.dart';
 
 const _vehicleLabels = {
   'moto': 'Taxi-moto',
@@ -88,7 +89,7 @@ Future<DriverPickResult> pickDriver(
                       Flexible(child: Text(d['name'] ?? 'Livreur Livra', style: const TextStyle(fontWeight: FontWeight.w600))),
                       if (d['boosted'] == true) ...[
                         const SizedBox(width: 6),
-                        Icon(Icons.bolt_rounded, size: 14, color: AppColors.gold),
+                        Icon(Icons.bolt_rounded, size: 14, color: boostTierColor(d['boostTier'])),
                       ],
                     ],
                   ),

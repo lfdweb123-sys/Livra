@@ -15,6 +15,7 @@ import '../../../../../core/widgets/app_logo.dart';
 import '../../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/auto_banner_carousel.dart';
+import '../../../../../core/constants/boost_tier_colors.dart';
 
 class _Service {
   final String label;
@@ -435,7 +436,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             Flexible(child: Text(v.businessName)),
                             if (v.boosted) ...[
                               const SizedBox(width: 6),
-                              Icon(Icons.bolt_rounded, size: 14, color: AppColors.gold),
+                              Icon(Icons.bolt_rounded, size: 14, color: boostTierColor(v.boostTier)),
                             ],
                           ],
                         ),
