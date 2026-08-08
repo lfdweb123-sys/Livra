@@ -26,6 +26,10 @@ export async function POST(req) {
     rating: 0,
     ratingCount: 0,
     documentsR2: body.documentsR2 || {},
+    // Pays du candidat (déjà choisi à l'inscription) — un client d'un
+    // autre pays ne verra jamais ce livreur tant qu'il n'a pas changé son
+    // propre pays dans son profil. Voir drivers/nearby GET.
+    country: auth.user.country || null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });

@@ -34,6 +34,11 @@ export async function GET(req) {
   const candidates = [];
   for (const doc of snap.docs) {
     const driver = doc.data();
+    // Filtrage par pays — un client d'un pays ne voit jamais un livreur
+    // d'un autre pays, sauf s'il change son propre pays dans son profil.
+    // Un livreur sans "country" (créé avant ce filtrage) reste visible à
+    // tous pour ne pas rendre invisible le contenu déjà existant.
+    if (driver.country && driver.country !== auth.user.country) continue;
     const pos = driver.position?.geopoint;
     if (!pos) continue;
     const dist = distanceKm({ latitude: lat, longitude: lng }, pos);

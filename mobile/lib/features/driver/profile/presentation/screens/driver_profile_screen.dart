@@ -11,6 +11,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
 import '../../../../../core/widgets/legal_links_section.dart';
+import '../../../../../core/widgets/country_selector_tile.dart';
 import '../../../../../core/widgets/boost_profile_sheet.dart';
 import 'driver_pricing_screen.dart';
 
@@ -185,6 +186,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               icon: Icon(Icons.calculate_outlined, color: AppColors.gold),
               label: Text('Mes tarifs de livraison', style: TextStyle(color: AppColors.gold)),
             ),
+          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          const CountrySelectorTile(),
           const SizedBox(height: 20),
           const LegalLinksSection(),
         ],

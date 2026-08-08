@@ -33,6 +33,9 @@ export async function POST(req, { params }) {
     isAvailable: true,
     pinned: false,
     stock: body.stock ?? null,
+    // Pays hérité du vendeur — même logique de filtrage que pour les
+    // boutiques/livreurs (voir products/search GET).
+    country: vendorSnap.data().country || null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
