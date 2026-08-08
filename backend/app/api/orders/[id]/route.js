@@ -23,11 +23,23 @@ export async function PATCH(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return jsonError(auth.error, auth.status);
 
-  const { status, driverId, paymentMethod, preferredDriverId, offPlatformDriverPhone } = await req.json();
+  const { status, driverId, paymentMethod, preferredDriverId, offPlatformDriverPhone, vendorConfirmDelivery } = await req.json();
   const ref = db.collection('orders').doc(params.id);
   const snap = await ref.get();
   if (!snap.exists) return jsonError('not_found', 404);
   const order = snap.data();
+
+  // Le vendeur confirme lui-même la livraison après vérification auprès
+  // du client — action indépendante du statut principal (déjà "delivered",
+  // déclaré par le livreur), simple double-contrôle, ne bloque rien.
+  if (vendorConfirmDelivery) {
+    if (!order.vendorId) return jsonError('not_a_vendor_order', 400);
+    const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+    if (!vendorSnap.exists || vendorSnap.data().ownerId !== auth.uid) return jsonError('forbidden', 403);
+    if (order.status !== 'delivered') return jsonError('not_yet_delivered', 400);
+    await ref.update({ vendorConfirmedDelivery: true, vendorConfirmedAt: FieldValue.serverTimestamp() });
+    return Response.json({ ok: true });
+  }
 
   // Le client choisit (ou change) un livreur précis, OU un livreur HORS
   // application (numéro transmis à l'admin) APRÈS la création du colis —
@@ -280,6 +292,26 @@ export async function PATCH(req, { params }) {
     // (vendeur/restaurant/boutique et livreur/chauffeur).
     if (order.vendorId) {
       await db.collection('vendors').doc(order.vendorId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});
+      // Demande explicite: le vendeur doit être notifié quand le livreur
+      // marque la commande livrée, pour vérifier auprès de son client et
+      // confirmer lui-même — double contrôle plutôt que de se fier
+      // uniquement à la déclaration du livreur.
+      try {
+        const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+        if (vendorSnap.exists) {
+          const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
+          const clientLine = clientPhone ? ` Contact client : ${clientSnap.data().name} — ${clientPhone}.` : '';
+          await notifyVendor({
+            vendorOwnerId: vendorSnap.data().ownerId,
+            title: 'Livraison déclarée par le livreur',
+            body: `Le livreur a marqué cette commande comme livrée. Vérifiez auprès de votre client puis confirmez dans l'app.${clientLine}`,
+            type: 'delivery_to_confirm',
+            relatedId: params.id,
+          });
+        }
+      } catch (e) {
+        console.error('[VENDOR_DELIVERY_CHECK_NOTIF_ERROR]', params.id, e.message);
+      }
     }
     if (order.driverId) {
       await db.collection('drivers').doc(order.driverId).update({ completedCount: FieldValue.increment(1) }).catch(() => {});

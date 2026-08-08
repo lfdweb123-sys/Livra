@@ -87,6 +87,18 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   /// utile si le premier choisi n'a jamais accepté. On renvoie simplement
   /// le statut 'picked_up' avec un nouveau preferredDriverId : le backend
   /// accepte ce renvoi et notifie le nouveau livreur.
+  Future<void> _confirmDelivery(String id) async {
+    try {
+      await ApiClient.instance.patch('/api/orders/$id', data: {'vendorConfirmDelivery': true});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Livraison confirmée.')));
+      }
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+    }
+  }
+
   Future<void> _changeDriver(String id, Map order) async {
     final geopoint = order['matchPosition']?['geopoint'];
     if (geopoint == null) return;
@@ -189,6 +201,44 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                                   onPressed: () => _changeDriver(o['id'], o),
                                   icon: Icon(Icons.sync_alt_rounded, size: 16),
                                   label: Text('Changer de livreur'),
+                                ),
+                              ],
+                              // Le livreur a déclaré la commande livrée — le
+                              // vendeur doit vérifier auprès du client puis
+                              // confirmer lui-même (double contrôle).
+                              if (o['status'] == 'delivered' && o['vendorConfirmedDelivery'] != true) ...[
+                                SizedBox(height: 8),
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.help_outline_rounded, size: 16, color: AppColors.warning),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Le livreur a déclaré cette commande livrée. Vérifiez auprès de votre client puis confirmez.',
+                                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () => _confirmDelivery(o['id']),
+                                  icon: Icon(Icons.check_circle_outline_rounded, size: 16),
+                                  label: Text('Confirmer la livraison'),
+                                ),
+                              ],
+                              if (o['status'] == 'delivered' && o['vendorConfirmedDelivery'] == true) ...[
+                                SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Icon(Icons.verified_rounded, size: 14, color: AppColors.success),
+                                    const SizedBox(width: 6),
+                                    Text('Livraison confirmée', style: TextStyle(fontSize: 12, color: AppColors.success)),
+                                  ],
                                 ),
                               ],
                             ],

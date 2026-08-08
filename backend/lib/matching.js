@@ -116,10 +116,16 @@ export async function notifyOrderPaid(orderId) {
   if (order.type === 'nourriture' && order.vendorId) {
     const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
     if (vendorSnap.exists) {
+      // Demande explicite: le vendeur doit recevoir le contact du client
+      // pour pouvoir le joindre, sécuriser sa marchandise et le rassurer.
+      const clientSnap = await db.collection('users').doc(order.clientId).get();
+      const clientName = clientSnap.exists ? clientSnap.data().name : 'Client';
+      const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
+      const clientLine = clientPhone ? ` Client : ${clientName} — ${clientPhone}.` : '';
       await notifyVendor({
         vendorOwnerId: vendorSnap.data().ownerId,
         title: 'Nouvelle commande payée',
-        body: `${itemsSummary || 'Commande'} — ${order.priceBreakdown?.subtotal ?? 0} XOF. À préparer dès maintenant.`,
+        body: `${itemsSummary || 'Commande'} — ${order.priceBreakdown?.subtotal ?? 0} XOF. À préparer dès maintenant.${clientLine}`,
         type: 'new_order',
         relatedId: orderId,
       });

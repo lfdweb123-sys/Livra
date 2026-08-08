@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/apply_driver_screen.dart';
 import '../../features/auth/presentation/screens/apply_vendor_screen.dart';
@@ -71,7 +72,7 @@ class AppRouter {
     refreshListenable: _refreshListenable,
     redirect: (context, state) {
       final loggedIn = FirebaseAuth.instance.currentUser != null;
-      final loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register';
+      final loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/register' || state.matchedLocation == '/forgot-password';
       final onboarding = state.matchedLocation == '/onboarding';
 
       if (!loggedIn && !loggingIn && !onboarding) return '/login';
@@ -94,6 +95,7 @@ class AppRouter {
     routes: [
       GoRoute(path: '/onboarding', builder: (c, s) => OnboardingScreen()),
       GoRoute(path: '/login', builder: (c, s) => LoginScreen()),
+      GoRoute(path: '/forgot-password', builder: (c, s) => const ForgotPasswordScreen()),
       GoRoute(path: '/register', builder: (c, s) => RegisterScreen()),
       GoRoute(
         path: '/apply-driver',

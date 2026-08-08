@@ -6,7 +6,32 @@ export async function GET(req) {
   if (auth.error) return jsonError(auth.error, auth.status);
   if (auth.role !== 'admin') return jsonError('forbidden', 403);
   const snap = await db.collection('disputes').orderBy('createdAt', 'desc').limit(50).get();
-  return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+
+  // BUG CORRIGE: la page admin des litiges n'affichait jamais aucune
+  // information sur la personne signalée (ni sur qui a signalé) — juste
+  // des uid bruts illisibles. On enrichit chaque litige avec le profil
+  // complet des deux parties pour permettre une vraie identification.
+  const items = await Promise.all(
+    snap.docs.map(async (d) => {
+      const dispute = d.data();
+      const [raisedBySnap, againstSnap] = await Promise.all([
+        db.collection('users').doc(dispute.raisedBy).get(),
+        db.collection('users').doc(dispute.against).get(),
+      ]);
+      return {
+        id: d.id,
+        ...dispute,
+        raisedByProfile: raisedBySnap.exists
+          ? { name: raisedBySnap.data().name, phone: raisedBySnap.data().phone, email: raisedBySnap.data().email, role: raisedBySnap.data().role }
+          : null,
+        againstProfile: againstSnap.exists
+          ? { name: againstSnap.data().name, phone: againstSnap.data().phone, email: againstSnap.data().email, role: againstSnap.data().role }
+          : null,
+      };
+    })
+  );
+
+  return Response.json({ items });
 }
 
 // PATCH { id, status, resolution }
