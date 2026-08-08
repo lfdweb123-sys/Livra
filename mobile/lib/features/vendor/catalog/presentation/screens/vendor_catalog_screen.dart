@@ -15,6 +15,7 @@ import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/debounced_button.dart';
 import '../../../../../core/widgets/share_button.dart';
+import '../../../../../core/widgets/search_and_page.dart';
 
 const int _maxProductsPerVendor = 50;
 
@@ -29,6 +30,8 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
   List<ProductModel> _products = [];
   bool _loading = true;
   String? _error;
+  String _searchQuery = '';
+  int _page = 0;
 
   @override
   void initState() {
@@ -268,11 +271,28 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                 ? ListView(children: [SizedBox(height: 120), EmptyState(icon: Icons.error_outline_rounded, message: _error!)])
                 : _products.isEmpty
                     ? ListView(children: const [SizedBox(height: 120), EmptyState(icon: Icons.restaurant_menu_outlined, message: 'Ajoutez votre premier produit avec le bouton +.')])
-                    : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _products.length,
-              itemBuilder: (context, i) {
-                final p = _products[i];
+                    : Builder(builder: (context) {
+                        final sp = SearchAndPage<ProductModel>(
+                          allItems: _products,
+                          query: _searchQuery,
+                          page: _page,
+                          searchableFields: (p) => [p.name, p.category, p.description],
+                        );
+                        final paginated = sp.paginated;
+                        return Column(
+                          children: [
+                            AppSearchBar(
+                              hintText: 'Rechercher un produit…',
+                              onChanged: (v) => setState(() { _searchQuery = v; _page = 0; }),
+                            ),
+                            Expanded(
+                              child: paginated.isEmpty
+                                  ? EmptyState(icon: Icons.search_off_rounded, message: 'Aucun produit ne correspond à votre recherche.')
+                                  : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: paginated.length,
+                              itemBuilder: (context, i) {
+                                final p = paginated[i];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
@@ -314,8 +334,13 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                     ),
                   ),
                 );
-              },
-            ),
+                              },
+                            ),
+                            ),
+                            AppPaginationBar(page: sp.safePage, pageCount: sp.pageCount, onPageChanged: (p) => setState(() => _page = p)),
+                          ],
+                        );
+                      }),
       ),
     );
   }
