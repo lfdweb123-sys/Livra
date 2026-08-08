@@ -174,6 +174,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
             ),
           const SizedBox(height: 12),
+          // Demande explicite: le livreur doit pouvoir voir a quoi
+          // ressemble son profil du point de vue d'un client.
+          if (_driverId != null)
+            OutlinedButton.icon(
+              onPressed: () => context.push('/driver/detail/$_driverId'),
+              icon: Icon(Icons.visibility_outlined, size: 16, color: AppColors.gold),
+              label: Text('Voir mon profil (vue client)', style: TextStyle(color: AppColors.gold)),
+            ),
+          const SizedBox(height: 12),
           if (_driverId != null)
             OutlinedButton.icon(
               onPressed: () => Navigator.push(

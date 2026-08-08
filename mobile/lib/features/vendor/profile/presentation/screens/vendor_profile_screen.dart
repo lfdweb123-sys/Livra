@@ -240,6 +240,15 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
               label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
             ),
           const SizedBox(height: 12),
+          // Demande explicite: le vendeur doit pouvoir voir a quoi
+          // ressemble sa boutique du point de vue d'un client.
+          if (_vendorId != null)
+            OutlinedButton.icon(
+              onPressed: () => context.push('/client/vendor/$_vendorId'),
+              icon: Icon(Icons.visibility_outlined, size: 16, color: AppColors.gold),
+              label: Text('Voir mon profil (vue client)', style: TextStyle(color: AppColors.gold)),
+            ),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () => context.push('/edit-profile'),
             icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.gold),
