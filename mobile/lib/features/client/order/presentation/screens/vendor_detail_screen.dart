@@ -93,6 +93,21 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppColors.surfaceElevated,
+                              backgroundImage: r['clientPhotoUrl'] != null ? NetworkImage(r['clientPhotoUrl']) : null,
+                              child: r['clientPhotoUrl'] == null
+                                  ? Text((r['clientName'] as String?)?.substring(0, 1).toUpperCase() ?? '?', style: TextStyle(fontSize: 12))
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(r['clientName'] ?? 'Client Livra', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
                           children: List.generate(5, (j) => Icon(
                                 j < rating ? Icons.star_rounded : Icons.star_outline_rounded,
                                 color: AppColors.gold,

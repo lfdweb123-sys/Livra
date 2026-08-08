@@ -1,6 +1,8 @@
 import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { logActivity } from '../../../lib/activityLog';
+import { sendNotification } from '../../../lib/fcm';
+import { sendTransactionalEmail } from '../../../lib/brevo';
 
 // POST { orderId | rideId, rating (1-5), comment }
 // Un avis n'est possible QUE sur une commande livrée / course terminée dont
@@ -40,6 +42,13 @@ export async function POST(req) {
   if (targets.length === 0) return jsonError('no_target_to_review', 400);
 
   const batch = db.batch();
+  // Demande explicite: afficher le nom + avatar de l'auteur de l'avis —
+  // on les stocke directement sur le document au moment de la création
+  // (pas de jointure à refaire à chaque lecture).
+  const clientSnap = await db.collection('users').doc(auth.uid).get();
+  const clientName = clientSnap.exists ? clientSnap.data().name : 'Client Livra';
+  const clientPhotoUrl = clientSnap.exists ? clientSnap.data().photoUrl || null : null;
+
   for (const target of targets) {
     const reviewRef = db.collection('reviews').doc();
     batch.set(reviewRef, {
@@ -48,6 +57,8 @@ export async function POST(req) {
       orderId: orderId || null,
       rideId: rideId || null,
       clientId: auth.uid,
+      clientName,
+      clientPhotoUrl,
       rating,
       comment: comment || '',
       createdAt: FieldValue.serverTimestamp(),
@@ -69,6 +80,34 @@ export async function POST(req) {
       const newRating = (oldRating * oldCount + rating) / newCount;
       tx.update(targetRef, { rating: newRating, ratingCount: newCount });
     });
+
+    // Demande explicite: notifier par push ET par mail quand un avis est
+    // laissé — celui qui reçoit l'avis doit être prévenu immédiatement.
+    try {
+      const targetSnap = await targetRef.get();
+      if (targetSnap.exists) {
+        const ownerId = targetSnap.data().ownerId;
+        const ownerSnap = await db.collection('users').doc(ownerId).get();
+        const stars = '⭐'.repeat(rating);
+        await sendNotification({
+          userId: ownerId,
+          title: 'Nouvel avis reçu',
+          body: `${clientName} vous a laissé ${rating}/5 ${stars}${comment ? ' — ' + comment : ''}`,
+          type: 'review_received',
+          relatedId: orderId || rideId,
+        });
+        if (ownerSnap.exists && ownerSnap.data().email) {
+          await sendTransactionalEmail({
+            to: ownerSnap.data().email,
+            toName: ownerSnap.data().name,
+            subject: 'Nouvel avis reçu sur Livra',
+            htmlContent: `<p>${clientName} vous a laissé un avis : <strong>${rating}/5</strong> ${stars}</p>${comment ? `<p>"${comment}"</p>` : ''}`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[REVIEW_NOTIFICATION_ERROR]', target.id, e.message);
+    }
   }
 
   await logActivity('review_created', `Nouvel avis (${rating}/5) sur ${targets.map((t) => t.type).join(' + ')}`, {
