@@ -2,6 +2,7 @@ import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
 import { toGeoPoint } from '../../../lib/geo';
 import { logActivity } from '../../../lib/activityLog';
+import { notifyAdminByEmail } from '../../../lib/adminNotify';
 
 export async function POST(req) {
   const auth = await requireAuth(req);
@@ -32,6 +33,10 @@ export async function POST(req) {
   await logActivity('driver_applied', `Nouvelle candidature livreur/chauffeur en attente de vérification (${body.vehicleType})`, {
     driverId: ref.id,
     ownerId: auth.uid,
+  });
+  await notifyAdminByEmail({
+    subject: 'Nouvelle candidature livreur/chauffeur à vérifier',
+    htmlContent: `<p>Nouvelle candidature livreur/chauffeur (${body.vehicleType}).</p><p>Ouvrez le tableau de bord admin, section Chauffeurs, pour vérifier les documents et approuver ou rejeter.</p>`,
   });
 
   return Response.json({ id: ref.id, status: 'pending' });

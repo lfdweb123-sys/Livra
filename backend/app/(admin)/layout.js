@@ -125,6 +125,14 @@ export default function AdminLayout({ children }) {
     );
   }
 
+  // Menu du bas sur mobile: 3 accès rapides + "Menu" (4e) qui ouvre la
+  // sidebar complète — remplace le hamburger seul en haut.
+  const BOTTOM_NAV = [
+    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { href: '/orders', label: 'Commandes', icon: '🛒' },
+    { href: '/vendors', label: 'Vendeurs', icon: '🏪' },
+  ];
+
   return (
     <div className="min-h-screen flex bg-livra-bg">
       {/* Sidebar desktop — masquée sur mobile, largeur fixe à partir de md */}
@@ -133,7 +141,7 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* Sidebar mobile — panneau coulissant plein écran depuis la DROITE,
-          ouvert via le hamburger (lui-même placé à droite de la barre) */}
+          ouvert via "Menu" (4e élément du menu du bas) */}
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <button
@@ -148,22 +156,39 @@ export default function AdminLayout({ children }) {
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Barre supérieure mobile uniquement — bouton hamburger à DROITE */}
+        {/* Barre supérieure mobile uniquement */}
         <div className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-livra-divider bg-livra-surface shrink-0">
           <Image src="/livra_icon_full.png" alt="Livra" width={30} height={30} />
           <span className="font-semibold text-livra-textPrimary text-sm flex-1">Admin</span>
-          <button
-            aria-label="Ouvrir le menu"
-            onClick={() => setMobileNavOpen(true)}
-            className="p-2 -mr-2 rounded-lg hover:bg-livra-surfaceElevated"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
         </div>
 
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 max-w-[1400px] overflow-x-hidden">{children}</main>
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 pb-20 md:pb-8 max-w-[1400px] overflow-x-hidden">{children}</main>
+
+        {/* Menu du bas mobile uniquement — 3 accès rapides + Menu */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-livra-surface border-t border-livra-divider flex items-stretch h-16">
+          {BOTTOM_NAV.map((n) => {
+            const active = pathname === n.href;
+            return (
+              <a
+                key={n.href}
+                href={n.href}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] ${active ? 'text-livra-gold font-semibold' : 'text-livra-textSecondary'}`}
+              >
+                <span className="text-lg leading-none">{n.icon}</span>
+                {n.label}
+              </a>
+            );
+          })}
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-livra-textSecondary"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            Menu
+          </button>
+        </nav>
       </div>
     </div>
   );

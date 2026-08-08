@@ -13,3 +13,9 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://livras.verc
 export const PLAY_STORE_URL = process.env.NEXT_PUBLIC_PLAY_STORE_URL || null;
 export const APP_STORE_URL = process.env.NEXT_PUBLIC_APP_STORE_URL || null;
 export const APK_DOWNLOAD_URL = process.env.NEXT_PUBLIC_APK_URL || null;
+
+// Email admin qui reçoit les alertes importantes (nouvelle candidature
+// vendeur/livreur, nouveau litige...) — à définir sur Vercel via
+// ADMIN_NOTIFICATION_EMAIL. Si absent, ces alertes sont simplement
+// ignorées (aucune erreur), rien ne casse tant que ce n'est pas configuré.
+export const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || null;

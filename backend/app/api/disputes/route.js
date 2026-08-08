@@ -1,5 +1,6 @@
 import { db, FieldValue } from '../../../lib/firebaseAdmin';
 import { requireAuth, jsonError } from '../../../lib/auth';
+import { notifyAdminByEmail } from '../../../lib/adminNotify';
 
 // POST — signaler un vendeur, un restaurant, une boutique, un livreur, un
 // coursier, un chauffeur, un taxi-moto OU un client. Tous les profils sans
@@ -26,10 +27,13 @@ export async function POST(req) {
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  // Notifie l'équipe admin (best-effort) — pas de userId admin unique fixe,
-  // donc on se contente de journaliser; le tableau de bord admin liste déjà
-  // les signalements ouverts (GET /api/admin/disputes).
-  console.warn('[NEW_DISPUTE]', { id: ref.id, raisedBy: auth.uid, against, reason });
+  // Notifie l'équipe admin par email — voir ADMIN_NOTIFICATION_EMAIL,
+  // variable d'environnement Vercel (avant: seulement un console.warn,
+  // jamais réellement notifié nulle part).
+  await notifyAdminByEmail({
+    subject: 'Nouveau litige à traiter',
+    htmlContent: `<p>Nouveau signalement (motif : ${reason}).</p><p>Ouvrez le tableau de bord admin, section Litiges, pour l'examiner.</p>`,
+  });
 
   return Response.json({ id: ref.id, status: 'open' });
 }

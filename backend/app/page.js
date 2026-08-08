@@ -1,6 +1,7 @@
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
 import DownloadButtons from '../components/DownloadButtons';
+import Image from 'next/image';
 
 const SERVICES = [
   { icon: '🍽️', title: 'Nourriture', desc: 'Commandez chez vos restaurants préférés, livré chaud en un tap.' },
@@ -14,6 +15,16 @@ const STEPS = [
   { n: '01', title: 'Choisissez', desc: "Un plat, un colis, une course ou un produit — parcourez ce qui est disponible près de vous." },
   { n: '02', title: 'Commandez', desc: 'Payez par Mobile Money, carte bancaire, portefeuille Livra ou en espèces à la livraison.' },
   { n: '03', title: 'Suivez', desc: "Suivez votre livreur ou chauffeur en temps réel jusqu'à votre porte." },
+];
+
+const SCREENSHOTS = [
+  { src: '/screenshots/onboarding-tap.png', alt: 'Livrer en un tap' },
+  { src: '/screenshots/onboarding-tracking.png', alt: 'Suivi en temps réel' },
+  { src: '/screenshots/onboarding-partner.png', alt: 'Devenez partenaire' },
+  { src: '/screenshots/onboarding-sell.png', alt: 'Vendez ce que vous voulez' },
+  { src: '/screenshots/register.png', alt: 'Créer un compte' },
+  { src: '/screenshots/login-phone.png', alt: 'Connexion par téléphone' },
+  { src: '/screenshots/login-email.png', alt: 'Connexion par email' },
 ];
 
 export default function LandingPage() {
@@ -42,39 +53,29 @@ export default function LandingPage() {
             <DownloadButtons />
           </div>
 
+          {/* Vraie capture d'écran de l'application (fournie par l'équipe) */}
           <div className="flex justify-center md:justify-end">
-            <div className="w-[280px] rounded-[2.5rem] border-4 border-livra-surfaceElevated bg-livra-surface p-3 shadow-2xl shadow-black/40">
-              <div className="rounded-[1.8rem] bg-livra-bg overflow-hidden">
-                <div className="h-6 flex items-center justify-center">
-                  <div className="h-1.5 w-16 rounded-full bg-livra-surfaceElevated" />
-                </div>
-                <div className="px-4 pb-6 pt-2">
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="h-3 w-20 rounded-full bg-livra-surfaceElevated" />
-                    <div className="h-6 w-6 rounded-full bg-livra-gold" />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 mb-5">
-                    {SERVICES.slice(0, 4).map((s) => (
-                      <div key={s.title} className="flex flex-col items-center gap-1.5 rounded-xl bg-livra-surface py-3">
-                        <span className="text-lg">{s.icon}</span>
-                        <div className="h-1 w-6 rounded-full bg-livra-surfaceElevated" />
-                      </div>
-                    ))}
-                  </div>
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-xl bg-livra-surface p-3 mb-2.5">
-                      <div className="h-10 w-10 shrink-0 rounded-lg bg-livra-surfaceElevated" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-2 w-24 rounded-full bg-livra-surfaceElevated" />
-                        <div className="h-2 w-16 rounded-full bg-livra-surfaceElevated/60" />
-                      </div>
-                      <div className="h-2 w-8 rounded-full bg-livra-gold/60" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="w-[280px] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/20 border-4 border-livra-surfaceElevated">
+              <Image src="/screenshots/onboarding-tap.png" alt="Application Livra" width={560} height={1246} className="w-full h-auto" priority />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Aperçu de l'application — vraies captures d'écran */}
+      <section className="border-t border-livra-divider/60 bg-livra-surface/40 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3">L&apos;application en images</h2>
+          <p className="text-livra-textSecondary mb-10 max-w-xl">
+            Une expérience pensée pour aller vite, du premier lancement à la livraison.
+          </p>
+        </div>
+        <div className="flex gap-5 px-6 pb-4 overflow-x-auto max-w-6xl mx-auto">
+          {SCREENSHOTS.map((shot) => (
+            <div key={shot.src} className="shrink-0 w-[200px] rounded-[1.8rem] overflow-hidden shadow-lg shadow-black/10 border-2 border-livra-divider">
+              <Image src={shot.src} alt={shot.alt} width={400} height={890} className="w-full h-auto" />
+            </div>
+          ))}
         </div>
       </section>
 
