@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api/api_client.dart';
+import 'network_badge.dart';
 import '../services/friendly_error.dart';
 import '../theme/app_colors.dart';
 import 'app_bottom_sheet.dart';
@@ -94,19 +95,11 @@ void _payFeexpay(BuildContext context, String endpoint, num serviceFee, VoidCall
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            children: ['mtn', 'moov', 'celtiis_bj', 'coris'].map((n) {
-              final selected = network == n;
-              return ChoiceChip(
-                label: Text(n),
-                selected: selected,
-                onSelected: (_) => setSheetState(() => network = n),
-                selectedColor: AppColors.gold,
-                labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
-              );
-            }).toList(),
-          ),
+          NetworkPicker(
+              networks: const ['mtn', 'moov', 'celtiis_bj', 'coris'],
+              selected: network,
+              onChanged: (n) => setSheetState(() => network = n),
+            ),
           const SizedBox(height: 12),
           PhoneNumberField(onChanged: (v) => phoneCtrl.text = v),
           const SizedBox(height: 16),

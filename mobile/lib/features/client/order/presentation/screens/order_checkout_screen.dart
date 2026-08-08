@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/widgets/network_badge.dart';
 import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/services/payment/payment_service.dart';
@@ -235,19 +236,10 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
             SizedBox(height: 12),
             Text('Opérateur', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _feexpayCountries[country]!.map((n) {
-                final selected = network == n;
-                return ChoiceChip(
-                  label: Text(n),
-                  selected: selected,
-                  onSelected: (_) => setSheetState(() => network = n),
-                  selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
-                );
-              }).toList(),
+            NetworkPicker(
+              networks: _feexpayCountries[country]!,
+              selected: network,
+              onChanged: (n) => setSheetState(() => network = n),
             ),
             SizedBox(height: 12),
             Text('Numéro de téléphone', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),

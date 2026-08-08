@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/api/api_client.dart';
+import '../../../../core/widgets/network_badge.dart';
 import '../../../../core/services/friendly_error.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/skeleton_loader.dart';
@@ -301,19 +302,10 @@ class _WalletScreenState extends State<WalletScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              children: ['mtn', 'moov', 'celtiis_bj', 'coris'].map((n) {
-                final selected = network == n;
-                return ChoiceChip(
-                  label: Text(n),
-                  selected: selected,
-                  onSelected: (_) => setSheetState(() => network = n),
-                  selectedColor: AppColors.gold,
-                  labelStyle: TextStyle(
-                      color: selected ? Colors.black : AppColors.textPrimary),
-                );
-              }).toList(),
+            NetworkPicker(
+              networks: const ['mtn', 'moov', 'celtiis_bj', 'coris'],
+              selected: network,
+              onChanged: (n) => setSheetState(() => network = n),
             ),
             SizedBox(height: 12),
             PhoneNumberField(
