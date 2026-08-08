@@ -10,6 +10,7 @@ import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/client/profile/presentation/screens/edit_profile_screen.dart';
+import '../widgets/order_detail_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/apply_driver_screen.dart';
 import '../../features/auth/presentation/screens/apply_vendor_screen.dart';
@@ -98,6 +99,7 @@ class AppRouter {
       GoRoute(path: '/login', builder: (c, s) => LoginScreen()),
       GoRoute(path: '/forgot-password', builder: (c, s) => const ForgotPasswordScreen()),
       GoRoute(path: '/edit-profile', builder: (c, s) => const EditProfileScreen()),
+      GoRoute(path: '/order-detail/:type/:id', builder: (c, s) => OrderDetailScreen(type: s.pathParameters['type']!, id: s.pathParameters['id']!)),
       GoRoute(path: '/register', builder: (c, s) => RegisterScreen()),
       GoRoute(
         path: '/apply-driver',

@@ -84,6 +84,11 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                             ),
                             title: Text(title),
                             subtitle: Text('${amount ?? '-'} XOF — $label'),
+                            onTap: isTerminal
+                                ? () => context.push('/order-detail/${isRide ? 'ride' : 'order'}/${item['id']}')
+                                : () => context.push(isRide
+                                    ? '/driver/navigation/ride/${item['id']}'
+                                    : '/driver/navigation/order/${item['id']}'),
                             trailing: !isTerminal
                                 ? TextButton(
                                     onPressed: () => context.push(isRide
@@ -91,7 +96,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                                         : '/driver/navigation/order/${item['id']}'),
                                     child: const Text('Continuer'),
                                   )
-                                : null,
+                                : Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
                           ),
                         );
                       },

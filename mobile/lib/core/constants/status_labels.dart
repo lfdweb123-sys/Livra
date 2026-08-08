@@ -15,3 +15,14 @@ const Map<String, String> kStatusLabelsFr = {
 };
 
 String statusLabelFr(String? status) => kStatusLabelsFr[status] ?? (status ?? '');
+
+const Map<String, String> ORDER_TYPE_LABELS_FR = {
+  'nourriture': 'Nourriture',
+  'colis': 'Colis',
+};
+
+const Map<String, String> PAYMENT_STATUS_LABELS_FR = {
+  'pending': 'en attente',
+  'paid': 'payé',
+  'failed': 'échoué',
+};

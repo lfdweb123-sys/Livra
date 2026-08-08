@@ -72,7 +72,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                                     onPressed: () => showReviewSheet(context, orderId: o['id'], targetLabel: 'cette commande'),
                                   )
                                 : null,
-                            onTap: () => context.push('/client/tracking/order/${o['id']}'),
+                            onTap: () => context.push(
+                              ['delivered', 'cancelled'].contains(o['status'])
+                                  ? '/order-detail/order/${o['id']}'
+                                  : '/client/tracking/order/${o['id']}',
+                            ),
                           ),
                         );
                       },
@@ -102,7 +106,11 @@ class _HistoryScreenState extends State<HistoryScreen> with SingleTickerProvider
                                     onPressed: () => showReviewSheet(context, rideId: r['id'], targetLabel: 'ce chauffeur'),
                                   )
                                 : null,
-                            onTap: () => context.push('/client/tracking/ride/${r['id']}'),
+                            onTap: () => context.push(
+                              ['completed', 'cancelled'].contains(r['status'])
+                                  ? '/order-detail/ride/${r['id']}'
+                                  : '/client/tracking/ride/${r['id']}',
+                            ),
                           ),
                         );
                       },

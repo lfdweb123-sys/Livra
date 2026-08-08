@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/services/api/api_client.dart';
 import '../../../../../core/services/friendly_error.dart';
 import '../../../../../core/constants/api_constants.dart';
@@ -179,7 +180,10 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                       final next = _next[o['status']];
                       return Card(
                         margin: EdgeInsets.only(bottom: 12),
-                        child: Padding(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => context.push('/order-detail/order/${o['id']}'),
+                          child: Padding(
                           padding: EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,6 +246,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                                 ),
                               ],
                             ],
+                          ),
                           ),
                         ),
                       );

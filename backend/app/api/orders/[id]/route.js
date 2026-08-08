@@ -15,7 +15,61 @@ export async function GET(req, { params }) {
   if (auth.error) return jsonError(auth.error, auth.status);
   const snap = await db.collection('orders').doc(params.id).get();
   if (!snap.exists) return jsonError('not_found', 404);
-  return Response.json({ id: snap.id, ...snap.data() });
+  const order = snap.data();
+
+  // BUG DE SECURITE CORRIGE: cette route n'avait AUCUNE verification de
+  // propriétaire — n'importe quel utilisateur connecté pouvait lire
+  // n'importe quelle commande en connaissant son ID (même client d'un
+  // autre foyer, vendeur non concerné, etc.). Seuls le client, le
+  // vendeur concerné, le livreur assigné et l'admin peuvent la lire.
+  if (auth.role !== 'admin' && order.clientId !== auth.uid) {
+    let allowed = false;
+    if (order.vendorId) {
+      const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+      if (vendorSnap.exists && vendorSnap.data().ownerId === auth.uid) allowed = true;
+    }
+    if (!allowed && order.driverId) {
+      const driverSnap = await db.collection('drivers').doc(order.driverId).get();
+      if (driverSnap.exists && driverSnap.data().ownerId === auth.uid) allowed = true;
+    }
+    if (!allowed) return jsonError('forbidden', 403);
+  }
+
+  // Enrichissement complet pour un vrai écran de détail/preuve — nom et
+  // contact du vendeur, du client et du livreur, en un seul appel plutôt
+  // que plusieurs allers-retours côté app.
+  const [vendorSnap, clientSnap, driverSnap] = await Promise.all([
+    order.vendorId ? db.collection('vendors').doc(order.vendorId).get() : null,
+    db.collection('users').doc(order.clientId).get(),
+    order.driverId ? db.collection('drivers').doc(order.driverId).get() : null,
+  ]);
+
+  let vendorInfo = null;
+  if (vendorSnap?.exists) {
+    const vendorOwnerSnap = await db.collection('users').doc(vendorSnap.data().ownerId).get();
+    vendorInfo = {
+      businessName: vendorSnap.data().businessName,
+      phone: vendorOwnerSnap.exists ? vendorOwnerSnap.data().phone : null,
+    };
+  }
+
+  let driverInfo = null;
+  if (driverSnap?.exists) {
+    const driverOwnerSnap = await db.collection('users').doc(driverSnap.data().ownerId).get();
+    driverInfo = {
+      name: driverOwnerSnap.exists ? driverOwnerSnap.data().name : null,
+      phone: driverOwnerSnap.exists ? driverOwnerSnap.data().phone : null,
+      vehicleType: driverSnap.data().vehicleType,
+    };
+  }
+
+  return Response.json({
+    id: snap.id,
+    ...order,
+    vendorInfo,
+    clientInfo: clientSnap.exists ? { name: clientSnap.data().name, phone: clientSnap.data().phone } : null,
+    driverInfo,
+  });
 }
 
 // PATCH { status?, driverId?, paymentMethod? } — transition contrôlée selon le rôle

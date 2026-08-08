@@ -14,7 +14,40 @@ export async function GET(req, { params }) {
   if (auth.error) return jsonError(auth.error, auth.status);
   const snap = await db.collection('rides').doc(params.id).get();
   if (!snap.exists) return jsonError('not_found', 404);
-  return Response.json({ id: snap.id, ...snap.data() });
+  const ride = snap.data();
+
+  // Même correctif de sécurité que pour orders — voir le commentaire
+  // détaillé là-bas.
+  if (auth.role !== 'admin' && ride.clientId !== auth.uid) {
+    let allowed = false;
+    if (ride.driverId) {
+      const driverSnap = await db.collection('drivers').doc(ride.driverId).get();
+      if (driverSnap.exists && driverSnap.data().ownerId === auth.uid) allowed = true;
+    }
+    if (!allowed) return jsonError('forbidden', 403);
+  }
+
+  const [clientSnap, driverSnap] = await Promise.all([
+    db.collection('users').doc(ride.clientId).get(),
+    ride.driverId ? db.collection('drivers').doc(ride.driverId).get() : null,
+  ]);
+
+  let driverInfo = null;
+  if (driverSnap?.exists) {
+    const driverOwnerSnap = await db.collection('users').doc(driverSnap.data().ownerId).get();
+    driverInfo = {
+      name: driverOwnerSnap.exists ? driverOwnerSnap.data().name : null,
+      phone: driverOwnerSnap.exists ? driverOwnerSnap.data().phone : null,
+      vehicleType: driverSnap.data().vehicleType,
+    };
+  }
+
+  return Response.json({
+    id: snap.id,
+    ...ride,
+    clientInfo: clientSnap.exists ? { name: clientSnap.data().name, phone: clientSnap.data().phone } : null,
+    driverInfo,
+  });
 }
 
 export async function PATCH(req, { params }) {
