@@ -89,7 +89,7 @@ export async function POST(req, { params }) {
         network,
         phoneNumber,
         amount,
-        description: 'Frais de service Livra (commande espèces)',
+        description: 'Frais de service Livra',
         callbackInfo: paymentRef.id,
         otp,
       });
@@ -104,7 +104,7 @@ export async function POST(req, { params }) {
       const result = await verzapayCreatePayment({
         amount,
         currency: 'XOF',
-        description: 'Frais de service Livra (commande espèces)',
+        description: 'Frais de service Livra',
         customerName: auth.user.name,
         customerPhone,
       });

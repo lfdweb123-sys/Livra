@@ -34,7 +34,14 @@ export async function feexpayRequestToPay({ network, phoneNumber, amount, firstN
     phoneNumber: cleanPhoneNumber,
     first_name: firstName || 'Livra',
     last_name: lastName || 'Client',
-    description: description || 'Paiement Livra',
+    // BUG CORRIGE: FeexPay exige description <= 40 caractères
+    // ("Validation failed" / "description must be shorter than or equal
+    // to 40 characters") — plusieurs appelants dans le projet envoyaient
+    // des descriptions plus longues (ex: "Frais de service Livra
+    // (commande espèces)" = 41 caractères), faisant échouer TOUT paiement
+    // avec ce texte. Tronqué ici, à la source, pour que ce soit
+    // définitivement impossible peu importe l'appelant, présent ou futur.
+    description: (description || 'Paiement Livra').slice(0, 40),
     callback_info: callbackInfo,
   };
   if (OTP_REQUIRED_NETWORKS.includes(network)) payload.otp = otp || '';

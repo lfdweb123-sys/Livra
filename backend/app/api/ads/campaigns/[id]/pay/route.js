@@ -68,7 +68,7 @@ export async function POST(req, { params }) {
         network,
         phoneNumber,
         amount: campaign.pricePaid,
-        description: `Publicité Livra — ${campaign.productName}`,
+        description: `Pub — ${campaign.productName.slice(0, 30)}`,
         callbackInfo: paymentRef.id,
         otp,
       });
@@ -83,7 +83,7 @@ export async function POST(req, { params }) {
       const result = await verzapayCreatePayment({
         amount: campaign.pricePaid,
         currency: 'XOF',
-        description: `Publicité Livra — ${campaign.productName}`,
+        description: `Pub — ${campaign.productName.slice(0, 30)}`,
         customerName: auth.user.name,
         customerPhone,
       });
