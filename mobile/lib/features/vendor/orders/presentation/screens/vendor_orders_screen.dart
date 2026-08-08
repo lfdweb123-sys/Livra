@@ -105,6 +105,29 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   /// utile si le premier choisi n'a jamais accepté. On renvoie simplement
   /// le statut 'picked_up' avec un nouveau preferredDriverId : le backend
   /// accepte ce renvoi et notifie le nouveau livreur.
+  Future<void> _contactDriver(String id) async {
+    try {
+      final detail = await ApiClient.instance.get('/api/orders/$id');
+      final driverInfo = detail['driverInfo'] as Map<String, dynamic>?;
+      if (driverInfo == null || driverInfo['phone'] == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Numéro du livreur non disponible.')));
+        }
+        return;
+      }
+      if (mounted) {
+        context.push('/contact', extra: {
+          'name': driverInfo['name'] ?? 'Livreur',
+          'phoneNumber': driverInfo['phone'],
+          'role': 'Livreur Livra',
+        });
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+    }
+  }
+
   Future<void> _confirmDelivery(String id) async {
     try {
       await ApiClient.instance.patch('/api/orders/$id', data: {'vendorConfirmDelivery': true});
@@ -221,6 +244,17 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                                   onPressed: () => _changeDriver(o['id'], o),
                                   icon: Icon(Icons.sync_alt_rounded, size: 16),
                                   label: Text('Changer de livreur'),
+                                ),
+                              ],
+                              // Demande explicite: une fois un livreur assigné
+                              // (collecté), le vendeur doit pouvoir le
+                              // contacter directement pour aller plus vite.
+                              if (o['driverId'] != null) ...[
+                                SizedBox(height: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () => _contactDriver(o['id']),
+                                  icon: Icon(Icons.call_outlined, size: 16),
+                                  label: Text('Contacter le livreur'),
                                 ),
                               ],
                               // Le livreur a déclaré la commande livrée — le

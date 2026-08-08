@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../../../../core/widgets/legal_links_section.dart';
 import '../../../../../core/widgets/country_selector_tile.dart';
 import '../../../../../core/widgets/phone_number_field.dart';
 import '../../../../../core/services/friendly_error.dart';
+import '../../../../../core/services/api/api_client.dart';
 
 /// Modifier ses informations personnelles — accessible depuis Profil.
 /// Contient aussi les politiques (CGU, confidentialité...), déplacées
@@ -42,6 +44,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _phone = data?['phone'] ?? '';
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Supprimer mon compte ?'),
+        content: const Text(
+          "Cette action est irréversible : vous ne pourrez plus vous connecter. Vos commandes/courses passées restent conservées comme preuve, sans vos données personnelles. Si vous avez une boutique ou un profil livreur actif, clôturez-le d'abord.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Supprimer', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.instance.post('/api/users/me/delete-account', data: {});
+      await FirebaseAuth.instance.signOut();
+      if (mounted) context.go('/login');
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().contains('active_business_profile_exists')
+            ? "Clôturez d'abord votre boutique ou votre profil livreur avant de supprimer votre compte."
+            : friendlyError(e);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
   }
 
@@ -115,6 +149,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const CountrySelectorTile(),
                 const SizedBox(height: 28),
                 const LegalLinksSection(),
+                const SizedBox(height: 28),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _confirmDeleteAccount,
+                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.danger),
+                    label: Text('Supprimer mon compte', style: TextStyle(color: AppColors.danger)),
+                  ),
+                ),
               ],
             ),
     );
