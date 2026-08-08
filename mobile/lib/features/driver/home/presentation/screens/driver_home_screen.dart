@@ -372,6 +372,98 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     if (mounted) context.push('/driver/navigation/ride/$rideId');
   }
 
+  /// Demande explicite: le livreur doit d'abord LIRE les détails complets
+  /// de la commande/course avant de pouvoir l'accepter — jamais un
+  /// engagement immédiat en un tap, pour éviter tout malentendu. Il peut
+  /// ensuite valider (accepter) ou refuser et passer sans conséquence.
+  Future<void> _showJobDetailSheet(Map<String, dynamic> item, bool isRide) async {
+    final id = item['id'];
+    Map<String, dynamic>? detail;
+    try {
+      detail = await ApiClient.instance.get(isRide ? '/api/rides/$id' : '/api/orders/$id');
+    } catch (_) {
+      detail = item; // repli sur les données déjà en main si l'appel échoue
+    }
+    if (!mounted) return;
+    final vendorInfo = detail['vendorInfo'] as Map<String, dynamic>?;
+    final pickupLabel = isRide ? detail['pickupLocation']?['label'] : detail['pickupAddress']?['label'];
+    final deliveryLabel = isRide ? detail['dropoffLocation']?['label'] : detail['deliveryAddress']?['label'];
+    final amount = isRide ? detail['price'] : detail['priceBreakdown']?['deliveryFee'];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isRide ? 'Détail de la course' : 'Détail de la livraison', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Text('${amount ?? '-'} XOF', style: TextStyle(color: AppColors.gold, fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              if (vendorInfo != null) ...[
+                Text('Vendeur : ${vendorInfo['businessName'] ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+              ],
+              if (pickupLabel != null) _detailLine(Icons.trip_origin_rounded, AppColors.success, 'Collecte', pickupLabel),
+              if (deliveryLabel != null) _detailLine(Icons.location_on_rounded, AppColors.danger, 'Livraison', deliveryLabel),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: const Text('Refuser'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        isRide ? _acceptRide(id) : _acceptOrder(id);
+                      },
+                      child: const Text('Valider et livrer'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailLine(IconData icon, Color color, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                children: [
+                  TextSpan(text: '$label : ', style: TextStyle(color: AppColors.textSecondary)),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _driverSub?.cancel();
@@ -535,26 +627,47 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                               final reserved = item['_reserved'] == true;
                               final title = isRide ? 'Course ${item['vehicleType']}' : 'Commande ${item['type']}';
                               final amount = isRide ? item['price'] : (item['priceBreakdown']?['deliveryFee']);
+                              final canAct = !(reserved && !isRide && item['readyForPickup'] != true);
                               return Card(
                                 margin: EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  leading: Icon(isRide ? Icons.two_wheeler_rounded : Icons.inventory_2_outlined, color: AppColors.gold),
-                                  title: Text(title),
-                                  subtitle: Text(reserved
-                                      ? '${amount ?? '-'} XOF — Réservée pour vous, en attente de préparation'
-                                      : '${amount ?? '-'} XOF'),
-                                  // Une commande nourriture réservée mais pas
-                                  // encore marquée "prête" par le vendeur ne
-                                  // peut pas encore être acceptée — juste
-                                  // visible, pour que le livreur sache qu'il
-                                  // est attendu, sans se déplacer trop tôt.
-                                  trailing: (reserved && !isRide && item['readyForPickup'] != true)
-                                      ? Icon(Icons.hourglass_top_rounded, color: AppColors.textSecondary)
-                                      : ElevatedButton(
-                                          style: ElevatedButton.styleFrom(minimumSize: Size(0, 36), padding: EdgeInsets.symmetric(horizontal: 16)),
-                                          onPressed: () => isRide ? _acceptRide(item['id']) : _acceptOrder(item['id']),
-                                          child: Text('Accepter'),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: canAct ? () => _showJobDetailSheet(item, isRide) : null,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(isRide ? Icons.two_wheeler_rounded : Icons.inventory_2_outlined, color: AppColors.gold),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                reserved
+                                                    ? '${amount ?? '-'} XOF — Réservée pour vous, en attente de préparation'
+                                                    : '${amount ?? '-'} XOF',
+                                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                                                softWrap: true,
+                                              ),
+                                            ],
+                                          ),
                                         ),
+                                        const SizedBox(width: 8),
+                                        // Une commande nourriture réservée mais
+                                        // pas encore marquée "prête" par le
+                                        // vendeur ne peut pas encore être
+                                        // acceptée — juste visible, pour que le
+                                        // livreur sache qu'il est attendu.
+                                        canAct
+                                            ? Icon(Icons.chevron_right_rounded, color: AppColors.gold)
+                                            : Icon(Icons.hourglass_top_rounded, color: AppColors.textSecondary, size: 20),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               );
                             },
