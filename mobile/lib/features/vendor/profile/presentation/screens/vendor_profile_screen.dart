@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,8 +11,6 @@ import '../../../../../core/services/storage/image_compression_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/primary_button.dart';
 import '../../../../../core/widgets/notification_bell_action.dart';
-import '../../../../../core/widgets/legal_links_section.dart';
-import '../../../../../core/widgets/country_selector_tile.dart';
 import '../../../../../core/widgets/boost_profile_sheet.dart';
 
 class VendorProfileScreen extends StatefulWidget {
@@ -240,11 +239,12 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
               icon: Icon(Icons.rocket_launch_outlined, color: AppColors.gold),
               label: Text('Booster mon profil', style: TextStyle(color: AppColors.gold)),
             ),
-          const SizedBox(height: 20),
           const SizedBox(height: 12),
-          const CountrySelectorTile(),
-          const SizedBox(height: 20),
-          const LegalLinksSection(),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/edit-profile'),
+            icon: Icon(Icons.edit_outlined, size: 16, color: AppColors.gold),
+            label: Text('Modifier mes informations', style: TextStyle(color: AppColors.gold)),
+          ),
         ],
       ),
     );
