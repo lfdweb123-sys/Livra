@@ -258,6 +258,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/active-drivers'),
+                icon: Icon(Icons.two_wheeler_rounded, color: AppColors.gold, size: 18),
+                label: Text('Voir les livreurs actifs', style: TextStyle(color: AppColors.gold)),
+              ),
               const SizedBox(height: 20),
               GridView.count(
                 crossAxisCount: 4,
