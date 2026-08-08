@@ -159,6 +159,20 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                 ShareButton(productName: p.name, price: p.price, vendorName: _vendor?.businessName),
               ],
             ),
+            if (p.ratingCount > 0) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  ...List.generate(5, (j) => Icon(
+                        j < p.rating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: AppColors.gold,
+                        size: 15,
+                      )),
+                  const SizedBox(width: 6),
+                  Text('${p.rating.toStringAsFixed(1)} (${p.ratingCount} avis)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ],
             const SizedBox(height: 6),
             if (p.description.isNotEmpty)
               Text(p.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5)),
@@ -400,6 +414,19 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                             children: [
                               Text(p.name, style: TextStyle(fontWeight: FontWeight.w600)),
                               Text('${p.price} XOF', style: TextStyle(color: AppColors.gold)),
+                              if (p.ratingCount > 0) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Icon(Icons.star_rounded, color: AppColors.gold, size: 13),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${p.rating.toStringAsFixed(1)} (${p.ratingCount})',
+                                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),

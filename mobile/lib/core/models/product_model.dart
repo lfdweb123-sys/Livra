@@ -7,6 +7,8 @@ class ProductModel {
   final String category;
   final bool isAvailable;
   final bool pinned;
+  final double rating;
+  final int ratingCount;
 
   ProductModel({
     required this.id,
@@ -17,6 +19,8 @@ class ProductModel {
     required this.category,
     this.isAvailable = true,
     this.pinned = false,
+    this.rating = 0,
+    this.ratingCount = 0,
   });
 
   factory ProductModel.fromMap(String id, Map<String, dynamic> map) => ProductModel(
@@ -28,5 +32,7 @@ class ProductModel {
         category: map['category'] ?? '',
         isAvailable: map['isAvailable'] ?? true,
         pinned: map['pinned'] ?? false,
+        rating: (map['rating'] ?? 0).toDouble(),
+        ratingCount: map['ratingCount'] ?? 0,
       );
 }

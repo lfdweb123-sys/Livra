@@ -41,6 +41,20 @@ export async function POST(req) {
   if (source.driverId) targets.push({ type: 'driver', id: source.driverId, collection: 'drivers' });
   if (targets.length === 0) return jsonError('no_target_to_review', 400);
 
+  // Si la commande ne contient qu'UN SEUL produit distinct (peu importe la
+  // quantité), l'avis s'attribue aussi directement à ce produit — affiché
+  // en étoiles sur sa fiche. Si plusieurs produits différents étaient dans
+  // la commande, impossible de savoir lequel l'avis concerne : pas
+  // d'attribution au niveau produit dans ce cas (l'avis compte quand même
+  // pour la boutique).
+  let productTarget = null;
+  if (orderId && source.vendorId && Array.isArray(source.items)) {
+    const distinctProductIds = [...new Set(source.items.map((i) => i.productId).filter(Boolean))];
+    if (distinctProductIds.length === 1) {
+      productTarget = { id: distinctProductIds[0], vendorId: source.vendorId };
+    }
+  }
+
   const batch = db.batch();
   // Demande explicite: afficher le nom + avatar de l'auteur de l'avis —
   // on les stocke directement sur le document au moment de la création
@@ -61,6 +75,7 @@ export async function POST(req) {
       clientPhotoUrl,
       rating,
       comment: comment || '',
+      productId: target.type === 'vendor' ? (productTarget?.id || null) : null,
       createdAt: FieldValue.serverTimestamp(),
     });
   }
@@ -80,6 +95,22 @@ export async function POST(req) {
       const newRating = (oldRating * oldCount + rating) / newCount;
       tx.update(targetRef, { rating: newRating, ratingCount: newCount });
     });
+
+    // Avis attribué à un produit précis (voir productTarget plus haut) —
+    // affiché en étoiles sur sa fiche.
+    if (target.type === 'vendor' && productTarget) {
+      const productRef = db.collection(`vendors/${productTarget.vendorId}/products`).doc(productTarget.id);
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(productRef);
+        if (!snap.exists) return;
+        const data = snap.data();
+        const oldCount = data.ratingCount || 0;
+        const oldRating = data.rating || 0;
+        const newCount = oldCount + 1;
+        const newRating = (oldRating * oldCount + rating) / newCount;
+        tx.update(productRef, { rating: newRating, ratingCount: newCount });
+      }).catch((e) => console.error('[PRODUCT_RATING_UPDATE_ERROR]', productTarget.id, e.message));
+    }
 
     // Demande explicite: notifier par push ET par mail quand un avis est
     // laissé — celui qui reçoit l'avis doit être prévenu immédiatement.
