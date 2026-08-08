@@ -19,16 +19,18 @@ export async function POST(req) {
   // ne rien préciser (course proposée à tous les chauffeurs à proximité).
   let validatedPreferredDriverId = null;
   let preferredDriverPricingConfig = null;
+  let preferredDriverServiceFeeExempt = false;
   if (preferredDriverId && !offPlatformDriverPhone) {
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
       validatedPreferredDriverId = preferredDriverId;
       preferredDriverPricingConfig = driverSnap.data().pricingConfig || null;
+      preferredDriverServiceFeeExempt = driverSnap.data().serviceFeeExempt === true;
     }
   }
 
   const { price, basePrice, serviceFee, serviceFeePercent, distanceKm, etaMinutes } =
-    computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint, preferredDriverPricingConfig);
+    computeRidePrice(vehicleType, pickupLocation.geopoint, dropoffLocation.geopoint, preferredDriverPricingConfig, preferredDriverServiceFeeExempt);
   const matchPosition = toGeoPoint(pickupLocation.geopoint.latitude, pickupLocation.geopoint.longitude);
 
   const rideRef = await db.collection('rides').add({
@@ -87,7 +89,7 @@ export async function GET(req) {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 200);
 
   let query = db.collection('rides');
   if (auth.role === 'client') query = query.where('clientId', '==', auth.uid);

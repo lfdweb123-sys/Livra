@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../../lib/apiClient';
 import { rideStatusFr } from '../../../lib/statusLabels';
+import { useSearchPagination, SearchBar, PaginationBar } from '../../../lib/adminSearchPagination';
 
 const VEHICLE_LABELS = { moto: 'Taxi-moto', voiture: 'Voiture', coursier: 'Coursier' };
 const STATUS_COLOR = {
@@ -76,14 +77,18 @@ export default function RidesPage() {
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   useEffect(() => {
-    apiFetch('/api/rides?limit=50').then((d) => setItems(d.items)).catch(() => {});
+    apiFetch('/api/rides?limit=200').then((d) => setItems(d.items)).catch(() => {});
   }, []);
+
+  const { query, setQuery, page, setPage, pageCount, paginated, totalCount } =
+    useSearchPagination(items, ['id', 'vehicleType', 'status']);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4 text-livra-textPrimary">Courses</h1>
+      <SearchBar value={query} onChange={setQuery} placeholder="Rechercher par n° de course, véhicule, statut…" />
       <div className="grid gap-2">
-        {items.map((r) => (
+        {paginated.map((r) => (
           <button
             key={r.id}
             onClick={() => setSelectedId(r.id)}
@@ -98,8 +103,9 @@ export default function RidesPage() {
             </span>
           </button>
         ))}
-        {items.length === 0 && <div className="text-livra-textSecondary">Aucune course.</div>}
+        {paginated.length === 0 && <div className="text-livra-textSecondary">Aucune course.</div>}
       </div>
+      <PaginationBar page={page} pageCount={pageCount} setPage={setPage} totalCount={totalCount} shownCount={paginated.length} />
       {selectedId && <RideDetailModal rideId={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   );

@@ -27,6 +27,9 @@ export async function PATCH(req, { params }) {
     if (body.status) update.status = body.status; // active | suspended | rejected
     if (body.status === 'rejected' && body.rejectionReason) update.rejectionReason = body.rejectionReason;
     if (body.commission !== undefined) update.commission = body.commission;
+    // Admin uniquement: exempte ce vendeur precis des frais de service de
+    // 5% sur toutes ses futures commandes (promotion, partenariat...).
+    if (body.serviceFeeExempt !== undefined) update.serviceFeeExempt = body.serviceFeeExempt === true;
     // Active automatiquement la boutique dès l'approbation admin — jamais
     // besoin d'un geste manuel du vendeur pour "ouvrir", seule la
     // fermeture reste volontaire de sa part.

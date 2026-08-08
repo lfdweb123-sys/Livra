@@ -8,10 +8,14 @@ const MIN_FEE = { moto: 300, voiture: 700, coursier: 400 };
 // Frais de service Livra: 5% facturés à l'acheteur sur chaque transaction
 // (commande vendeur/restaurant ET course livreur/chauffeur/taxi-moto).
 // Les retraits (withdraw) restent gratuits — voir wallet/[userId]/withdraw,
-// aucun frais n'y est appliqué.
+// aucun frais n'y est appliqué. L'admin peut exempter un vendeur ou un
+// livreur precis de ces frais (voir serviceFeeExempt sur vendors/drivers,
+// modifiable depuis le tableau de bord admin) - dans ce cas le calcul
+// renvoie directement 0, jamais de frais factures pour ce vendeur/livreur.
 export const SERVICE_FEE_PERCENT = 5;
 
-export function computeServiceFee(amount) {
+export function computeServiceFee(amount, exempt = false) {
+  if (exempt) return 0;
   return Math.round((amount * SERVICE_FEE_PERCENT) / 100);
 }
 
@@ -53,19 +57,20 @@ export function computeDeliveryFee(vehicleType, pickup, dropoff, driverPricingCo
 
 // serviceFee calculé sur (subtotal + deliveryFee): l'acheteur paie 5% de
 // plus sur l'ensemble de ce qu'il doit (articles + livraison), que ce
-// frais soit dû à un vendeur/restaurant OU à un livreur.
-export function computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee }) {
+// frais soit dû à un vendeur/restaurant OU à un livreur. vendorServiceFeeExempt
+// vient de vendors/{id}.serviceFeeExempt, réglable par l'admin.
+export function computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee, vendorServiceFeeExempt = false }) {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const commission = Math.round((subtotal * (vendorCommissionPercent || 0)) / 100);
-  const serviceFee = computeServiceFee(subtotal + deliveryFee);
+  const serviceFee = computeServiceFee(subtotal + deliveryFee, vendorServiceFeeExempt);
   const total = subtotal + deliveryFee + serviceFee;
   return { subtotal, deliveryFee, commission, serviceFee, serviceFeePercent: SERVICE_FEE_PERCENT, total };
 }
 
-export function computeRidePrice(vehicleType, pickup, dropoff, driverPricingConfig) {
+export function computeRidePrice(vehicleType, pickup, dropoff, driverPricingConfig, driverServiceFeeExempt = false) {
   const km = distanceKm(pickup, dropoff);
   const basePrice = computeDeliveryFee(vehicleType, pickup, dropoff, driverPricingConfig);
-  const serviceFee = computeServiceFee(basePrice);
+  const serviceFee = computeServiceFee(basePrice, driverServiceFeeExempt);
   const price = basePrice + serviceFee; // total réellement facturé au client
   const etaMinutes = Math.max(3, Math.round((km / 25) * 60)); // 25km/h moyenne ville
   return {

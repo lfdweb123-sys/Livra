@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../../lib/apiClient';
 import { orderStatusFr, ORDER_TYPE_LABELS_FR, PAYMENT_STATUS_LABELS_FR } from '../../../lib/statusLabels';
+import { useSearchPagination, SearchBar, PaginationBar } from '../../../lib/adminSearchPagination';
 
 const STATUS_COLOR = {
   pending: 'bg-livra-surfaceElevated text-livra-textPrimary', accepted: 'bg-blue-600 text-white', preparing: 'bg-blue-500 text-white',
@@ -97,14 +98,18 @@ export default function OrdersPage() {
   const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
-    apiFetch('/api/orders?limit=50').then((d) => setItems(d.items)).catch(() => {});
+    apiFetch('/api/orders?limit=200').then((d) => setItems(d.items)).catch(() => {});
   }, []);
+
+  const { query, setQuery, page, setPage, pageCount, paginated, totalCount } =
+    useSearchPagination(items, ['id', 'type', 'status']);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4 text-livra-textPrimary">Commandes</h1>
+      <SearchBar value={query} onChange={setQuery} placeholder="Rechercher par n° de commande, type, statut…" />
       <div className="grid gap-2">
-        {items.map((o) => (
+        {paginated.map((o) => (
           <button
             key={o.id}
             onClick={() => setSelectedId(o.id)}
@@ -121,8 +126,9 @@ export default function OrdersPage() {
             </span>
           </button>
         ))}
-        {items.length === 0 && <div className="text-livra-textSecondary">Aucune commande.</div>}
+        {paginated.length === 0 && <div className="text-livra-textSecondary">Aucune commande.</div>}
       </div>
+      <PaginationBar page={page} pageCount={pageCount} setPage={setPage} totalCount={totalCount} shownCount={paginated.length} />
       {selectedId && <OrderDetailModal orderId={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   );

@@ -8,7 +8,7 @@ export async function GET(req) {
   if (auth.role !== 'admin') return jsonError('forbidden', 403);
 
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 500);
   const snap = await db.collection('users').orderBy('createdAt', 'desc').limit(limit).get();
   return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
 }

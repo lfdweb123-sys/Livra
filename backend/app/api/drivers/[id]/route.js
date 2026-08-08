@@ -39,6 +39,9 @@ export async function PATCH(req, { params }) {
   if (auth.role === 'admin') {
     if (body.status) update.status = body.status;
     if (body.status === 'rejected' && body.rejectionReason) update.rejectionReason = body.rejectionReason;
+    // Admin uniquement: exempte ce livreur/chauffeur/taxi-moto precis des
+    // frais de service de 5% sur ses futures commandes/courses.
+    if (body.serviceFeeExempt !== undefined) update.serviceFeeExempt = body.serviceFeeExempt === true;
   } else if (auth.uid === driver.ownerId) {
     if (body.documentsR2) update.documentsR2 = body.documentsR2;
     if (body.photoUrl !== undefined) update.photoUrl = body.photoUrl;

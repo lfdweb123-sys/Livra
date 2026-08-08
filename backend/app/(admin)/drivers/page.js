@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../../lib/apiClient';
+import { useSearchPagination, SearchBar, PaginationBar } from '../../../lib/adminSearchPagination';
 
 const STATUS_LABELS = { pending: 'En attente', active: 'Actifs', suspended: 'Suspendus', rejected: 'Rejetés' };
 const VEHICLE_LABELS = { moto: 'Taxi-moto', voiture: 'Chauffeur voiture', coursier: 'Coursier' };
@@ -10,10 +11,13 @@ export default function DriversPage() {
   const [filter, setFilter] = useState('pending');
 
   async function load() {
-    const data = await apiFetch(`/api/drivers?status=${filter}`);
+    const data = await apiFetch(`/api/drivers?status=${filter}&limit=200`);
     setItems(data.items);
   }
   useEffect(() => { load(); }, [filter]);
+
+  const { query, setQuery, page, setPage, pageCount, paginated, totalCount } =
+    useSearchPagination(items, ['vehicleType']);
 
   async function updateStatus(id, status) {
     let rejectionReason;
@@ -21,6 +25,11 @@ export default function DriversPage() {
       rejectionReason = prompt('Motif du rejet (visible par le livreur) ?') || '';
     }
     await apiFetch(`/api/drivers/${id}`, { method: 'PATCH', body: JSON.stringify({ status, rejectionReason }) });
+    load();
+  }
+
+  async function toggleFeeExempt(d) {
+    await apiFetch(`/api/drivers/${d.id}`, { method: 'PATCH', body: JSON.stringify({ serviceFeeExempt: !d.serviceFeeExempt }) });
     load();
   }
 
@@ -45,15 +54,21 @@ export default function DriversPage() {
           </button>
         ))}
       </div>
+      <SearchBar value={query} onChange={setQuery} placeholder="Rechercher par type de véhicule…" />
       <div className="grid gap-3">
-        {items.map((d) => (
+        {paginated.map((d) => (
           <div key={d.id} className="bg-livra-surface border border-livra-divider rounded-xl p-4">
             <div className="flex justify-between items-start gap-4">
               <div>
-                <div className="font-semibold text-livra-textPrimary">{VEHICLE_LABELS[d.vehicleType] || d.vehicleType}</div>
+                <div className="font-semibold flex items-center gap-2">
+                  {VEHICLE_LABELS[d.vehicleType] || d.vehicleType}
+                  {d.serviceFeeExempt && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-livra-success text-white">Frais exemptés</span>
+                  )}
+                </div>
                 <div className="text-livra-textSecondary text-sm">{Object.keys(d.documentsR2 || {}).length} document(s) fourni(s)</div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                 {d.status === 'pending' && (
                   <>
                     <button onClick={() => updateStatus(d.id, 'active')} className="px-3 py-1 rounded-lg bg-livra-success text-sm text-white">Approuver</button>
@@ -66,6 +81,12 @@ export default function DriversPage() {
                 {d.status === 'suspended' && (
                   <button onClick={() => updateStatus(d.id, 'active')} className="px-3 py-1 rounded-lg bg-livra-success text-sm text-white">Réactiver</button>
                 )}
+                <button
+                  onClick={() => toggleFeeExempt(d)}
+                  className={`px-3 py-1 rounded-lg text-sm text-white ${d.serviceFeeExempt ? 'bg-livra-textSecondary' : 'bg-blue-600'}`}
+                >
+                  {d.serviceFeeExempt ? 'Réactiver les frais' : 'Exempter des frais'}
+                </button>
                 <button onClick={() => remove(d)} className="px-3 py-1 rounded-lg bg-livra-danger/80 text-sm text-white">Supprimer</button>
               </div>
             </div>
@@ -85,8 +106,9 @@ export default function DriversPage() {
             )}
           </div>
         ))}
-        {items.length === 0 && <div className="text-livra-textSecondary">Aucun chauffeur dans ce filtre.</div>}
+        {paginated.length === 0 && <div className="text-livra-textSecondary">Aucun chauffeur dans ce filtre.</div>}
       </div>
+      <PaginationBar page={page} pageCount={pageCount} setPage={setPage} totalCount={totalCount} shownCount={paginated.length} />
     </div>
   );
 }

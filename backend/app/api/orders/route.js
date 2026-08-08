@@ -51,11 +51,13 @@ export async function POST(req) {
   // choix, jamais fait confiance au client pour cet id.
   let validatedPreferredDriverId = null;
   let preferredDriverPricingConfig = null;
+  let preferredDriverServiceFeeExempt = false;
   if (preferredDriverId) {
     const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
     if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
       validatedPreferredDriverId = preferredDriverId;
       preferredDriverPricingConfig = driverSnap.data().pricingConfig || null;
+      preferredDriverServiceFeeExempt = driverSnap.data().serviceFeeExempt === true;
     }
   }
 
@@ -70,11 +72,12 @@ export async function POST(req) {
       : computeDeliveryFee('coursier', vendorGeopoint, deliveryAddress.geopoint, preferredDriverPricingConfig);
   const priceBreakdown =
     type === 'nourriture'
-      ? computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee })
+      ? computeOrderBreakdown({ items, vendorCommissionPercent, deliveryFee, vendorServiceFeeExempt: vendorSnap?.data()?.serviceFeeExempt === true })
       : (() => {
           // Colis: pas de vendeur, mais le frais de service de 5% s'applique
-          // quand même côté livreur, sur le frais de livraison.
-          const serviceFee = computeServiceFee(deliveryFee);
+          // quand même côté livreur, sur le frais de livraison — sauf si ce
+          // livreur précis est exempté par l'admin.
+          const serviceFee = computeServiceFee(deliveryFee, preferredDriverServiceFeeExempt);
           return { subtotal: 0, deliveryFee, commission: 0, serviceFee, serviceFeePercent: SERVICE_FEE_PERCENT, total: deliveryFee + serviceFee };
         })();
 
@@ -167,7 +170,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
   const cursor = searchParams.get('cursor');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 200);
 
   let query = db.collection('orders');
   if (auth.role === 'client') query = query.where('clientId', '==', auth.uid);

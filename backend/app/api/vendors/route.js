@@ -67,7 +67,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') || 'active';
   const category = searchParams.get('category');
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 200);
 
   let query = db.collection('vendors').where('status', '==', status);
   if (category) query = query.where('category', '==', category);

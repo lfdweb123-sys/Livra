@@ -56,7 +56,7 @@ export async function GET(req) {
   const status = searchParams.get('status');
   let query = db.collection('drivers');
   if (status) query = query.where('status', '==', status);
-  query = query.orderBy('createdAt', 'desc').limit(50);
+  query = query.orderBy('createdAt', 'desc').limit(200);
   try {
     const snap = await query.get();
     return Response.json({ items: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
