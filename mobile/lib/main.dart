@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'core/routing/app_router.dart';
+import 'core/widgets/connectivity_banner.dart';
 import 'app_role_gate.dart';
 
 Future<void> main() async {
@@ -47,6 +48,9 @@ class _LivraAppState extends State<LivraApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            // Bannière hors-connexion visible sur TOUTE l'app, quelle que
+            // soit la page — voir ConnectivityBanner.
+            builder: (context, child) => ConnectivityBanner(child: child ?? const SizedBox()),
           ),
         );
       },

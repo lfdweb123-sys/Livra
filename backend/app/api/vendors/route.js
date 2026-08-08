@@ -34,7 +34,9 @@ export async function POST(req) {
     documents: body.documents || {},
     rating: 0,
     ratingCount: 0,
-    isOpen: false,
+    isOpen: true, // ouverte par défaut dès l'approbation admin — le vendeur
+    // ne doit jamais avoir à penser à l'activer manuellement, seule la
+    // fermeture (mise en pause) reste un choix manuel de sa part.
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });

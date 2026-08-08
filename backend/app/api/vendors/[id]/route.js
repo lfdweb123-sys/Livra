@@ -27,6 +27,10 @@ export async function PATCH(req, { params }) {
     if (body.status) update.status = body.status; // active | suspended | rejected
     if (body.status === 'rejected' && body.rejectionReason) update.rejectionReason = body.rejectionReason;
     if (body.commission !== undefined) update.commission = body.commission;
+    // Active automatiquement la boutique dès l'approbation admin — jamais
+    // besoin d'un geste manuel du vendeur pour "ouvrir", seule la
+    // fermeture reste volontaire de sa part.
+    if (body.status === 'active') update.isOpen = true;
   } else if (auth.uid === vendor.ownerId) {
     ['businessName', 'address', 'coverImageUrl', 'logoUrl', 'isOpen', 'description', 'deliveryFee'].forEach((k) => {
       if (body[k] !== undefined) update[k] = body[k];

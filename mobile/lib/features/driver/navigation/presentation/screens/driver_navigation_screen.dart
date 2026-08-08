@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../../core/services/api/api_client.dart';
+import '../../../../../core/services/offline_queue_service.dart';
 import '../../../../../core/services/maps/maps_service.dart';
 import '../../../../../core/services/location_service.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -149,7 +150,21 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
   Future<void> _advanceStatus(String nextStatus) async {
     final path = widget.type == 'order' ? '/api/orders/${widget.id}' : '/api/rides/${widget.id}';
-    await ApiClient.instance.patch(path, data: {'status': nextStatus});
+    final label = widget.type == 'order' ? 'Commande — ${_statusLabelsFr[nextStatus] ?? nextStatus}' : 'Course — ${_statusLabelsFr[nextStatus] ?? nextStatus}';
+    // En zone mal couverte, cette mise à jour de statut ne doit jamais se
+    // perdre — si le réseau manque, elle est mise en attente et rejouée
+    // automatiquement dès que la connexion revient (voir ConnectivityBanner).
+    final sentNow = await OfflineQueueService.instance.postOrQueue(
+      method: 'patch',
+      path: path,
+      data: {'status': nextStatus},
+      label: label,
+    );
+    if (!sentNow && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Pas de réseau — sera envoyé automatiquement dès que la connexion revient.'),
+      ));
+    }
   }
 
   Future<void> _recenter() async {

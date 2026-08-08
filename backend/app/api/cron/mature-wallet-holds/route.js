@@ -4,6 +4,7 @@
 // l'argent ne soit retirable. Appelé toutes les heures par le service cron
 // externe (voir reconcile-payments pour la configuration générale).
 import { db, FieldValue } from '../../../../lib/firebaseAdmin';
+import { sendNotification } from '../../../../lib/fcm';
 
 export async function GET(req) {
   const secret = req.headers.get('x-cron-secret');
@@ -20,6 +21,12 @@ export async function GET(req) {
     .get();
 
   let matured = 0;
+  // Regroupe par utilisateur pour n'envoyer QU'UNE notification par
+  // passage du cron, même si plusieurs gains mûrissent en même temps —
+  // sinon un livreur avec 5 livraisons du même jour recevrait 5
+  // notifications identiques d'un coup.
+  const maturedByUser = {};
+
   for (const doc of snap.docs) {
     const tx = doc.data();
     const walletRef = doc.ref.parent.parent; // wallets/{uid}
@@ -34,10 +41,23 @@ export async function GET(req) {
         t.update(doc.ref, { matured: true, maturedAt: FieldValue.serverTimestamp() });
       });
       matured++;
+      maturedByUser[walletRef.id] = (maturedByUser[walletRef.id] || 0) + tx.amount;
     } catch (e) {
       console.error('[MATURE_WALLET_HOLDS_ERROR]', { walletId: walletRef.id, txId: doc.id, message: e.message });
     }
   }
 
-  return Response.json({ matured });
+  // Notifie chaque utilisateur concerné, une seule fois, avec le total.
+  await Promise.all(
+    Object.entries(maturedByUser).map(([userId, amount]) =>
+      sendNotification({
+        userId,
+        title: 'Argent disponible',
+        body: `${amount} XOF sont maintenant disponibles au retrait sur votre portefeuille.`,
+        type: 'earnings_matured',
+      }).catch((e) => console.error('[MATURE_WALLET_HOLDS_NOTIF_ERROR]', userId, e.message))
+    )
+  );
+
+  return Response.json({ matured, usersNotified: Object.keys(maturedByUser).length });
 }
