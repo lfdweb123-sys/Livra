@@ -28,6 +28,22 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
   List<Map<String, dynamic>> _reviews = [];
   final Map<String, int> _cart = {};
   Map<String, ProductModel> _catalog = {};
+  // Catégorie sélectionnée pour filtrer le catalogue — null = "Tous".
+  // Permet au client de naviguer directement vers ce qui l'intéresse sans
+  // parcourir tout le catalogue.
+  String? _selectedCategory;
+
+  List<String> get _categories {
+    final set = (_products ?? []).map((p) => p.category).where((c) => c.trim().isNotEmpty).toSet().toList();
+    set.sort();
+    return set;
+  }
+
+  List<ProductModel> get _filteredProducts {
+    if (_products == null) return [];
+    if (_selectedCategory == null) return _products!;
+    return _products!.where((p) => p.category == _selectedCategory).toList();
+  }
 
   @override
   void initState() {
@@ -239,7 +255,7 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
               color: AppColors.gold,
               child: ListView.builder(
               padding: EdgeInsets.all(16),
-              itemCount: _products!.length + 1,
+              itemCount: _filteredProducts.length + (_categories.isEmpty ? 1 : 2),
               itemBuilder: (context, i) {
                 if (i == 0) {
                   return Padding(
@@ -307,7 +323,43 @@ class _VendorDetailScreenState extends State<VendorDetailScreen> {
                     ),
                   );
                 }
-                final p = _products![i - 1];
+                if (_categories.isNotEmpty && i == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: const Text('Tous'),
+                              selected: _selectedCategory == null,
+                              onSelected: (_) => setState(() => _selectedCategory = null),
+                              selectedColor: AppColors.gold,
+                              labelStyle: TextStyle(color: _selectedCategory == null ? Colors.black : AppColors.textPrimary),
+                            ),
+                          ),
+                          ..._categories.map((c) {
+                            final selected = _selectedCategory == c;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(c),
+                                selected: selected,
+                                onSelected: (_) => setState(() => _selectedCategory = c),
+                                selectedColor: AppColors.gold,
+                                labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                final p = _filteredProducts[i - (_categories.isEmpty ? 1 : 2)];
                 final qty = _cart[p.id] ?? 0;
                 return Card(
                   margin: EdgeInsets.only(bottom: 12),

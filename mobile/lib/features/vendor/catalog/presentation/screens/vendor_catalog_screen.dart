@@ -68,9 +68,18 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final priceCtrl = TextEditingController(text: existing?.price != null ? existing!.price.toString() : '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
+    final newCategoryCtrl = TextEditingController();
+    String category = existing?.category ?? '';
+    bool addingNewCategory = false;
     File? image;
     String? existingImageUrl = existing?.imageUrl;
     bool compressing = false;
+
+    // Catégories déjà utilisées par ce vendeur — dérivées directement de son
+    // catalogue existant (pas de gestion séparée à maintenir), permettent au
+    // client de naviguer directement vers ce qui l'intéresse sur la fiche
+    // vendeur (voir vendor_detail_screen.dart).
+    final existingCategories = _products.map((p) => p.category).where((c) => c.trim().isNotEmpty).toSet().toList()..sort();
 
     await showAppBottomSheet(
       context,
@@ -119,6 +128,55 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
             const SizedBox(height: 12),
             TextField(controller: priceCtrl, decoration: const InputDecoration(hintText: 'Prix (XOF)'), keyboardType: TextInputType.number),
             const SizedBox(height: 16),
+            Text('Catégorie', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 8),
+            if (!addingNewCategory) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...existingCategories.map((c) {
+                    final selected = category == c;
+                    return ChoiceChip(
+                      label: Text(c),
+                      selected: selected,
+                      onSelected: (_) => setSheetState(() => category = c),
+                      selectedColor: AppColors.gold,
+                      labelStyle: TextStyle(color: selected ? Colors.black : AppColors.textPrimary),
+                    );
+                  }),
+                  ActionChip(
+                    avatar: Icon(Icons.add, size: 16),
+                    label: const Text('Nouvelle'),
+                    onPressed: () => setSheetState(() => addingNewCategory = true),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: newCategoryCtrl,
+                      autofocus: true,
+                      decoration: const InputDecoration(hintText: 'Ex : Entrées, Plats, Boissons...'),
+                      onSubmitted: (v) => setSheetState(() {
+                        category = v.trim();
+                        addingNewCategory = false;
+                      }),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.check, color: AppColors.gold),
+                    onPressed: () => setSheetState(() {
+                      category = newCategoryCtrl.text.trim();
+                      addingNewCategory = false;
+                    }),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
             DebouncedButton(
               label: existing == null ? 'Ajouter' : 'Enregistrer',
               onPressed: () async {
@@ -131,6 +189,7 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                     'description': descCtrl.text.trim(),
                     'price': num.tryParse(priceCtrl.text) ?? 0,
                     'imageUrl': imageUrl,
+                    'category': category,
                   };
                   if (existing == null) {
                     await ApiClient.instance.post('/api/vendors/$_vendorId/products', data: data);
@@ -227,7 +286,11 @@ class _VendorCatalogScreenState extends State<VendorCatalogScreen> {
                         Expanded(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ],
                     ),
-                    subtitle: Text('${p.price} XOF', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      p.category.isNotEmpty ? '${p.price} XOF · ${p.category}' : '${p.price} XOF',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
