@@ -60,7 +60,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final clientInfo = o['clientInfo'] as Map<String, dynamic>?;
     final driverInfo = o['driverInfo'] as Map<String, dynamic>?;
     return [
-      _statusHeader(o['status']),
+      _statusHeader(orderStatusDisplayFr(o)),
       const SizedBox(height: 20),
       _sectionTitle('Identifiant'),
       _infoRow('N° de commande', o['id'] ?? widget.id),
@@ -106,7 +106,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final clientInfo = r['clientInfo'] as Map<String, dynamic>?;
     final driverInfo = r['driverInfo'] as Map<String, dynamic>?;
     return [
-      _statusHeader(r['status']),
+      _statusHeader(statusLabelFr(r['status'])),
       const SizedBox(height: 20),
       _sectionTitle('Identifiant'),
       _infoRow('N° de course', r['id'] ?? widget.id),
@@ -137,8 +137,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     ];
   }
 
-  Widget _statusHeader(String? status) {
-    final label = statusLabelFr(status);
+  Widget _statusHeader(String label) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),

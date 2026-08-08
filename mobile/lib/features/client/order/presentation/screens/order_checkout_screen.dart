@@ -84,7 +84,9 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
         context,
         lat: _pickupAddress!.lat,
         lng: _pickupAddress!.lng,
-        vehicleType: 'coursier',
+        // BUG CORRIGE: vehicleType: 'coursier' codé en dur excluait tous
+        // les livreurs moto/voiture, alors qu'ils peuvent aussi livrer un
+        // colis. Aucun filtre de véhicule.
         title: 'Choisir un livreur',
       );
       preferredDriverId = result.driverId;

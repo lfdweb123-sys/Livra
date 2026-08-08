@@ -68,7 +68,10 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
           context,
           lat: (geopoint['latitude'] as num).toDouble(),
           lng: (geopoint['longitude'] as num).toDouble(),
-          vehicleType: 'coursier',
+          // BUG CORRIGE: vehicleType: 'coursier' codé en dur excluait tous
+          // les livreurs enregistrés en 'moto' ou 'voiture' — alors qu'un
+          // taxi-moto ou un chauffeur peut tout aussi bien livrer un
+          // colis/une commande. Aucun filtre de véhicule pour une livraison.
           title: 'Choisir un livreur',
         );
         preferredDriverId = result.driverId;
@@ -80,6 +83,20 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
       if (preferredDriverId != null) 'preferredDriverId': preferredDriverId,
       if (offPlatformDriverPhone != null) 'offPlatformDriverPhone': offPlatformDriverPhone,
     });
+    // Confirmation visible côté vendeur — sans ça, "ne rien préciser"
+    // (diffusion générale) donnait l'impression de ne rien faire, faute
+    // de retour visuel immédiat sur cet écran.
+    if (mounted && nextStatus == 'picked_up') {
+      String message;
+      if (offPlatformDriverPhone != null) {
+        message = 'Commande marquée livrée hors de Livra.';
+      } else if (preferredDriverId != null) {
+        message = 'Livreur notifié.';
+      } else {
+        message = 'Commande proposée à tous les livreurs actifs à proximité.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
     _load();
   }
 
@@ -107,7 +124,6 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
       context,
       lat: (geopoint['latitude'] as num).toDouble(),
       lng: (geopoint['longitude'] as num).toDouble(),
-      vehicleType: 'coursier',
       title: 'Changer de livreur',
     );
     try {
@@ -189,7 +205,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Commande ${o['id'].toString().substring(0, 6)}', style: TextStyle(fontWeight: FontWeight.bold)),
-                              Text('${o['priceBreakdown']?['subtotal'] ?? 0} XOF — ${_statusLabelsFr[o['status']] ?? o['status']}', style: TextStyle(color: AppColors.textSecondary)),
+                              Text('${o['priceBreakdown']?['subtotal'] ?? 0} XOF — ${o['deliveredOffPlatform'] == true ? 'Livré hors de Livra' : (_statusLabelsFr[o['status']] ?? o['status'])}', style: TextStyle(color: AppColors.textSecondary)),
                               if (next != null) ...[
                                 SizedBox(height: 8),
                                 ElevatedButton(onPressed: () => _advance(o['id'], next, o), child: Text('Marquer : ${_statusLabelsFr[next] ?? next}')),

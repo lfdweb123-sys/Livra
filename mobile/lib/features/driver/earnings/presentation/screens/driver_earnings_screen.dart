@@ -74,7 +74,10 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
                         ),
                       ],
                       SizedBox(height: 16),
-                      PrimaryButton(label: 'Retirer', onPressed: () => context.push('/wallet')),
+                      PrimaryButton(
+                        label: 'Retirer',
+                        onPressed: (_wallet!['balance'] ?? 0) > 0 ? () => context.push('/wallet') : null,
+                      ),
                     ],
                   ),
                 ),

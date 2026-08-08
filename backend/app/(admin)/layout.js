@@ -160,6 +160,15 @@ export default function AdminLayout({ children }) {
         <div className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-livra-divider bg-livra-surface shrink-0">
           <Image src="/livra_icon_full.png" alt="Livra" width={30} height={30} />
           <span className="font-semibold text-livra-textPrimary text-sm flex-1">Admin</span>
+          <button
+            aria-label="Ouvrir le menu"
+            onClick={() => setMobileNavOpen(true)}
+            className="p-2 -mr-2 rounded-lg hover:bg-livra-surfaceElevated"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
         </div>
 
         <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 pb-20 md:pb-8 max-w-[1400px] overflow-x-hidden">{children}</main>

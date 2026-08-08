@@ -198,10 +198,19 @@ export async function PATCH(req, { params }) {
 
   if (!(isClientCancel || isVendorMove || isDriverMove || isAdmin)) return jsonError('forbidden', 403);
 
+  // Une commande remise à un livreur HORS application est immédiatement
+  // considérée livrée — jamais laissée bloquée indéfiniment à "picked_up"
+  // en attendant un livreur Livra qui ne viendra jamais. Au-delà de ce
+  // point, ce qui se passe hors plateforme n'engage plus Livra (voir CGU) :
+  // le vendeur ne peut donc plus changer de livreur (le statut n'est plus
+  // "picked_up", le bouton disparaît naturellement côté app).
+  const isOffPlatformHandoff = auth.role === 'vendor' && status === 'picked_up' && !!offPlatformDriverPhone;
+  const finalStatus = isOffPlatformHandoff ? 'delivered' : status;
+
   const update = {
-    status,
+    status: finalStatus,
     updatedAt: FieldValue.serverTimestamp(),
-    statusHistory: FieldValue.arrayUnion({ status, at: new Date().toISOString(), by: auth.uid }),
+    statusHistory: FieldValue.arrayUnion({ status: finalStatus, at: new Date().toISOString(), by: auth.uid }),
   };
   // un livreur qui accepte une commande "picked_up" venant de vendeur s'auto-assigne s'il n'y a pas encore de driverId
   const driverClaiming = status === 'picked_up' && !order.driverId && driverId;
@@ -217,11 +226,12 @@ export async function PATCH(req, { params }) {
     // les livreurs à proximité.
     if (offPlatformDriverPhone) {
       // Livreur hors application choisi : n'apparaît plus dans les
-      // commandes disponibles pour les livreurs Livra, il est déjà pris
-      // en charge en dehors de la plateforme.
+      // commandes disponibles pour les livreurs Livra — et la commande
+      // passe directement à "livrée" (hors Livra), voir isOffPlatformHandoff.
       update.readyForPickup = false;
       update.offPlatformDriverPhone = offPlatformDriverPhone;
       update.preferredDriverId = null;
+      update.deliveredOffPlatform = true; // pour affichage distinct "Livré hors de Livra"
     } else if (preferredDriverId) {
       const driverSnap = await db.collection('drivers').doc(preferredDriverId).get();
       if (driverSnap.exists && driverSnap.data().status === 'active' && driverSnap.data().isOnline) {
@@ -229,8 +239,9 @@ export async function PATCH(req, { params }) {
       }
     }
   }
-  // paiement espèces : encaissé par le livreur à la livraison, confirmé automatiquement
-  if (status === 'delivered' && order.paymentMethod === 'cash' && order.paymentStatus !== 'paid') {
+  // paiement espèces : encaissé par le livreur (ou par le livreur hors
+  // application) à la livraison, confirmé automatiquement
+  if (finalStatus === 'delivered' && order.paymentMethod === 'cash' && order.paymentStatus !== 'paid') {
     update.paymentStatus = 'paid';
   }
 
@@ -336,7 +347,7 @@ export async function PATCH(req, { params }) {
     });
   }
 
-  if (status === 'delivered') {
+  if (finalStatus === 'delivered') {
     const clientSnap = await db.collection('users').doc(order.clientId).get();
     if (clientSnap.exists && clientSnap.data().email) {
       const { subject, htmlContent } = orderDeliveredEmail(params.id, order.priceBreakdown?.total);
@@ -349,22 +360,27 @@ export async function PATCH(req, { params }) {
       // Demande explicite: le vendeur doit être notifié quand le livreur
       // marque la commande livrée, pour vérifier auprès de son client et
       // confirmer lui-même — double contrôle plutôt que de se fier
-      // uniquement à la déclaration du livreur.
-      try {
-        const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
-        if (vendorSnap.exists) {
-          const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
-          const clientLine = clientPhone ? ` Contact client : ${clientSnap.data().name} — ${clientPhone}.` : '';
-          await notifyVendor({
-            vendorOwnerId: vendorSnap.data().ownerId,
-            title: 'Livraison déclarée par le livreur',
-            body: `Le livreur a marqué cette commande comme livrée. Vérifiez auprès de votre client puis confirmez dans l'app.${clientLine}`,
-            type: 'delivery_to_confirm',
-            relatedId: params.id,
-          });
+      // uniquement à la déclaration du livreur. Ne s'applique PAS quand
+      // c'est le vendeur lui-même qui vient de déclarer la livraison hors
+      // application (isOffPlatformHandoff) — inutile de lui demander de
+      // "vérifier" sa propre action.
+      if (!isOffPlatformHandoff) {
+        try {
+          const vendorSnap = await db.collection('vendors').doc(order.vendorId).get();
+          if (vendorSnap.exists) {
+            const clientPhone = clientSnap.exists ? clientSnap.data().phone : null;
+            const clientLine = clientPhone ? ` Contact client : ${clientSnap.data().name} — ${clientPhone}.` : '';
+            await notifyVendor({
+              vendorOwnerId: vendorSnap.data().ownerId,
+              title: 'Livraison déclarée par le livreur',
+              body: `Le livreur a marqué cette commande comme livrée. Vérifiez auprès de votre client puis confirmez dans l'app.${clientLine}`,
+              type: 'delivery_to_confirm',
+              relatedId: params.id,
+            });
+          }
+        } catch (e) {
+          console.error('[VENDOR_DELIVERY_CHECK_NOTIF_ERROR]', params.id, e.message);
         }
-      } catch (e) {
-        console.error('[VENDOR_DELIVERY_CHECK_NOTIF_ERROR]', params.id, e.message);
       }
     }
     if (order.driverId) {

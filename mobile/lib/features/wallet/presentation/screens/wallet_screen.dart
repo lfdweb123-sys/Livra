@@ -443,7 +443,7 @@ class _WalletScreenState extends State<WalletScreen> {
                               Expanded(
                                   child: PrimaryButton(
                                       label: 'Retirer',
-                                      onPressed: _withdraw,
+                                      onPressed: (_wallet!['balance'] ?? 0) > 0 ? _withdraw : null,
                                       outlined: true)),
                             ],
                           ),
